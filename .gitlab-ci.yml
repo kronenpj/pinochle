@@ -1,0 +1,63 @@
+# Official language image. Look for the different tagged releases at:
+# https://hub.docker.com/r/library/python/tags/
+image: python:3.8-slim
+
+# Change pip's cache directory to be inside the project directory since we can
+# only cache local items.
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  TOX_PARALLEL_NO_SPINNER: "1"
+
+# Pip's cache doesn't store the python packages
+# https://pip.pypa.io/en/stable/reference/pip_install/#caching
+#
+# If you want to also cache the installed packages, you have to install
+# them in a virtualenv and cache it as well.
+cache:
+  paths:
+    - .cache/pip
+    - venv/
+
+stages:
+  - test
+  - deploy
+
+before_script:
+  - python -V  # Print out python version for debugging
+  - python -m venv venv
+#  - pip install virtualenv
+#  - virtualenv venv
+
+# Only run the tests when the important source or tests are changed.
+# Running tox in parallel (-p all) also reduces the amount of output generated.
+test:
+  script:
+    - source venv/bin/activate
+    - pip --disable-pip-version-check install tox
+    - tox -c tox.ini -p all -e py38 -- -m "not hypothesis"
+  artifacts:
+    reports:
+      cobertura: .coverage.xml
+  only:
+    changes:
+      - pinochle/*.py
+      - tests/*.py
+  except:
+    - tags
+
+# Only update the gitlab pages content when it's scheduled.
+#pages:
+#  stage: deploy
+#  script:
+#    - source venv/bin/activate
+#    - pip install -r requirements.txt
+#    - python setup.py install
+#    - python gen_exam.py -pT -r RANDOM -j html.j2 -f public/example-technician.html
+#    - python gen_exam.py -pG -r RANDOM -j html.j2 -f public/example-general.html
+#    - python gen_exam.py -pE -r RANDOM -j html.j2 -f public/example-extra.html
+#  artifacts:
+#    paths:
+#      - public
+#  only:
+#    variables:
+#      - $SCHEDULED
