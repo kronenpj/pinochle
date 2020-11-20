@@ -1,12 +1,42 @@
+"""
+This module contains the ``PinochleDeck`` class.
+Each new ``PinochleDeck`` instance contains a full 48 card Pinochle deck.
+The ``PinochleDeck`` class is a subclass of the ``PinochleStack`` class,
+with a few extra/overridden methods.
+
+License: GPLv3
+Derived from: https://github.com/Trebek/pydealer
+Original author: Alex Crawford
+Modernized and modified for Pinochle by Paul Kronenwetter
+"""
+
+# ===============================================================================
+# PyDealer - Deck Class
+# -------------------------------------------------------------------------------
+# Version: 1.4.0
+# Updated: 10-01-2015
+# Author: Alex Crawford
+# License: GPLv3
+# ===============================================================================
+
+"""
+This module contains the ``Deck`` class. Each ``Deck`` instance contains a full,
+52 card French deck of playing cards upon instantiation. The ``Deck`` class is
+a subclass of the ``Stack`` class, with a few extra/differing methods.
+
+"""
+
 from collections import deque
 
-from pydealer import Deck, Stack
+import copy
+import uuid
+from .pinochle_stack import PinochleStack
 
 from . import const, custom_log, pinochle_utils
 from .log_decorator import log_decorator
 
 
-class PinochleDeck(Deck):
+class PinochleDeck(PinochleStack):
     @log_decorator
     def __init__(self, **kwargs):
         """
@@ -15,14 +45,13 @@ class PinochleDeck(Deck):
         """
         self._cards = deque(kwargs.get("cards", []))
 
-        self.jokers = kwargs.get("jokers", False)  # pragma: no mutate
-        self.num_jokers = kwargs.get("num_jokers", 0)  # pragma: no mutate
+        self.gameid = kwargs.get("gameid", uuid.uuid4())
         self.rebuild = kwargs.get("rebuild", False)
         self.re_shuffle = kwargs.get("re_shuffle", False)
-        self.ranks = kwargs.get("ranks", const.PINOCHLE_RANKS)
+        self.ranks = kwargs.get("ranks", copy.deepcopy(const.PINOCHLE_RANKS))
         self.decks_used = 0
 
-        if kwargs.get("build", True):
+        if kwargs.get("build", False):
             self.build()
 
     def __add__(self, other):
@@ -30,7 +59,7 @@ class PinochleDeck(Deck):
         Allows you to add (merge) decks together, with the ``+`` operand.
 
         :arg other:
-            The other Deck to add to the Deck. Can be a ``Stack`` or ``Deck``
+            The other Deck to add to the Deck. Can be a ``PinochleStack`` or ``Deck``
             instance.
 
         :returns:
@@ -39,10 +68,24 @@ class PinochleDeck(Deck):
         """
         try:
             new_deck = PinochleDeck(
-                cards=(list(self.cards) + list(other.cards)), build=False
+                cards=(list(self.cards) + list(other.cards)),
+                gameid=self.gameid,
+                rebuild=self.rebuild,
+                re_shuffle=self.re_shuffle,
+                ranks=self.ranks,
+                decks_used=self.decks_used,
+                build=False,
             )
         except:
-            new_deck = PinochleDeck(cards=list(self.cards) + other, build=False)
+            new_deck = PinochleDeck(
+                cards=list(self.cards) + other,
+                gameid=self.gameid,
+                rebuild=self.rebuild,
+                re_shuffle=self.re_shuffle,
+                ranks=self.ranks,
+                decks_used=self.decks_used,
+                build=False,
+            )
 
         return new_deck
 
@@ -59,7 +102,7 @@ class PinochleDeck(Deck):
     @log_decorator
     def build(self, jokers=False, num_jokers=0):
         """
-        Builds a standard pinochle card deck of Card instances.
+        Builds a standard pinochle card deck of PinochleCard instances.
 
         :arg bool jokers:
             Whether or not to include jokers in the deck. - Ignored - Pinochle decks do
@@ -103,7 +146,7 @@ class PinochleDeck(Deck):
         :arg bool shuffle:
             Whether or not to shuffle on rebuild.
         :arg str end:
-            The end of the ``Stack`` to add the cards to. Can be ``TOP`` ("top")
+            The end of the ``PinochleStack`` to add the cards to. Can be ``TOP`` ("top")
             or ``BOTTOM`` ("bottom").
 
         :returns:
@@ -138,4 +181,15 @@ class PinochleDeck(Deck):
                     else:
                         break
 
-        return Stack(cards=dealt_cards)
+        return PinochleStack(cards=dealt_cards)
+
+
+def convert_to_deck(stack):
+    """
+    Convert a ``PinochleStack`` to a ``Deck``.
+
+    :arg PinochleStack stack:
+        The ``PinochleStack`` instance to convert.
+
+    """
+    return PinochleDeck(cards=list(stack.cards))

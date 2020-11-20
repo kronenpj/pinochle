@@ -1,12 +1,23 @@
-import pydealer
+"""
+Utilities to work with a deck of Pinochle cards.
 
-from . import const, pinochle_deck
+License: GPLv3
+Inspired by: https://github.com/Trebek/pydealer
+Modernized and modified for Pinochle by Paul Kronenwetter
+"""
+
+import copy
+
+from . import const
+from .exceptions import InvalidDeckError, InvalidTrumpError
 from .log_decorator import log_decorator
+from .pinochle_card import PinochleCard
+from .pinochle_deck import PinochleDeck
 
 
 @log_decorator
-def create_deck():
-    built_deck = pinochle_deck.PinochleDeck(build=False)
+def populate_deck():
+    built_deck = PinochleDeck()
     # Add a deck of cards.
     built_deck.build()
     # Add a second set of cards.
@@ -19,13 +30,27 @@ def create_deck():
 @log_decorator
 def deal_hands(players=4, deck=None, kitty_cards=0):
     if deck is None:
-        deck = create_deck()
+        deck = populate_deck()
 
     # Create empty hands
-    hand = list()
+    hand = [None] * players
     for index in range(0, players):
-        hand.append(pinochle_deck.PinochleDeck(build=False))
-    kitty = pinochle_deck.PinochleDeck(build=False)
+        hand[index] = PinochleDeck(
+            gameid=deck.gameid,
+            rebuild=deck.rebuild,
+            re_shuffle=deck.re_shuffle,
+            ranks=deck.ranks,
+            decks_used=deck.decks_used,
+            build=False,
+        )
+    kitty = PinochleDeck(
+        gameid=deck.gameid,
+        rebuild=deck.rebuild,
+        re_shuffle=deck.re_shuffle,
+        ranks=deck.ranks,
+        decks_used=deck.decks_used,
+        build=False,
+    )
 
     # If the number of players isn't evenly divisible into the size of the
     # deck, force a number of kitty cards, if none are requested.
@@ -43,6 +68,10 @@ def deal_hands(players=4, deck=None, kitty_cards=0):
     while deck.size > 0:
         for index in range(0, players):
             hand[index] += deck.deal()
+
+    # Make sure everyone has the same size hand
+    for index in range(0, players - 1):
+        assert hand[index].size == hand[index + 1].size
 
     return hand, kitty
 
@@ -69,7 +98,7 @@ def build_cards(jokers=False, num_jokers=0):
     new_deck = []
 
     new_deck += [
-        pydealer.Card(value, suit) for value in const.VALUES for suit in const.SUITS
+        PinochleCard(value, suit) for value in const.VALUES for suit in const.SUITS
     ]
 
     return new_deck
@@ -95,9 +124,24 @@ def sort_cards(cards, ranks=None):
     if ranks.get("suits"):
         cards = sorted(
             cards,
-            key=lambda x: (ranks["suits"][x.suit], -ranks["values"][x.value])
+            key=lambda x: (-ranks["suits"][x.suit], -ranks["values"][x.value])
             if x.suit is not None
             else 0,
         )
 
     return cards
+
+
+@log_decorator
+def set_trump(trump="", hand=PinochleDeck()) -> PinochleDeck:
+    if trump not in const.SUITS:
+        raise InvalidTrumpError
+    # if hand is not PinochleDeck:
+    #     raise InvalidDeckError
+
+    newhand = copy.deepcopy(hand)
+    newhand.ranks["suits"][trump] = 10
+
+    print(newhand.ranks)
+
+    return newhand
