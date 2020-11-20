@@ -1,129 +1,91 @@
 """
 Tests for the application module.
 """
-import os
-import random
-import re
-from tempfile import mkstemp
-from unittest import mock
+from unittest import TestCase
 
-import pytest
-from pinochle import deck
+from pinochle import pinochle_utils
+from pinochle.pinochle_deck import PinochleDeck
 
 
-def test_pinochle_deck():
-    test_deck = deck.create_deck()
-    assert test_deck.size == 48
-    assert test_deck.find_list(["2", "3", "4", "5", "6", "7", "8"]) == []
+class test_deck(TestCase):
+    def test_pinochle_deck(self):
+        """
+        Simple test to make sure the generated deck is the right size, contains
+        the appropriate collection and quantities of cards.
+        """
+        test_deck = pinochle_utils.create_deck()
+        assert test_deck.size == 48
+        assert test_deck.find_list(["2", "3", "4", "5", "6", "7", "8"]) == []
+        for card in ["Ace", "10", "King", "Queen", "Jack", "9"]:
+            self.assertEqual(
+                len(test_deck.find(card)), 8, f"Incorrect number of {card}"
+            )
 
+    def test_hand_sizes_dealt(self):
+        """
+        Tests various combinations of pinochle players and kitty sizes.
+        """
+        cases = [
+            {"p": 2, "k": 0, "s": 24},  # 48 cards for 2 players = 24 cards each
+            {"p": 3, "k": 0, "s": 16},  # 48 / 3 = 16 cards each
+            {"p": 3, "k": 3, "s": 15},  # 48 / 3 = 15 cards each + 3
+            {"p": 4, "k": 0, "s": 12},  # 48 / 4 = 12 cards each
+            {"p": 4, "k": 4, "s": 11},  # 48 / 4 = 11 cards each + 4
+            {"p": 5, "k": 3, "s": 9},  # 48 / 5 = 9 cards each + 3
+        ]
+        for case in cases:
+            players = case["p"]
+            kitty_cards = case["k"]
+            test_deck = pinochle_utils.create_deck()
+            hands, kitty = pinochle_utils.deal_hands(
+                deck=test_deck, players=players, kitty_cards=kitty_cards
+            )
+            self.assertEqual(len(hands), players, msg="Wrong number of players")
+            self.assertEqual(
+                len(kitty), kitty_cards, msg="Wrong number of cards in the kitty"
+            )
+            for hand in hands:
+                self.assertEqual(
+                    hand.size, case["s"], msg="Player's hand size incorrect"
+                )
 
-# def test_cmdline_seed_spec():
-#     for arg in ["-s", "--seed="]:
-#         pool_list: list = list(valid_pairs.keys())
-#         random.shuffle(pool_list)
-#         # Seed #0 is "special" even though it's otherwise a valid seed.
-#         for item in [1, 254, 65536, 38572, 2319457662, 1726153]:
-#             pool = pool_list.pop()
-#             fd, path = mkstemp()
-#             with mock.patch(
-#                 "sys.argv", [""] + [f"-f{path}", f"-p{pool}", f"{arg}{item}"]
-#             ):
-#                 application()
-#             with open(fd, "r") as f:
-#                 captured: str = f.read()
-#             os.unlink(path)
-#             assert f"Exam number: {item}" in str(captured)
-#             assert f"{valid_pairs[pool]}" in str(captured)
+    def test_hand_forced_kitty(self):
+        """
+        Tests a specific combination of pinochle players and kitty sizes.
+        """
+        players = 5
+        kitty_cards = 0
+        test_deck = pinochle_utils.create_deck()
+        hands, kitty = pinochle_utils.deal_hands(
+            deck=test_deck, players=players, kitty_cards=kitty_cards
+        )
+        assert len(hands) == players
+        assert len(kitty) == 3
 
+    def test_uninitialized_deck(self):
+        """
+        Tests sorting a full deck.
+        """
+        hands, kitty = pinochle_utils.deal_hands()
+        assert len(hands) == 4
+        assert len(kitty) == 0
 
-# def test_user_prompt():
-#     for item in valid_pairs.keys():
-#         fd, path = mkstemp()
-#         with mock.patch("sys.argv", [""] + [f"-f{path}"]), mock.patch(
-#             "examgenerator.pool_choice._get_input", return_value=item
-#         ):
-#             application()
-#         with open(fd, "r") as f:
-#             captured: str = f.read()
-#         os.unlink(path)
-#         assert valid_pairs[item] in str(captured)
+    def test_deck_sort(self):
+        """
+        Tests a specific combination of pinochle players and kitty sizes.
+        """
+        deck = PinochleDeck()
+        deck.empty()
+        deck = deck + pinochle_utils.sort_cards(pinochle_utils.create_deck())
+        while deck.size > 0:
+            one = deck.deal(1)
+            two = deck.deal(1)
+            self.assertEqual(one, two)
 
-
-# def test_text_output():
-#     for item in valid_pairs.keys():
-#         fd, path = mkstemp()
-#         with mock.patch(
-#             "sys.argv", [""] + [f"-f{path}"] + ["-p", f"{item}", "-j", "text.j2"]
-#         ):
-#             application()
-#         with open(fd, "r") as f:
-#             captured: str = f.read()
-#         os.unlink(path)
-#         assert r"------------------------" in str(captured)
-#         assert r'content="Amateur Radio Example Exams"' not in str(captured)
-#         assert r"begin{enumerate}" not in str(captured)
-
-
-# def test_html_output():
-#     for item in valid_pairs.keys():
-#         fd, path = mkstemp()
-#         with mock.patch(
-#             "sys.argv", [""] + [f"-f{path}"] + ["-p", f"{item}", "-j", "html.j2"]
-#         ):
-#             application()
-#         with open(fd, "r") as f:
-#             captured: str = f.read()
-#         os.unlink(path)
-#         assert r"------------------------" not in str(captured)
-#         assert r'content="Amateur Radio Example Exams"' in str(captured)
-#         assert r"begin{enumerate}" not in str(captured)
-
-
-# def test_latex_output():
-#     for item in valid_pairs.keys():
-#         fd, path = mkstemp()
-#         with mock.patch(
-#             "sys.argv", [""] + [f"-f{path}"] + ["-p", f"{item}", "-j", "latex.j2"]
-#         ):
-#             application()
-#         with open(fd, "r") as f:
-#             captured: str = f.read()
-#         os.unlink(path)
-#         assert r"------------------------" not in str(captured)
-#         assert r'content="Amateur Radio Example Exams"' not in str(captured)
-#         assert r"begin{enumerate}" in str(captured)
-
-
-# def test_admonition_abcd_dcba():
-#     for rand in ["ABCD", "abcd", "DCBA", "dcba"]:
-#         for o_type in ["text.j2", "html.j2", "latex.j2"]:
-#             for item in valid_pairs.keys():
-#                 fd, path = mkstemp()
-#                 with mock.patch(
-#                     "sys.argv",
-#                     [""]
-#                     + [f"-f{path}"]
-#                     + ["-p", f"{item}", "-r", f"{rand}", "-j", f"{o_type}"],
-#                 ):
-#                     application()
-#                 with open(fd, "r") as f:
-#                     captured: str = f.read()
-#                 os.unlink(path)
-#                 assert r"NOT A VALID AMATEUR RADIO EXAM" in str(captured)
-
-
-# def test_stdout(capsys):
-#     with mock.patch("sys.argv", [""] + [f"-f-"] + [f"-p1"]):
-#         application()
-#     captured, err = capsys.readouterr()
-#     assert "Technician" in str(captured)
-
-
-# def test_missing_dbfile(capsys):
-#     with pytest.raises(SystemExit):
-#         with mock.patch("examgenerator.constants.EXAMDB_FILE", None), mock.patch(
-#             "sys.argv", [""] + ["-d", "nodatabase", "-p", "1"]
-#         ):
-#             application()
-#     captured, err = capsys.readouterr()
-#     assert "Database nodatabase is not an existing file." in str(captured)
+    def test_verify(self):
+        """
+        Tests a specific combination of pinochle players and kitty sizes.
+        """
+        hands, kitty = pinochle_utils.deal_hands()
+        assert len(hands) == 4
+        assert len(kitty) == 0
