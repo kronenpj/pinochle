@@ -25,7 +25,6 @@ class PinochleDeck(Deck):
         if kwargs.get("build", True):
             self.build()
 
-    @log_decorator
     def __add__(self, other):
         """
         Allows you to add (merge) decks together, with the ``+`` operand.
@@ -47,7 +46,6 @@ class PinochleDeck(Deck):
 
         return new_deck
 
-    @log_decorator
     def __repr__(self):
         """
         Returns a string representation of the ``PinochleDeck`` instance.

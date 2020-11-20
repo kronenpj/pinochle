@@ -4,9 +4,11 @@ from . import const, pinochle_deck
 from .log_decorator import log_decorator
 
 
-# Broken here too # @log_decorator
+@log_decorator
 def create_deck():
-    built_deck = pinochle_deck.PinochleDeck()
+    built_deck = pinochle_deck.PinochleDeck(build=False)
+    # Add a deck of cards.
+    built_deck.build()
     # Add a second set of cards.
     built_deck.build()
 
@@ -14,7 +16,7 @@ def create_deck():
     return built_deck
 
 
-# Broken here too # @log_decorator
+@log_decorator
 def deal_hands(players=4, deck=None, kitty_cards=0):
     if deck is None:
         deck = create_deck()
@@ -22,10 +24,8 @@ def deal_hands(players=4, deck=None, kitty_cards=0):
     # Create empty hands
     hand = list()
     for index in range(0, players):
-        hand.append(pinochle_deck.PinochleDeck())
-        hand[index].empty()
-    kitty = pinochle_deck.PinochleDeck()
-    kitty.empty()
+        hand.append(pinochle_deck.PinochleDeck(build=False))
+    kitty = pinochle_deck.PinochleDeck(build=False)
 
     # If the number of players isn't evenly divisible into the size of the
     # deck, force a number of kitty cards, if none are requested.
@@ -96,7 +96,7 @@ def sort_cards(cards, ranks=None):
         cards = sorted(
             cards,
             key=lambda x: (ranks["suits"][x.suit], -ranks["values"][x.value])
-            if x.suit != None
+            if x.suit is not None
             else 0,
         )
 
