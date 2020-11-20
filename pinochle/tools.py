@@ -36,7 +36,7 @@ import random
 import time
 
 from .const import DEFAULT_RANKS, SUITS, VALUES
-from .pinochle_card import PinochleCard
+from .card import PinochleCard
 
 
 # ===============================================================================

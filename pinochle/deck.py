@@ -30,9 +30,9 @@ from collections import deque
 
 import copy
 import uuid
-from .pinochle_stack import PinochleStack
+from .stack import PinochleStack
 
-from . import const, custom_log, pinochle_utils
+from . import const, custom_log, utils
 from .log_decorator import log_decorator
 
 
@@ -114,7 +114,7 @@ class PinochleDeck(PinochleStack):
         """
         self.decks_used += 1
 
-        self.cards += pinochle_utils.build_cards(False, 0)
+        self.cards += utils.build_cards(False, 0)
 
     @log_decorator
     def sort(self, ranks=None):
@@ -130,7 +130,7 @@ class PinochleDeck(PinochleStack):
 
         """
         ranks = ranks or self.ranks
-        self.cards = pinochle_utils.sort_cards(self.cards, ranks)
+        self.cards = utils.sort_cards(self.cards, ranks)
 
     @log_decorator
     def deal(

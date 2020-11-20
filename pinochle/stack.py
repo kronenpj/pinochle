@@ -38,7 +38,7 @@ import random
 from collections import deque
 
 from .const import BOTTOM, DEFAULT_RANKS, TOP
-from .pinochle_tools import (
+from .tools import (
     check_sorted,
     check_term,
     find_card,

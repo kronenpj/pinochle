@@ -11,8 +11,8 @@ import copy
 from . import const
 from .exceptions import InvalidDeckError, InvalidTrumpError
 from .log_decorator import log_decorator
-from .pinochle_card import PinochleCard
-from .pinochle_deck import PinochleDeck
+from .card import PinochleCard
+from .deck import PinochleDeck
 
 
 @log_decorator

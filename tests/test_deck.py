@@ -3,8 +3,8 @@ Tests for the application module.
 """
 from unittest import TestCase
 
-from pinochle import pinochle_utils
-from pinochle.pinochle_deck import PinochleDeck
+from pinochle import utils
+from pinochle.deck import PinochleDeck
 
 
 class test_deck(TestCase):
@@ -28,8 +28,12 @@ class test_deck(TestCase):
 
     def test_deal(self):
         """"""
-        card_names = ["Ace of Spades", "Ace of Hearts",
-                 "Ace of Clubs", "Ace of Diamonds"]
+        card_names = [
+            "Ace of Spades",
+            "Ace of Hearts",
+            "Ace of Clubs",
+            "Ace of Diamonds",
+        ]
 
         dealt_cards = self.deck.deal(4)
 
@@ -50,11 +54,11 @@ class test_deck(TestCase):
 
         self.assertEqual(result, "PinochleDeck(cards=deque([]))")
 
-    def test_pinochle_deck(self):
+    def test_deck(self):
         """
         Simple test to make sure the generated deck is the right size, contains
         the appropriate collection and quantities of cards. This is a half-pinochle
-        deck. For a full deck, use populate_deck from pinochle_utils.
+        deck. For a full deck, use populate_deck from utils.
         """
         assert self.deck.size == 24
         assert self.deck.find_list(["2", "3", "4", "5", "6", "7", "8"]) == []
@@ -68,7 +72,7 @@ class test_deck(TestCase):
         Tests sorting a full deck.
         """
         deck = PinochleDeck(build=False)
-        self.empty_deck += pinochle_utils.sort_cards(pinochle_utils.populate_deck())
+        self.empty_deck += utils.sort_cards(utils.populate_deck())
         while deck.size > 0:
             one, two = deck.deal(2)
             self.assertEqual(one, two)
@@ -77,6 +81,6 @@ class test_deck(TestCase):
         """
         Tests a specific combination of pinochle players and kitty sizes.
         """
-        hands, kitty = pinochle_utils.deal_hands()
+        hands, kitty = utils.deal_hands()
         assert len(hands) == 4
         assert len(kitty) == 0

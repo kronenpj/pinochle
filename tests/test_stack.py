@@ -8,7 +8,7 @@ Modernized and modified for Pinochle by Paul Kronenwetter
 """
 
 # ===============================================================================
-# pinochle_stack - Tests - Stack
+# stack - Tests - Stack
 # -------------------------------------------------------------------------------
 # Version: 1.4.0
 # Updated: 10-01-2015
@@ -22,7 +22,7 @@ Modernized and modified for Pinochle by Paul Kronenwetter
 
 import unittest
 
-from pinochle import pinochle_card, pinochle_stack, pinochle_tools
+from pinochle import card, stack, tools
 from pinochle.const import BOTTOM
 
 # ===============================================================================
@@ -33,10 +33,10 @@ from pinochle.const import BOTTOM
 class TestStack(unittest.TestCase):
     def setUp(self):
         """"""
-        self.ace_spades = pinochle_card.PinochleCard("Ace", "Spades")
-        self.nine_diamonds = pinochle_card.PinochleCard("9", "Diamonds")
-        self.queen_hearts = pinochle_card.PinochleCard("Queen", "Hearts")
-        self.king_clubs = pinochle_card.PinochleCard("King", "Clubs")
+        self.ace_spades = card.PinochleCard("Ace", "Spades")
+        self.nine_diamonds = card.PinochleCard("9", "Diamonds")
+        self.queen_hearts = card.PinochleCard("Queen", "Hearts")
+        self.king_clubs = card.PinochleCard("King", "Clubs")
         self.cards = [
             self.ace_spades,
             self.nine_diamonds,
@@ -49,11 +49,9 @@ class TestStack(unittest.TestCase):
             "Queen of Hearts",
             "King of Clubs",
         ]
-        self.stack = pinochle_stack.PinochleStack()
-        self.full_stack = pinochle_stack.PinochleStack(
-            cards=pinochle_tools.build_cards()
-        )
-        self.small_stack = pinochle_stack.PinochleStack(cards=self.cards)
+        self.stack = stack.PinochleStack()
+        self.full_stack = stack.PinochleStack(cards=tools.build_cards())
+        self.small_stack = stack.PinochleStack(cards=self.cards)
 
     def find_list_helper(self, stack, found):
         """"""
@@ -95,20 +93,20 @@ class TestStack(unittest.TestCase):
         cards = self.full_stack.deal()
 
         self.assertEqual(len(cards), 1)
-        self.assertIsInstance(cards[0], pinochle_card.PinochleCard)
+        self.assertIsInstance(cards[0], card.PinochleCard)
 
     def test_deal_multiple(self):
         """"""
         cards = self.full_stack.deal(7)
 
         self.assertEqual(len(cards), 7)
-        self.assertIsInstance(cards[0], pinochle_card.PinochleCard)
+        self.assertIsInstance(cards[0], card.PinochleCard)
 
     def test_del_item(self):
         """"""
-        card = self.full_stack[0]
+        test_card = self.full_stack[0]
         del self.full_stack[0]
-        result = card in self.full_stack
+        result = test_card in self.full_stack
 
         self.assertFalse(result)
 
@@ -121,7 +119,7 @@ class TestStack(unittest.TestCase):
 
     def test_eq(self):
         """"""
-        other_stack = pinochle_stack.PinochleStack(cards=pinochle_tools.build_cards())
+        other_stack = stack.PinochleStack(cards=tools.build_cards())
 
         result = self.full_stack == other_stack
 
@@ -219,34 +217,34 @@ class TestStack(unittest.TestCase):
     def test_get_abbrev(self):
         """"""
         found = self.full_stack.get("AS")
-        card = found[0]
+        test_card = found[0]
 
         self.assertEqual(len(found), 1)
-        self.assertEqual(card.name, "Ace of Spades")
+        self.assertEqual(test_card.name, "Ace of Spades")
 
     def test_get_full(self):
         """"""
         found = self.full_stack.get("Ace of Spades")
-        card = found[0]
+        test_card = found[0]
 
         self.assertEqual(len(found), 1)
-        self.assertEqual(card.name, "Ace of Spades")
+        self.assertEqual(test_card.name, "Ace of Spades")
 
     def test_get_partial_value(self):
         """"""
         found = self.full_stack.get("Ace")
 
         self.assertEqual(len(found), 4)
-        for card in found:
-            self.assertEqual(card.value, "Ace")
+        for test_card in found:
+            self.assertEqual(test_card.value, "Ace")
 
     def test_get_partial_suit(self):
         """"""
         found = self.full_stack.get("Spades")
 
         self.assertEqual(len(found), 6)
-        for card in found:
-            self.assertEqual(card.suit, "Spades")
+        for test_card in found:
+            self.assertEqual(test_card.suit, "Spades")
 
     def test_get_limit(self):
         """"""
@@ -307,13 +305,13 @@ class TestStack(unittest.TestCase):
 
     def test_getitem(self):
         """"""
-        card = self.full_stack[0]
+        test_card = self.full_stack[0]
 
-        self.assertIsInstance(card, pinochle_card.PinochleCard)
+        self.assertIsInstance(test_card, card.PinochleCard)
 
-        card = self.full_stack[-1]
+        test_card = self.full_stack[-1]
 
-        self.assertIsInstance(card, pinochle_card.PinochleCard)
+        self.assertIsInstance(test_card, card.PinochleCard)
 
     def test_insert(self):
         """"""
@@ -331,8 +329,8 @@ class TestStack(unittest.TestCase):
 
     def test_iter(self):
         """"""
-        for card in self.full_stack:
-            self.assertIsInstance(card, pinochle_card.PinochleCard)
+        for test_card in self.full_stack:
+            self.assertIsInstance(test_card, card.PinochleCard)
 
     def test_len(self):
         """"""
@@ -355,9 +353,9 @@ class TestStack(unittest.TestCase):
 
     def test_random_card(self):
         """"""
-        card = self.full_stack.random_card()
+        test_card = self.full_stack.random_card()
 
-        self.assertIsInstance(card, pinochle_card.PinochleCard)
+        self.assertIsInstance(test_card, card.PinochleCard)
 
     def test_repr(self):
         """"""
@@ -434,7 +432,3 @@ class TestStack(unittest.TestCase):
         result = str(self.full_stack[0])
 
         self.assertEqual(result, "9 of Diamonds")
-
-
-# if __name__ == '__main__':
-#     unittest.main()

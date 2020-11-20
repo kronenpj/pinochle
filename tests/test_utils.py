@@ -3,7 +3,7 @@ Tests for the application module.
 """
 from unittest import TestCase
 
-from pinochle import pinochle_utils
+from pinochle import utils
 
 
 class test_deck(TestCase):
@@ -12,7 +12,7 @@ class test_deck(TestCase):
         Simple test to make sure the generated deck is the right size, contains
         the appropriate collection and quantities of cards.
         """
-        test_deck = pinochle_utils.populate_deck()
+        test_deck = utils.populate_deck()
         assert test_deck.size == 48
         assert test_deck.find_list(["2", "3", "4", "5", "6", "7", "8"]) == []
         for card in ["Ace", "10", "King", "Queen", "Jack", "9"]:
@@ -35,8 +35,8 @@ class test_deck(TestCase):
         for case in cases:
             players = case["p"]
             kitty_cards = case["k"]
-            test_deck = pinochle_utils.populate_deck()
-            hands, kitty = pinochle_utils.deal_hands(
+            test_deck = utils.populate_deck()
+            hands, kitty = utils.deal_hands(
                 deck=test_deck, players=players, kitty_cards=kitty_cards
             )
             self.assertEqual(len(hands), players, msg="Wrong number of players")
@@ -54,8 +54,8 @@ class test_deck(TestCase):
         """
         players = 5
         kitty_cards = 0
-        test_deck = pinochle_utils.populate_deck()
-        hands, kitty = pinochle_utils.deal_hands(
+        test_deck = utils.populate_deck()
+        hands, kitty = utils.deal_hands(
             deck=test_deck, players=players, kitty_cards=kitty_cards
         )
         assert len(hands) == players
@@ -65,6 +65,6 @@ class test_deck(TestCase):
         """
         Tests the default combination of pinochle players and kitty sizes.
         """
-        hands, kitty = pinochle_utils.deal_hands()
+        hands, kitty = utils.deal_hands()
         assert len(hands) == 4
         assert len(kitty) == 0
