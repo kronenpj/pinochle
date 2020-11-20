@@ -21,7 +21,7 @@ def log_decorator(_func=None) -> Any:  # pragma: no cover
 
     def log_decorator_info(func) -> object:
         @functools.wraps(func)
-        def log_decorator_wrapper(self, *args, **kwargs) -> Any:
+        def log_decorator_wrapper(self=None, *args, **kwargs) -> Any:
             # Build logger object
             logger_obj = custom_log.get_logger()
 
@@ -65,7 +65,13 @@ def log_decorator(_func=None) -> Any:  # pragma: no cover
                 logger_obj.info(
                     f"End function  : Returned: {value!r}", extra=extra_args
                 )
-            except:
+            except TypeError:
+                # log return value from the function
+                value = func(*args, **kwargs)
+                logger_obj.info(
+                    f"End function  : Returned: {value!r}", extra=extra_args
+                )
+            except Exception:
                 # log exception if occurs in function
                 logger_obj.error(f"Exception     : {str(sys.exc_info()[1])}")
                 raise
