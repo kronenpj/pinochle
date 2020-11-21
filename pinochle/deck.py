@@ -26,15 +26,14 @@ a subclass of the ``Stack`` class, with a few extra/differing methods.
 
 """
 
-from collections import deque
-
 import copy
 import uuid
-from .card import PinochleCard
-from .stack import PinochleStack
+from collections import deque
 
-from . import const, custom_log
+from . import const
+from .card import PinochleCard
 from .log_decorator import log_decorator
+from .stack import PinochleStack
 
 
 class PinochleDeck(PinochleStack):
@@ -135,8 +134,6 @@ class PinochleDeck(PinochleStack):
 
         """
         ranks = ranks or self.ranks
-
-        ranks = ranks or const.PINOCHLE_RANKS
 
         if ranks.get("suits"):
             cards = sorted(

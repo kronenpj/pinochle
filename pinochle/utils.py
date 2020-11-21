@@ -9,10 +9,10 @@ Modernized and modified for Pinochle by Paul Kronenwetter
 import copy
 
 from . import const
-from .exceptions import InvalidDeckError, InvalidTrumpError
-from .log_decorator import log_decorator
 from .card import PinochleCard
 from .deck import PinochleDeck
+from .exceptions import InvalidDeckError, InvalidTrumpError
+from .log_decorator import log_decorator
 
 
 @log_decorator
@@ -136,11 +136,11 @@ def sort_cards(cards, ranks=None):
 def set_trump(trump="", hand=PinochleDeck()) -> PinochleDeck:
     if trump not in const.SUITS:
         raise InvalidTrumpError
-    # if hand is not PinochleDeck:
-    #     raise InvalidDeckError
+    if not isinstance(hand, PinochleDeck):
+        raise InvalidDeckError
 
     newhand = copy.deepcopy(hand)
-    newhand.ranks["suits"][trump] = 10
+    newhand.ranks["suits"][trump] = 20
 
     print(newhand.ranks)
 

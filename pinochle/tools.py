@@ -35,9 +35,8 @@ of which are used by the classes in the PyDealer package, such as the functions
 import random
 import time
 
-from .const import DEFAULT_RANKS, SUITS, VALUES
 from .card import PinochleCard
-
+from .const import DEFAULT_RANKS, SUITS, VALUES
 
 # ===============================================================================
 # Utility Functions
@@ -89,10 +88,10 @@ def check_sorted(cards, ranks=None):
 
     sorted_cards = sort_cards(cards, ranks)
 
-    if cards == sorted_cards or cards[::-1] == sorted_cards:
+    if sorted_cards in (cards, cards[::-1]):
         return True
-    else:
-        return False
+
+    return False
 
 
 def check_term(card, term):
@@ -131,7 +130,7 @@ def check_term(card, term):
     return False
 
 
-def compare_stacks(cards_x, cards_y, sorted=False):
+def compare_stacks(cards_x, cards_y, to_be_sorted=False):
     """
     Checks whether two given ``Stack``, ``Deck``, or ``list`` instances,
     contain the same cards (based on value & suit, not instance). Does not
@@ -143,7 +142,7 @@ def compare_stacks(cards_x, cards_y, sorted=False):
     :arg cards_y:
         The second stack to check. Can be a ``Stack``, ``Deck``, or ``list``
         instance.
-    :arg bool sorted:
+    :arg bool to_be_sorted:
         Whether or not the cards are already sorted. If ``True``, then
         ``compare_stacks`` will skip the sorting process.
 
@@ -152,15 +151,15 @@ def compare_stacks(cards_x, cards_y, sorted=False):
 
     """
     if len(cards_x) == len(cards_y):
-        if not sorted:
+        if not to_be_sorted:
             cards_x = sort_cards(cards_x, DEFAULT_RANKS)
             cards_y = sort_cards(cards_y, DEFAULT_RANKS)
         for i, c in enumerate(cards_x):
             if c != cards_y[i]:
                 return False
         return True
-    else:
-        return False
+
+    return False
 
 
 def find_card(cards, term, limit=0, sort=False, ranks=None):
@@ -203,7 +202,7 @@ def find_card(cards, term, limit=0, sort=False, ranks=None):
                 break
 
     if sort:
-        found_indexes = sort_card_indexes(self, found_indexes, ranks)
+        found_indexes = sort_card_indexes(cards, found_indexes, ranks)
 
     return found_indexes
 
@@ -378,11 +377,11 @@ def random_card(cards, remove=False):
     """
     if not remove:
         return random.choice(cards)
-    else:
-        i = random.randrange(len(cards))
-        card = cards[i]
-        del cards[i]
-        return card
+
+    i = random.randrange(len(cards))
+    card = cards[i]
+    del cards[i]
+    return card
 
 
 def save_cards(cards, filename=None):
@@ -429,7 +428,9 @@ def sort_card_indexes(cards, indexes, ranks=None):
     if ranks.get("suits"):
         indexes = sorted(
             indexes,
-            key=lambda x: ranks["suits"][cards[x].suit] if cards[x].suit != None else 0,
+            key=lambda x: ranks["suits"][cards[x].suit]
+            if cards[x].suit is not None
+            else 0,
         )
     if ranks.get("values"):
         indexes = sorted(indexes, key=lambda x: ranks["values"][cards[x].value])
@@ -455,7 +456,7 @@ def sort_cards(cards, ranks=None):
 
     if ranks.get("suits"):
         cards = sorted(
-            cards, key=lambda x: ranks["suits"][x.suit] if x.suit != None else 0
+            cards, key=lambda x: ranks["suits"][x.suit] if x.suit is not None else 0
         )
     if ranks.get("values"):
         cards = sorted(cards, key=lambda x: ranks["values"][x.value])

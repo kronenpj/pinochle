@@ -9,7 +9,7 @@ VALUES = ["9", "Jack", "Queen", "King", "10", "Ace"]
 # Card Rank Dicts
 # ===============================================================================
 PINOCHLE_RANKS = {
-    "suits": {"Spades": 4, "Hearts": 3, "Clubs": 2, "Diamonds": 1},
+    "suits": {"Spades": 14, "Hearts": 13, "Clubs": 12, "Diamonds": 11},
     "values": {
         "Ace": 6,
         "10": 5,

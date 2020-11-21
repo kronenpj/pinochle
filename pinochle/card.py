@@ -35,7 +35,7 @@ from .const import DEFAULT_RANKS
 # ===============================================================================
 
 
-class PinochleCard(object):
+class PinochleCard():
     """
     The PinocleCard class, each instance representing a single playing card.
 
@@ -107,16 +107,17 @@ class PinochleCard(object):
 
         """
         if isinstance(other, PinochleCard):
-            return DEFAULT_RANKS["values"][self.value] > DEFAULT_RANKS["values"][
-                other.value
-            ] or (
+            return (
+                DEFAULT_RANKS["values"][self.value]
+                > DEFAULT_RANKS["values"][other.value]
+            ) or (
                 DEFAULT_RANKS["values"][self.value]
                 >= DEFAULT_RANKS["values"][other.value]
                 and DEFAULT_RANKS["suits"][self.suit]
                 >= DEFAULT_RANKS["suits"][other.suit]
             )
-        else:
-            return False
+
+        return False
 
     def __gt__(self, other):
         """
@@ -130,16 +131,17 @@ class PinochleCard(object):
 
         """
         if isinstance(other, PinochleCard):
-            return DEFAULT_RANKS["values"][self.value] > DEFAULT_RANKS["values"][
-                other.value
-            ] or (
+            return (
+                DEFAULT_RANKS["values"][self.value]
+                > DEFAULT_RANKS["values"][other.value]
+            ) or (
                 DEFAULT_RANKS["values"][self.value]
                 >= DEFAULT_RANKS["values"][other.value]
                 and DEFAULT_RANKS["suits"][self.suit]
                 > DEFAULT_RANKS["suits"][other.suit]
             )
-        else:
-            return False
+
+        return False
 
     def __hash__(self):
         """
@@ -192,10 +194,10 @@ class PinochleCard(object):
                     ranks["values"][self.value] == ranks["values"][other.value]
                     and ranks["suits"][self.suit] == ranks["suits"][other.suit]
                 )
-            else:
-                return ranks[self.value] == ranks[other.value]
-        else:
-            return False
+
+            return ranks[self.value] == ranks[other.value]
+
+        return False
 
     def ge(self, other, ranks=None):
         """
@@ -219,10 +221,10 @@ class PinochleCard(object):
                     ranks["values"][self.value] >= ranks["values"][other.value]
                     and ranks["suits"][self.suit] >= ranks["suits"][other.suit]
                 )
-            else:
-                return ranks[self.value] >= ranks[other.value]
-        else:
-            return False
+
+            return ranks[self.value] >= ranks[other.value]
+
+        return False
 
     def gt(self, other, ranks=None):
         """
@@ -245,10 +247,10 @@ class PinochleCard(object):
                     ranks["values"][self.value] >= ranks["values"][other.value]
                     and ranks["suits"][self.suit] > ranks["suits"][other.suit]
                 )
-            else:
-                return ranks[self.value] > ranks[other.value]
-        else:
-            return False
+
+            return ranks[self.value] > ranks[other.value]
+
+        return False
 
     def le(self, other, ranks=None):
         """
@@ -272,10 +274,10 @@ class PinochleCard(object):
                     ranks["values"][self.value] <= ranks["values"][other.value]
                     and ranks["suits"][self.suit] <= ranks["suits"][other.suit]
                 )
-            else:
-                return ranks[self.value] <= ranks[other.value]
-        else:
-            return False
+
+            return ranks[self.value] <= ranks[other.value]
+
+        return False
 
     def lt(self, other, ranks=None):
         """
@@ -298,10 +300,10 @@ class PinochleCard(object):
                     ranks["values"][self.value] <= ranks["values"][other.value]
                     and ranks["suits"][self.suit] < ranks["suits"][other.suit]
                 )
-            else:
-                return ranks[self.value] < ranks[other.value]
-        else:
-            return False
+
+            return ranks[self.value] < ranks[other.value]
+
+        return False
 
     def ne(self, other, ranks=None):
         """
@@ -324,10 +326,10 @@ class PinochleCard(object):
                     ranks["values"][self.value] != ranks["values"][other.value]
                     or ranks["suits"][self.suit] != ranks["suits"][other.suit]
                 )
-            else:
-                return ranks[self.value] != ranks[other.value]
-        else:
-            return False
+
+            return ranks[self.value] != ranks[other.value]
+
+        return False
 
 
 # ===============================================================================
@@ -352,10 +354,10 @@ def card_abbrev(value, suit):
     """
     if value == "Joker":
         return "JKR"
-    elif value == "10":
+    if value == "10":
         return "10%s" % (suit[0])
-    else:
-        return "%s%s" % (value[0], suit[0])
+
+    return "%s%s" % (value[0], suit[0])
 
 
 def card_name(value, suit):
@@ -374,5 +376,5 @@ def card_name(value, suit):
     """
     if value == "Joker":
         return "Joker"
-    else:
-        return "%s of %s" % (value, suit)
+
+    return "%s of %s" % (value, suit)

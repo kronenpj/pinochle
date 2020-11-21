@@ -37,23 +37,15 @@ import copy
 import random
 from collections import deque
 
+from . import tools
 from .const import BOTTOM, DEFAULT_RANKS, TOP
-from .tools import (
-    check_sorted,
-    check_term,
-    find_card,
-    open_cards,
-    random_card,
-    save_cards,
-    sort_cards,
-)
 
 # ===============================================================================
 # PinochleStack Class
 # ===============================================================================
 
 
-class PinochleStack(object):
+class PinochleStack():
     """
     The PinochleStack class, representing a collection of cards. This is the main
     'card container' class, with methods for manipulating it's contents.
@@ -151,8 +143,8 @@ class PinochleStack(object):
                 if card != other[i]:
                     return False
             return True
-        else:
-            return False
+
+        return False
 
     def __getitem__(self, key):
         """
@@ -169,14 +161,14 @@ class PinochleStack(object):
         self_len = len(self)
         if isinstance(key, slice):
             return [self[i] for i in range(*key.indices(self_len))]
-        elif isinstance(key, int):
+        if isinstance(key, int):
             if key < 0:
                 key += self_len
             if key >= self_len:
                 raise IndexError("The index ({}) is out of range.".format(key))
             return self.cards[key]
-        else:
-            raise TypeError("Invalid argument type.")
+
+        raise TypeError("Invalid argument type.")
 
     def __len__(self):
         """
@@ -206,8 +198,8 @@ class PinochleStack(object):
                 if card != other[i]:
                     return True
             return False
-        else:
-            return True
+
+        return True
 
     def __repr__(self):
         """
@@ -287,8 +279,8 @@ class PinochleStack(object):
         set directly, that the items are in a deque.
 
         :arg items:
-            The list of PinochleCard instances, or a PinochleStack/PinochleDeck instance to assign to
-            the PinochleStack/PinochleDeck.
+            The list of PinochleCard instances, or a PinochleStack/PinochleDeck
+            instance to assign to the PinochleStack/PinochleDeck.
 
         """
         self._cards = deque(items)
@@ -325,8 +317,8 @@ class PinochleStack(object):
                     break
 
             return PinochleStack(cards=dealt_cards)
-        else:
-            return PinochleStack()
+
+        return PinochleStack()
 
     def empty(self, return_cards=False):
         """
@@ -374,19 +366,19 @@ class PinochleStack(object):
 
         if not limit:
             for i, card in enumerate(self.cards):
-                if check_term(card, term):
+                if tools.check_term(card, term):
                     found_indexes.append(i)
         else:
             for i, card in enumerate(self.cards):
                 if count < limit:
-                    if check_term(card, term):
+                    if tools.check_term(card, term):
                         found_indexes.append(i)
                         count += 1
                 else:
                     break
 
         if sort:
-            found_indexes = sort_card_indexes(self, found_indexes, ranks)
+            found_indexes = tools.sort_card_indexes(self, found_indexes, ranks)
 
         return found_indexes
 
@@ -418,13 +410,13 @@ class PinochleStack(object):
         if not limit:
             for term in terms:
                 for i, card in enumerate(self.cards):
-                    if check_term(card, term) and i not in found_indexes:
+                    if tools.check_term(card, term) and i not in found_indexes:
                         found_indexes.append(i)
         else:
             for term in terms:
                 for i, card in enumerate(self.cards):
                     if count < limit:
-                        if check_term(card, term) and i not in found_indexes:
+                        if tools.check_term(card, term) and i not in found_indexes:
                             found_indexes.append(i)
                             count += 1
                     else:
@@ -432,7 +424,7 @@ class PinochleStack(object):
                 count = 0
 
         if sort:
-            found_indexes = sort_card_indexes(self, found_indexes, ranks)
+            found_indexes = tools.sort_card_indexes(self, found_indexes, ranks)
 
         return found_indexes
 
@@ -467,7 +459,7 @@ class PinochleStack(object):
             self.cards = [v for i, v in enumerate(self.cards) if i is not term]
 
         if sort:
-            got_cards = sort_cards(got_cards, ranks)
+            got_cards = tools.sort_cards(got_cards, ranks)
 
         return got_cards
 
@@ -515,7 +507,7 @@ class PinochleStack(object):
             self.cards = [v for i, v in enumerate(self.cards) if i not in indexes]
 
         if sort:
-            got_cards = sort_cards(got_cards, ranks)
+            got_cards = tools.sort_cards(got_cards, ranks)
 
         return got_cards
 
@@ -587,7 +579,7 @@ class PinochleStack(object):
             month, and day. For example, "cards-20140711.txt".
 
         """
-        self.cards = open_cards(filename)
+        self.cards = tools.open_cards(filename)
 
     def random_card(self, remove=False):
         """
@@ -601,7 +593,7 @@ class PinochleStack(object):
             A random Card object, from the PinochleStack.
 
         """
-        return random_card(self, remove)
+        return tools.random_card(self, remove)
 
     def reverse(self):
         """Reverse the order of the PinochleStack in place."""
@@ -618,7 +610,7 @@ class PinochleStack(object):
             day. For example, "cards-20140711.txt".
 
         """
-        save_cards(self, filename)
+        tools.save_cards(self, filename)
 
     def set_cards(self, cards):
         """
@@ -668,7 +660,7 @@ class PinochleStack(object):
 
         """
         ranks = ranks or self.ranks
-        self.cards = sort_cards(self.cards, ranks)
+        self.cards = tools.sort_cards(self.cards, ranks)
 
     def split(self, index=None):
         """
@@ -690,12 +682,12 @@ class PinochleStack(object):
                 return PinochleStack(cards=self[0:mid]), PinochleStack(
                     cards=self[mid::]
                 )
-            else:
-                return PinochleStack(cards=self[0:index]), PinochleStack(
-                    cards=self[index::]
-                )
-        else:
-            return PinochleStack(cards=self.cards), PinochleStack()
+
+            return PinochleStack(cards=self[0:index]), PinochleStack(
+                cards=self[index::]
+            )
+
+        return PinochleStack(cards=self.cards), PinochleStack()
 
 
 # ===============================================================================
