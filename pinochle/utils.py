@@ -17,14 +17,14 @@ from .deck import PinochleDeck
 
 @log_decorator
 def populate_deck():
-    built_deck = PinochleDeck()
+    new_deck = PinochleDeck()
     # Add a deck of cards.
-    built_deck.build()
+    new_deck.build()
     # Add a second set of cards.
-    built_deck.build()
+    new_deck.build()
 
-    built_deck.shuffle()
-    return built_deck
+    new_deck.shuffle()
+    return new_deck
 
 
 @log_decorator

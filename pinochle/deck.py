@@ -30,9 +30,10 @@ from collections import deque
 
 import copy
 import uuid
+from .card import PinochleCard
 from .stack import PinochleStack
 
-from . import const, custom_log, utils
+from . import const, custom_log
 from .log_decorator import log_decorator
 
 
@@ -114,7 +115,11 @@ class PinochleDeck(PinochleStack):
         """
         self.decks_used += 1
 
-        self.cards += utils.build_cards(False, 0)
+        new_deck = []
+        new_deck += [
+            PinochleCard(value, suit) for value in const.VALUES for suit in const.SUITS
+        ]
+        self.cards += new_deck
 
     @log_decorator
     def sort(self, ranks=None):
@@ -130,12 +135,20 @@ class PinochleDeck(PinochleStack):
 
         """
         ranks = ranks or self.ranks
-        self.cards = utils.sort_cards(self.cards, ranks)
+
+        ranks = ranks or const.PINOCHLE_RANKS
+
+        if ranks.get("suits"):
+            cards = sorted(
+                self.cards,
+                key=lambda x: (-ranks["suits"][x.suit], -ranks["values"][x.value])
+                if x.suit is not None
+                else 0,
+            )
+            self.cards = cards
 
     @log_decorator
-    def deal(
-        self, num=1, rebuild=False, shuffle=False, end=const.TOP
-    ):  # pragma: no cover
+    def deal(self, num=1, rebuild=False, shuffle=False, end=const.TOP):
         """
         Returns a list of cards, which are removed from the deck.
 
