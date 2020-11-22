@@ -6,7 +6,7 @@ from unittest import TestCase
 from pinochle import card, const, deck, score_meld, utils
 
 
-class test_meld(TestCase):
+class test_meld_score(TestCase):
     def test_no_trump(self):
         """"""
         temp_deck = deck.PinochleDeck(build=True)
@@ -149,3 +149,18 @@ class test_meld(TestCase):
         assert score_meld.score(utils.set_trump("Diamonds", temp_deck)) == 2
         assert score_meld.score(utils.set_trump("Hearts", temp_deck)) == 15
         assert score_meld.score(utils.set_trump("Spades", temp_deck)) == 2
+
+
+    def test_score_deck(self):
+        """"""
+        temp_deck = deck.PinochleDeck(build=True)
+
+        assert score_meld._run(utils.set_trump("Clubs", temp_deck)) == 11
+        assert score_meld._run(utils.set_trump("Diamonds", temp_deck)) == 11
+        assert score_meld._run(utils.set_trump("Hearts", temp_deck)) == 11
+        assert score_meld._run(utils.set_trump("Spades", temp_deck)) == 11
+
+        assert score_meld.score(utils.set_trump("Clubs", temp_deck)) == 54
+        assert score_meld.score(utils.set_trump("Diamonds", temp_deck)) == 54
+        assert score_meld.score(utils.set_trump("Hearts", temp_deck)) == 54
+        assert score_meld.score(utils.set_trump("Spades", temp_deck)) == 54
