@@ -1,15 +1,14 @@
 """
-This scores a PinochleDeck (not a PinochleStack or list), taking into
-account trump suits.
+This scores a PinochleDeck or a PinochleStack (not a list).
 
 License: GPLv3
 """
 
 from . import const
-from .deck import PinochleDeck
+from .stack import PinochleStack
 
 
-def score(deck: PinochleDeck) -> int:
+def score(deck: PinochleStack) -> int:
     """
     Scores a deck of cards using trick rules.
 
