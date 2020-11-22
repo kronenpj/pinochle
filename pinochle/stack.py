@@ -45,7 +45,7 @@ from .const import BOTTOM, DEFAULT_RANKS, TOP
 # ===============================================================================
 
 
-class PinochleStack():
+class PinochleStack:
     """
     The PinochleStack class, representing a collection of cards. This is the main
     'card container' class, with methods for manipulating it's contents.
@@ -83,13 +83,13 @@ class PinochleStack():
 
     def __add__(self, other):
         """
-        Allows users to add (merge) PinochleStack/Deck instances together, with the
-        ``+`` operand. You can also add a list of ``Card`` instances to a
-        PinochleStack/Deck instance.
+        Allows users to add (merge) PinochleStack/PinochleDeck instances together, with the
+        ``+`` operand. You can also add a list of ``PinochleCard`` instances to a
+        PinochleStack/PinochleDeck instance.
 
         :arg other:
-            The other ``PinochleStack``, or ``Deck`` instance, or list of ``Card``
-            instances to add to the ``PinochleStack``/``Deck`` instance.
+            The other ``PinochleStack``, or ``PinochleDeck`` instance, or list of ``PinochleCard``
+            instances to add to the ``PinochleStack``/``PinochleDeck`` instance.
 
         :returns:
             A new ``PinochleStack`` instance, with the combined cards.
@@ -104,20 +104,20 @@ class PinochleStack():
 
     def __contains__(self, card):
         """
-        Allows for Card instance (not value & suit) inclusion checks.
+        Allows for ``PinochleCard`` instance (not value & suit) inclusion checks.
 
         :arg Card card:
-            The Card instance to check for.
+            The ``PinochleCard`` instance to check for.
 
         :returns:
-            Whether or not the Card instance is in the Deck.
+            Whether or not the ``PinochleCard`` instance is in the Deck.
 
         """
         return id(card) in [id(x) for x in self.cards]
 
     def __delitem__(self, index):
         """
-        Allows for deletion of a Card instance, using del.
+        Allows for deletion of a ``PinochleCard`` instance, using del.
 
         :arg int index:
             The index to delete.
@@ -240,10 +240,10 @@ class PinochleStack():
 
     def add(self, cards, end=TOP):
         """
-        Adds the given list of ``Card`` instances to the top of the stack.
+        Adds the given list of ``PinochleCard`` instances to the top of the stack.
 
         :arg cards:
-            The cards to add to the ``PinochleStack``. Can be a single ``Card``
+            The cards to add to the ``PinochleStack``. Can be a single ``PinochleCard``
             instance, or a ``list`` of cards.
         :arg str end:
             The end of the ``PinochleStack`` to add the cards to. Can be ``TOP`` ("top")
@@ -697,13 +697,13 @@ class PinochleStack():
 
 def convert_to_stack(deck):
     """
-    Convert a ``Deck`` to a ``PinochleStack``.
+    Convert a ``PinochleDeck`` to a ``PinochleStack``.
 
     :arg Deck deck:
-        The ``Deck`` to convert.
+        The ``PinochleDeck`` to convert.
 
     :returns:
-        A new ``PinochleStack`` instance, containing the cards from the given ``Deck``
+        A new ``PinochleStack`` instance, containing the cards from the given ``PinochleDeck``
         instance.
 
     """

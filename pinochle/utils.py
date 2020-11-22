@@ -140,8 +140,7 @@ def set_trump(trump="", hand=PinochleDeck()) -> PinochleDeck:
         raise InvalidDeckError
 
     newhand = copy.deepcopy(hand)
-    newhand.ranks["suits"][trump] = 20
-
-    print(newhand.ranks)
+    newhand.ranks["suits"][trump] = const.TRUMP_VALUE
+    # print(newhand.ranks)
 
     return newhand

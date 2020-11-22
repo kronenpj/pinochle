@@ -5,6 +5,7 @@ from unittest import TestCase
 
 from pinochle import utils
 from pinochle.deck import PinochleDeck
+from pinochle import stack, card
 
 
 class test_deck(TestCase):
@@ -14,11 +15,36 @@ class test_deck(TestCase):
         self.empty_deck = PinochleDeck(build=False)
         # pass
 
-    def test_add(self):
+    def test_add_deck(self):
         """"""
         self.empty_deck = self.empty_deck + self.deck
 
         self.assertEqual(self.empty_deck, self.deck)
+
+    def test_add_stack(self):
+        """"""
+        new_stack = stack.convert_to_stack(self.deck)
+        self.empty_deck = self.empty_deck + new_stack
+
+        self.assertEqual(self.empty_deck, self.deck)
+
+    def test_add_list(self):
+        """"""
+        temp_card1 = card.PinochleCard("9", "Diamonds")
+        temp_card2 = card.PinochleCard("10", "Clubs")
+        new_stack = []
+        new_stack.append(card.PinochleCard("Ace", "Spades"))
+        new_stack.append(temp_card1)
+        new_stack.append(temp_card2)
+
+        self.empty_deck = self.empty_deck + new_stack
+
+        new_deck = PinochleDeck(build=False)
+        new_deck.insert(card.PinochleCard("Ace", "Spades"))
+        new_deck.insert(temp_card1)
+        new_deck.insert(temp_card2)
+
+        self.assertEqual(self.empty_deck, new_deck)
 
     def test_build(self):
         """"""
@@ -44,7 +70,7 @@ class test_deck(TestCase):
         """"""
         self.deck.rebuild = True
 
-        dealt_cards = self.deck.deal(25)
+        _ = self.deck.deal(25)
 
         self.assertEqual(self.deck.size, 23)
 

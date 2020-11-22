@@ -275,4 +275,3 @@ class TestTools(unittest.TestCase):
         left, got_cards = tools.get_list(self.stack, ["Spades"], limit=1)
 
         self.assertEqual(len(got_cards), 1)
-

@@ -28,14 +28,15 @@ single playing card, of a given value and suit.
 # Imports
 # ===============================================================================
 
-from .const import DEFAULT_RANKS
+from typing import Union
+from . import const
 
 # ===============================================================================
 # PinochleCard Class
 # ===============================================================================
 
 
-class PinochleCard():
+class PinochleCard:
     """
     The PinocleCard class, each instance representing a single playing card.
 
@@ -46,7 +47,10 @@ class PinochleCard():
 
     """
 
-    def __init__(self, value, suit):
+    value: Union[str, None] = None
+    suit: Union[str, None] = None
+
+    def __init__(self, value: str, suit: Union[str, None]):
         """
         PinochleCard constructor method.
 
@@ -56,10 +60,15 @@ class PinochleCard():
             The card suit.
 
         """
-        self.value = str(value).capitalize()
-        self.suit = str(suit).capitalize() if suit else suit
-        self.abbrev = card_abbrev(self.value, self.suit)
-        self.name = card_name(self.value, self.suit)
+        if (
+            str(value).capitalize() not in const.VALUES
+            or str(suit).capitalize() not in const.SUITS
+        ):
+            raise ValueError
+        self.value: str = str(value).capitalize()
+        self.suit: str = str(suit).capitalize() if suit else suit
+        self.abbrev: str = card_abbrev(self.value, self.suit)
+        self.name: str = card_name(self.value, self.suit)
 
     def __eq__(self, other):
         """
@@ -108,13 +117,13 @@ class PinochleCard():
         """
         if isinstance(other, PinochleCard):
             return (
-                DEFAULT_RANKS["values"][self.value]
-                > DEFAULT_RANKS["values"][other.value]
+                const.DEFAULT_RANKS["values"][self.value]
+                > const.DEFAULT_RANKS["values"][other.value]
             ) or (
-                DEFAULT_RANKS["values"][self.value]
-                >= DEFAULT_RANKS["values"][other.value]
-                and DEFAULT_RANKS["suits"][self.suit]
-                >= DEFAULT_RANKS["suits"][other.suit]
+                const.DEFAULT_RANKS["values"][self.value]
+                >= const.DEFAULT_RANKS["values"][other.value]
+                and const.DEFAULT_RANKS["suits"][self.suit]
+                >= const.DEFAULT_RANKS["suits"][other.suit]
             )
 
         return False
@@ -132,13 +141,13 @@ class PinochleCard():
         """
         if isinstance(other, PinochleCard):
             return (
-                DEFAULT_RANKS["values"][self.value]
-                > DEFAULT_RANKS["values"][other.value]
+                const.DEFAULT_RANKS["values"][self.value]
+                > const.DEFAULT_RANKS["values"][other.value]
             ) or (
-                DEFAULT_RANKS["values"][self.value]
-                >= DEFAULT_RANKS["values"][other.value]
-                and DEFAULT_RANKS["suits"][self.suit]
-                > DEFAULT_RANKS["suits"][other.suit]
+                const.DEFAULT_RANKS["values"][self.value]
+                >= const.DEFAULT_RANKS["values"][other.value]
+                and const.DEFAULT_RANKS["suits"][self.suit]
+                > const.DEFAULT_RANKS["suits"][other.suit]
             )
 
         return False
@@ -187,7 +196,7 @@ class PinochleCard():
             ``True`` or ``False``.
 
         """
-        ranks = ranks or DEFAULT_RANKS
+        ranks = ranks or const.DEFAULT_RANKS
         if isinstance(other, PinochleCard):
             if ranks.get("suits"):
                 return (
@@ -214,7 +223,7 @@ class PinochleCard():
             ``True`` or ``False``.
 
         """
-        ranks = ranks or DEFAULT_RANKS
+        ranks = ranks or const.DEFAULT_RANKS
         if isinstance(other, PinochleCard):
             if ranks.get("suits"):
                 return ranks["values"][self.value] > ranks["values"][other.value] or (
@@ -240,7 +249,7 @@ class PinochleCard():
             ``True`` or ``False``.
 
         """
-        ranks = ranks or DEFAULT_RANKS
+        ranks = ranks or const.DEFAULT_RANKS
         if isinstance(other, PinochleCard):
             if ranks.get("suits"):
                 return ranks["values"][self.value] > ranks["values"][other.value] or (
@@ -267,7 +276,7 @@ class PinochleCard():
             ``True`` or ``False``.
 
         """
-        ranks = ranks or DEFAULT_RANKS
+        ranks = ranks or const.DEFAULT_RANKS
         if isinstance(other, PinochleCard):
             if ranks.get("suits"):
                 return ranks["values"][self.value] <= ranks["values"][other.value] or (
@@ -293,7 +302,7 @@ class PinochleCard():
             ``True`` or ``False``.
 
         """
-        ranks = ranks or DEFAULT_RANKS
+        ranks = ranks or const.DEFAULT_RANKS
         if isinstance(other, PinochleCard):
             if ranks.get("suits"):
                 return ranks["values"][self.value] < ranks["values"][other.value] or (
@@ -319,7 +328,7 @@ class PinochleCard():
             ``True`` or ``False``.
 
         """
-        ranks = ranks or DEFAULT_RANKS
+        ranks = ranks or const.DEFAULT_RANKS
         if isinstance(other, PinochleCard):
             if ranks.get("suits"):
                 return (
@@ -337,7 +346,7 @@ class PinochleCard():
 # ===============================================================================
 
 
-def card_abbrev(value, suit):
+def card_abbrev(value: str, suit: Union[str, None]) -> str:
     """
     Constructs an abbreviation for the card, using the given
     value, and suit.
@@ -360,7 +369,7 @@ def card_abbrev(value, suit):
     return "%s%s" % (value[0], suit[0])
 
 
-def card_name(value, suit):
+def card_name(value: str, suit: Union[str, None]) -> str:
     """
     Constructs a name for the card, using the given value,
     and suit.

@@ -22,6 +22,7 @@ Modernized and modified for Pinochle by Paul Kronenwetter
 
 import unittest
 
+from pinochle.log_decorator import log_decorator
 from pinochle import card, stack, tools
 from pinochle.const import BOTTOM
 
@@ -112,13 +113,19 @@ class TestStack(unittest.TestCase):
 
     def test_empty(self):
         """"""
-        cards = self.full_stack.empty(True)
+        # This wouldn't be needed if hammett executed the setup routine.
+        self.full_stack = stack.PinochleStack(cards=tools.build_cards())
+
+        cards = self.full_stack.empty(return_cards=True)
 
         self.assertEqual(len(cards), 24)
         self.assertEqual(len(self.full_stack), 0)
 
     def test_eq(self):
         """"""
+        # This wouldn't be needed if hammett executed the setup routine.
+        self.full_stack = stack.PinochleStack(cards=tools.build_cards())
+
         other_stack = stack.PinochleStack(cards=tools.build_cards())
 
         result = self.full_stack == other_stack
@@ -224,6 +231,9 @@ class TestStack(unittest.TestCase):
 
     def test_get_full(self):
         """"""
+        # This wouldn't be needed if hammett executed the setup routine.
+        self.full_stack = stack.PinochleStack(cards=tools.build_cards())
+
         found = self.full_stack.get("Ace of Spades")
         test_card = found[0]
 
@@ -232,6 +242,9 @@ class TestStack(unittest.TestCase):
 
     def test_get_partial_value(self):
         """"""
+        # This wouldn't be needed if hammett executed the setup routine.
+        self.full_stack = stack.PinochleStack(cards=tools.build_cards())
+
         found = self.full_stack.get("Ace")
 
         self.assertEqual(len(found), 4)
@@ -240,6 +253,9 @@ class TestStack(unittest.TestCase):
 
     def test_get_partial_suit(self):
         """"""
+        # This wouldn't be needed if hammett executed the setup routine.
+        self.full_stack = stack.PinochleStack(cards=tools.build_cards())
+
         found = self.full_stack.get("Spades")
 
         self.assertEqual(len(found), 6)
@@ -261,6 +277,9 @@ class TestStack(unittest.TestCase):
             "King of Clubs",
         ]
 
+        # This wouldn't be needed if hammett executed the setup routine.
+        self.small_stack = stack.PinochleStack(cards=self.cards)
+
         found = self.small_stack.get_list(full_list)
 
         self.get_list_helper(found)
@@ -275,6 +294,9 @@ class TestStack(unittest.TestCase):
 
     def test_get_list_partial_value(self):
         """"""
+        # This wouldn't be needed if hammett executed the setup routine.
+        self.small_stack = stack.PinochleStack(cards=self.cards)
+
         partial_list = ["Ace", "9", "Queen", "King"]
 
         found = self.small_stack.get_list(partial_list)
@@ -283,6 +305,9 @@ class TestStack(unittest.TestCase):
 
     def test_get_list_partial_suit(self):
         """"""
+        # This wouldn't be needed if hammett executed the setup routine.
+        self.small_stack = stack.PinochleStack(cards=self.cards)
+
         partial_list = ["Spades", "Diamonds", "Hearts", "Clubs"]
 
         found = self.small_stack.get_list(partial_list)
@@ -291,6 +316,9 @@ class TestStack(unittest.TestCase):
 
     def test_get_list_mixed(self):
         """"""
+        # This wouldn't be needed if hammett executed the setup routine.
+        self.small_stack = stack.PinochleStack(cards=self.cards)
+
         mixed_list = ["AS", "9 of Diamonds", "Hearts", "King"]
 
         found = self.small_stack.get_list(mixed_list)
@@ -334,6 +362,9 @@ class TestStack(unittest.TestCase):
 
     def test_len(self):
         """"""
+        # This wouldn't be needed if hammett executed the setup routine.
+        self.full_stack = stack.PinochleStack(cards=tools.build_cards())
+
         result = len(self.full_stack)
 
         self.assertIs(result, 24)
@@ -359,6 +390,9 @@ class TestStack(unittest.TestCase):
 
     def test_repr(self):
         """"""
+        # This wouldn't be needed if hammett executed the setup routine.
+        self.stack = stack.PinochleStack()
+
         result = repr(self.stack)
 
         self.assertEqual(result, "PinochleStack(cards=deque([]))")
@@ -374,6 +408,9 @@ class TestStack(unittest.TestCase):
 
     def test_save_cards(self):
         """"""
+        # This wouldn't be needed if hammett executed the setup routine.
+        self.small_stack = stack.PinochleStack(cards=self.cards)
+
         names = ["Ace Spades\n", "9 Diamonds\n", "Queen Hearts\n", "King Clubs"]
 
         self.small_stack.save_cards("tests/cards-save.txt")
@@ -429,6 +466,9 @@ class TestStack(unittest.TestCase):
 
     def test_str(self):
         """"""
+        # This wouldn't be needed if hammett executed the setup routine.
+        self.full_stack = stack.PinochleStack(cards=tools.build_cards())
+
         result = str(self.full_stack[0])
 
         self.assertEqual(result, "9 of Diamonds")

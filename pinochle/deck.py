@@ -59,8 +59,8 @@ class PinochleDeck(PinochleStack):
         Allows you to add (merge) decks together, with the ``+`` operand.
 
         :arg other:
-            The other Deck to add to the Deck. Can be a ``PinochleStack`` or ``Deck``
-            instance.
+            The other PinochleDeck to add to the Deck. Can be a ``PinochleStack``
+            or ``PinochleDeck`` instance.
 
         :returns:
             A new PinochleDeck instance, with the combined cards.
@@ -194,9 +194,9 @@ class PinochleDeck(PinochleStack):
         return PinochleStack(cards=dealt_cards)
 
 
-def convert_to_deck(stack):
+def convert_to_deck(stack: PinochleStack):
     """
-    Convert a ``PinochleStack`` to a ``Deck``.
+    Convert a ``PinochleStack`` to a ``PinochleDeck``.
 
     :arg PinochleStack stack:
         The ``PinochleStack`` instance to convert.
