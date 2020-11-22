@@ -7,8 +7,9 @@ Modernized and modified for Pinochle by Paul Kronenwetter
 """
 
 import copy
+from typing import List
 
-from . import const
+from . import const, score_meld, score_tricks
 from .card import PinochleCard
 from .deck import PinochleDeck
 from .exceptions import InvalidDeckError, InvalidTrumpError
@@ -144,3 +145,45 @@ def set_trump(trump="", hand=PinochleDeck()) -> PinochleDeck:
     # print(newhand.ranks)
 
     return newhand
+
+
+@log_decorator
+def hands_summary(
+    hands: List[PinochleDeck], players: int, kitty: PinochleDeck = None
+) -> str:
+    output = ""
+
+    for index in range(players):
+        output += " Player %1d%17s" % (index, "")
+    output += "\n"
+    for line in range(hands[0].size):
+        for index in range(players):
+            output += "%25s" % hands[index].cards[line]
+        output += "\n"
+    output += "-" * (25 * players) + "\n"
+    output += r"  9  P  M  J  Q  K  A  R|" * players
+    output += "\n"
+    for index in range(players):
+        output += " %2d " % score_meld._nines(hands[index])
+        output += "%2d " % score_meld._pinochle(hands[index])
+        output += "%2d " % score_meld._marriages(hands[index])
+        output += "%2d " % score_meld._jacks(hands[index])
+        output += "%2d " % score_meld._queens(hands[index])
+        output += "%2d " % score_meld._kings(hands[index])
+        output += "%2d " % score_meld._aces(hands[index])
+        output += r"%2d|" % score_meld._run(hands[index])
+    output += "\n"
+    output += "Meld  "
+    for index in range(players):
+        output += "%12d%12s" % (score_meld.score(hands[index]), "")
+    output += "\n"
+    output += "Trick "
+    for index in range(players):
+        output += "%12d%12s" % (score_tricks.score(hands[index]), "")
+    output += "\n"
+    if len(kitty):
+        output += "\nKitty:\n"
+        output += str(kitty)
+        output += "\n"
+
+    return output
