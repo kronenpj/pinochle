@@ -6,7 +6,7 @@ from unittest import TestCase
 from pinochle import utils
 
 
-class test_deck(TestCase):
+class TestUtils(TestCase):
     def test_populate_deck_util(self):
         """
         Simple test to make sure the generated deck is the right size, contains

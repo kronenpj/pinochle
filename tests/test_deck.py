@@ -8,21 +8,24 @@ from pinochle.deck import PinochleDeck
 from pinochle import stack, card
 
 
-class test_deck(TestCase):
-    def setUp(self):
-        """"""
-        self.deck = PinochleDeck(build=True)
-        self.empty_deck = PinochleDeck(build=False)
-        # pass
+class TestDeck(TestCase):
+    deck: PinochleDeck
+    empty_deck: PinochleDeck
 
     def test_add_deck(self):
         """"""
+        self.deck = PinochleDeck(build=True)
+        self.empty_deck = PinochleDeck(build=False)
+
         self.empty_deck = self.empty_deck + self.deck
 
         self.assertEqual(self.empty_deck, self.deck)
 
     def test_add_stack(self):
         """"""
+        self.deck = PinochleDeck(build=True)
+        self.empty_deck = PinochleDeck(build=False)
+
         new_stack = stack.convert_to_stack(self.deck)
         self.empty_deck = self.empty_deck + new_stack
 
@@ -30,6 +33,9 @@ class test_deck(TestCase):
 
     def test_add_list(self):
         """"""
+        self.deck = PinochleDeck(build=True)
+        self.empty_deck = PinochleDeck(build=False)
+
         temp_card1 = card.PinochleCard("9", "Diamonds")
         temp_card2 = card.PinochleCard("10", "Clubs")
         new_stack = []
@@ -48,12 +54,18 @@ class test_deck(TestCase):
 
     def test_build(self):
         """"""
+        self.deck = PinochleDeck(build=True)
+        self.empty_deck = PinochleDeck(build=False)
+
         self.empty_deck.build()
 
         self.assertEqual(len(self.empty_deck.cards), 24)
 
     def test_deal(self):
         """"""
+        self.deck = PinochleDeck(build=True)
+        self.empty_deck = PinochleDeck(build=False)
+
         card_names = [
             "Ace of Spades",
             "Ace of Hearts",
@@ -68,6 +80,9 @@ class test_deck(TestCase):
 
     def test_deal_rebuild(self):
         """"""
+        self.deck = PinochleDeck(build=True)
+        self.empty_deck = PinochleDeck(build=False)
+
         self.deck.rebuild = True
 
         _ = self.deck.deal(25)
@@ -76,6 +91,9 @@ class test_deck(TestCase):
 
     def test_repr(self):
         """"""
+        self.deck = PinochleDeck(build=True)
+        self.empty_deck = PinochleDeck(build=False)
+
         result = repr(self.empty_deck)
 
         self.assertEqual(result, "PinochleDeck(cards=deque([]))")
@@ -86,17 +104,23 @@ class test_deck(TestCase):
         the appropriate collection and quantities of cards. This is a half-pinochle
         deck. For a full deck, use populate_deck from utils.
         """
+        self.deck = PinochleDeck(build=True)
+        self.empty_deck = PinochleDeck(build=False)
+
         assert self.deck.size == 24
         assert self.deck.find_list(["2", "3", "4", "5", "6", "7", "8"]) == []
-        for card in ["Ace", "10", "King", "Queen", "Jack", "9"]:
+        for a_card in ["Ace", "10", "King", "Queen", "Jack", "9"]:
             self.assertEqual(
-                len(self.deck.find(card)), 4, f"Incorrect number of {card} cards."
+                len(self.deck.find(a_card)), 4, f"Incorrect number of {a_card} cards."
             )
 
     def test_deck_sort(self):
         """
         Tests sorting a full deck.
         """
+        self.deck = PinochleDeck(build=True)
+        self.empty_deck = PinochleDeck(build=False)
+
         deck = PinochleDeck(build=False)
         self.empty_deck += utils.sort_cards(utils.populate_deck())
         while deck.size > 0:

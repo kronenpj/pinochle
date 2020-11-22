@@ -3,12 +3,12 @@ Tests for the meld scoring module.
 
 License: GPLv3
 """
-from unittest import TestCase
+import unittest
 
 from pinochle import card, deck, score_meld, utils
 
 
-class test_meld_score(TestCase):
+class TestMeldScoring(unittest.TestCase):
     def test_no_trump(self):
         """"""
         temp_deck = deck.PinochleDeck(build=True)
