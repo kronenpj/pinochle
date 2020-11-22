@@ -1,9 +1,11 @@
 """
-Tests for the application module.
+Tests for the trick scoring module.
+
+License: GPLv3
 """
 from unittest import TestCase
 
-from pinochle import card, const, deck, score_tricks, utils
+from pinochle import card, deck, score_tricks
 
 
 class test_trick_score(TestCase):

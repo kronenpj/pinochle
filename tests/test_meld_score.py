@@ -1,9 +1,11 @@
 """
-Tests for the application module.
+Tests for the meld scoring module.
+
+License: GPLv3
 """
 from unittest import TestCase
 
-from pinochle import card, const, deck, score_meld, utils
+from pinochle import card, deck, score_meld, utils
 
 
 class test_meld_score(TestCase):
