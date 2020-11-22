@@ -4,12 +4,20 @@
 
 SUITS = ["Diamonds", "Clubs", "Hearts", "Spades"]
 VALUES = ["9", "Jack", "Queen", "King", "10", "Ace"]
+TRICK_SCORES = {
+    "Ace": 1,
+    "10": 1,
+    "King": 1,
+    "Queen": 0,
+    "Jack": 0,
+    "9": 0,
+}
 
 # ===============================================================================
 # Card Rank Dicts
 # ===============================================================================
 PINOCHLE_RANKS = {
-    "suits": {"Spades": 14, "Hearts": 13, "Clubs": 12, "Diamonds": 11},
+    "suits": {"Spades": 4, "Hearts": 3, "Clubs": 2, "Diamonds": 1},
     "values": {
         "Ace": 6,
         "10": 5,
@@ -29,3 +37,4 @@ DEFAULT_RANKS = PINOCHLE_RANKS
 # Stack/Deck ends.
 TOP = "top"
 BOTTOM = "bottom"
+TRUMP_VALUE = 20
