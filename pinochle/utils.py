@@ -12,7 +12,7 @@ from typing import List
 from . import const, score_meld, score_tricks
 from .card import PinochleCard
 from .deck import PinochleDeck
-from .exceptions import InvalidDeckError, InvalidTrumpError
+from .exceptions import InvalidDeckError, InvalidSuitError
 from .log_decorator import log_decorator
 
 
@@ -29,7 +29,7 @@ def populate_deck():
 
 
 @log_decorator
-def deal_hands(players=4, deck=None, kitty_cards=0):
+def deal_hands(deck=None, players=4, kitty_cards=0):
     if deck is None:
         deck = populate_deck()
 
@@ -135,10 +135,24 @@ def sort_cards(cards, ranks=None):
 
 @log_decorator
 def set_trump(trump="", hand=PinochleDeck()) -> PinochleDeck:
+    """
+    Set trump for the supplied hand and return a new deck instance.
+
+    :param trump: String containing suit to be made trump, defaults to ""
+    :type trump: str, optional
+    :param hand: Deck of cards to process, defaults to PinochleDeck()
+    :type hand: PinochleDeck, optional
+    :raises InvalidSuitError: [description]
+    :raises InvalidDeckError: [description]
+    :return: PinochleDeck instance with the suit weight adjusted.
+    :rtype: PinochleDeck
+    """
     if trump not in const.SUITS:
-        raise InvalidTrumpError
+        raise InvalidSuitError("%s is not a valid suit." % str(trump))
     if not isinstance(hand, PinochleDeck):
-        raise InvalidDeckError
+        raise InvalidDeckError(
+            "Supplied deck (hand) is not an instance of PinochleDeck."
+        )
 
     newhand = copy.deepcopy(hand)
     newhand.ranks["suits"][trump] = const.TRUMP_VALUE

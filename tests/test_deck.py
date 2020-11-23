@@ -3,9 +3,9 @@ Tests for the application module.
 """
 from unittest import TestCase
 
-from pinochle import utils
+import pytest
+from pinochle import card, stack, utils
 from pinochle.deck import PinochleDeck
-from pinochle import stack, card
 
 
 class TestDeck(TestCase):

@@ -29,6 +29,9 @@ single playing card, of a given value and suit.
 # ===============================================================================
 
 from typing import Union
+
+from .exceptions import InvalidSuitError, InvalidValueError
+
 from . import const
 
 # ===============================================================================
@@ -60,11 +63,10 @@ class PinochleCard:
             The card suit.
 
         """
-        if (
-            str(value).capitalize() not in const.VALUES
-            or str(suit).capitalize() not in const.SUITS
-        ):
-            raise ValueError
+        if str(value).capitalize() not in const.VALUES:
+            raise InvalidValueError("%s is not a valid face value." % str(value))
+        if str(suit).capitalize() not in const.SUITS:
+            raise InvalidSuitError("%s is not a valid suit." % str(suit))
         self.value: str = str(value).capitalize()
         self.suit: str = str(suit).capitalize() if suit else suit
         self.abbrev: str = card_abbrev(self.value, self.suit)
@@ -363,6 +365,10 @@ def card_abbrev(value: str, suit: Union[str, None]) -> str:
     """
     if value == "Joker":
         return "JKR"
+    if str(value).capitalize() not in const.VALUES:
+        raise InvalidValueError
+    if str(suit).capitalize() not in const.SUITS:
+        raise InvalidSuitError
     if value == "10":
         return "10%s" % (suit[0])
 
@@ -385,5 +391,9 @@ def card_name(value: str, suit: Union[str, None]) -> str:
     """
     if value == "Joker":
         return "Joker"
+    if str(value).capitalize() not in const.VALUES:
+        raise InvalidValueError
+    if str(suit).capitalize() not in const.SUITS:
+        raise InvalidSuitError
 
     return "%s of %s" % (value, suit)

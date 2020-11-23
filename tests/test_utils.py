@@ -3,7 +3,9 @@ Tests for the application module.
 """
 from unittest import TestCase
 
-from pinochle import utils
+import pytest
+from pinochle import card, deck, utils
+from pinochle.exceptions import InvalidDeckError, InvalidSuitError
 
 
 class TestUtils(TestCase):
@@ -68,3 +70,18 @@ class TestUtils(TestCase):
         hands, kitty = utils.deal_hands()
         assert len(hands) == 4
         assert len(kitty) == 0
+
+    def test_trump_suit_exception(self):
+        """
+        Tests that an exception is raised as appropriate.
+        """
+        temp_deck = deck.PinochleDeck(build=True)
+        with pytest.raises(InvalidSuitError):
+            utils.set_trump(trump="NotASuit", hand=temp_deck)
+
+    def test_trump_deck_exception(self):
+        """
+        Tests that an exception is raised as appropriate.
+        """
+        with pytest.raises(InvalidDeckError):
+            utils.set_trump(trump="Spades", hand=5)

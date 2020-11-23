@@ -11,5 +11,9 @@ class InvalidDeckError(PinochleError):
     pass
 
 
-class InvalidTrumpError(PinochleError):
+class InvalidValueError(PinochleError):
+    pass
+
+
+class InvalidSuitError(PinochleError):
     pass

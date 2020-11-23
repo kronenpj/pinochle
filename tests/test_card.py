@@ -22,8 +22,9 @@ Modernized and modified for Pinochle by Paul Kronenwetter
 
 import unittest
 
+import pytest
 from pinochle import card
-
+from pinochle.exceptions import InvalidSuitError, InvalidValueError
 
 # ===============================================================================
 # TestCard Class
@@ -162,3 +163,17 @@ class TestCard(unittest.TestCase):
 
         self.assertTrue(self.reference_card.ne(nine_diamonds))
         self.assertFalse(nine_diamonds.ne(nine_diamonds))
+
+    def test_card_suit_exception(self):
+        """
+        Tests that an exception is raised as appropriate.
+        """
+        with pytest.raises(InvalidSuitError):
+            _ = card.PinochleCard(value="9", suit="NotASuit")
+
+    def test_card_value_exception(self):
+        """
+        Tests that an exception is raised as appropriate.
+        """
+        with pytest.raises(InvalidValueError):
+            _ = card.PinochleCard(value="NotAValue", suit="Spades")
