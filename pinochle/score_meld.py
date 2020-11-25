@@ -125,7 +125,10 @@ def _jacks(deck: PinochleDeck) -> int:
     for index in range(len(const.SUITS)):
         count = min(count, len(array[index]))
 
-    score = score + count * 4
+    if count == 1:
+        score = score + 4
+    elif count == 2:
+        score = score + 40
 
     return score
 
@@ -151,7 +154,10 @@ def _queens(deck: PinochleDeck) -> int:
     for index in range(len(const.SUITS)):
         count = min(count, len(array[index]))
 
-    score = score + count * 6
+    if count == 1:
+        score = score + 6
+    elif count == 2:
+        score = score + 60
 
     return score
 
@@ -177,7 +183,10 @@ def _kings(deck: PinochleDeck) -> int:
     for index in range(len(const.SUITS)):
         count = min(count, len(array[index]))
 
-    score = score + count * 8
+    if count == 1:
+        score = score + 8
+    elif count == 2:
+        score = score + 80
 
     return score
 
@@ -263,6 +272,6 @@ def _pinochle(deck: PinochleDeck) -> int:
     if min(len(qcards), len(jcards)) == 1:
         score = 4
     elif min(len(qcards), len(jcards)) == 2:
-        score = 35
+        score = 30
 
     return score
