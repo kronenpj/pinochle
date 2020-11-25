@@ -26,7 +26,7 @@ a subclass of the ``Stack`` class, with a few extra/differing methods.
 
 """
 
-import copy
+from copy import deepcopy
 import uuid
 from collections import deque
 
@@ -48,7 +48,7 @@ class PinochleDeck(PinochleStack):
         self.gameid = kwargs.get("gameid", uuid.uuid4())
         self.rebuild = kwargs.get("rebuild", False)
         self.re_shuffle = kwargs.get("re_shuffle", False)
-        self.ranks = kwargs.get("ranks", copy.deepcopy(const.PINOCHLE_RANKS))
+        self.ranks = kwargs.get("ranks", deepcopy(const.PINOCHLE_RANKS))
         self.decks_used = 0
 
         if kwargs.get("build", False):

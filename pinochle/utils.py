@@ -6,7 +6,7 @@ Inspired by: https://github.com/Trebek/pydealer
 Modernized and modified for Pinochle by Paul Kronenwetter
 """
 
-import copy
+from copy import deepcopy
 from typing import List
 
 from pinochle import const, score_meld, score_tricks
@@ -159,7 +159,7 @@ def set_trump(trump="", f_deck=PinochleDeck()) -> PinochleDeck:
             "Supplied deck (hand) is not an instance of PinochleDeck."
         )
 
-    newhand = copy.deepcopy(f_deck)
+    newhand = deepcopy(f_deck)
     newhand.ranks["suits"][trump] = const.TRUMP_VALUE
     # print(newhand.ranks)
 

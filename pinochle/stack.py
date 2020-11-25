@@ -33,7 +33,7 @@ be used as a hand, or a discard pile, etc.
 # Imports
 # ===============================================================================
 
-import copy
+from copy import deepcopy
 import random
 from collections import deque
 
@@ -74,7 +74,7 @@ class PinochleStack:
 
         """
         self._cards = deque(kwargs.get("cards", []))
-        self.ranks = kwargs.get("ranks", copy.deepcopy(DEFAULT_RANKS))
+        self.ranks = kwargs.get("ranks", deepcopy(DEFAULT_RANKS))
 
         self._i = 0
 
