@@ -4,7 +4,7 @@ Tests for the application module.
 from unittest import TestCase
 
 import pytest
-from pinochle import card, deck, utils
+from pinochle import deck, utils
 from pinochle.exceptions import InvalidDeckError, InvalidSuitError
 
 
@@ -17,9 +17,9 @@ class TestUtils(TestCase):
         test_deck = utils.populate_deck()
         assert test_deck.size == 48
         assert test_deck.find_list(["2", "3", "4", "5", "6", "7", "8"]) == []
-        for card in ["Ace", "10", "King", "Queen", "Jack", "9"]:
+        for card_v in ["Ace", "10", "King", "Queen", "Jack", "9"]:
             self.assertEqual(
-                len(test_deck.find(card)), 8, f"Incorrect number of {card} cards."
+                len(test_deck.find(card_v)), 8, f"Incorrect number of {card_v} cards."
             )
 
     def test_hand_sizes_dealt(self):
@@ -90,11 +90,11 @@ class TestUtils(TestCase):
         """
         temp_deck = deck.PinochleDeck(build=True)
         with pytest.raises(InvalidSuitError):
-            utils.set_trump(trump="NotASuit", hand=temp_deck)
+            utils.set_trump(trump="NotASuit", f_deck=temp_deck)
 
     def test_trump_deck_exception(self):
         """
         Tests that an exception is raised as appropriate.
         """
         with pytest.raises(InvalidDeckError):
-            utils.set_trump(trump="Spades", hand=5)
+            utils.set_trump(trump="Spades", f_deck=5)

@@ -31,7 +31,7 @@ def populate_deck():
 
 
 @log_decorator
-def deal_hands(deck=None, players=4, kitty_cards=0):
+def deal_hands(deck: PinochleDeck = None, players=4, kitty_cards=0):
     if deck is None:
         deck = populate_deck()
 
@@ -61,6 +61,9 @@ def deal_hands(deck=None, players=4, kitty_cards=0):
         remainder = deck.size % players
         if remainder != 0:
             kitty_cards = remainder
+
+    # Make sure everyone will receive the same number of cards.
+    assert (deck.size - kitty_cards) % players == 0
 
     # Pull out random cards for the kitty, if requested
     if kitty_cards > 0:
@@ -136,14 +139,14 @@ def sort_cards(cards, ranks=None):
 
 
 @log_decorator
-def set_trump(trump="", hand=PinochleDeck()) -> PinochleDeck:
+def set_trump(trump="", f_deck=PinochleDeck()) -> PinochleDeck:
     """
     Set trump for the supplied hand and return a new deck instance.
 
     :param trump: String containing suit to be made trump, defaults to ""
     :type trump: str, optional
-    :param hand: Deck of cards to process, defaults to PinochleDeck()
-    :type hand: PinochleDeck, optional
+    :param f_deck: Deck of cards to process, defaults to PinochleDeck()
+    :type f_deck: PinochleDeck, optional
     :raises InvalidSuitError: [description]
     :raises InvalidDeckError: [description]
     :return: PinochleDeck instance with the suit weight adjusted.
@@ -151,12 +154,12 @@ def set_trump(trump="", hand=PinochleDeck()) -> PinochleDeck:
     """
     if trump not in const.SUITS:
         raise InvalidSuitError("%s is not a valid suit." % str(trump))
-    if not isinstance(hand, PinochleDeck):
+    if not isinstance(f_deck, PinochleDeck):
         raise InvalidDeckError(
             "Supplied deck (hand) is not an instance of PinochleDeck."
         )
 
-    newhand = copy.deepcopy(hand)
+    newhand = copy.deepcopy(f_deck)
     newhand.ranks["suits"][trump] = const.TRUMP_VALUE
     # print(newhand.ranks)
 
