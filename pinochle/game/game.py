@@ -7,7 +7,7 @@ License: GPLv3
 import uuid
 from typing import List
 
-from game.hand import Hand
+from pinochle.game.hand import Hand
 
 
 class Game:

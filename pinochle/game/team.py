@@ -8,8 +8,7 @@ import uuid
 from typing import List
 
 from pinochle.deck import PinochleDeck
-
-from game.player import Player
+from pinochle.game.player import Player
 
 
 class Team:
