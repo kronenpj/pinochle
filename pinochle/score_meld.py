@@ -5,8 +5,8 @@ account trump suits.
 License: GPLv3
 """
 
-from . import card, const
-from .deck import PinochleDeck
+from pinochle import card, const, custom_log
+from pinochle.deck import PinochleDeck
 
 
 def score(deck: PinochleDeck) -> int:
@@ -18,6 +18,7 @@ def score(deck: PinochleDeck) -> int:
     :return: Deck's score
     :rtype: int
     """
+    mylog = custom_log.get_logger()
 
     # This doesn't work until trump is called.
     if _trump_suit(deck) is None:
@@ -34,6 +35,8 @@ def score(deck: PinochleDeck) -> int:
     score += _run(deck)
     score += _pinochle(deck)
 
+    mylog.debug(f"Score total: {score}")
+
     return score
 
 
@@ -47,8 +50,11 @@ def _trump_suit(deck: PinochleDeck) -> str:
     :return: Score for 9s
     :rtype: int
     """
+    mylog = custom_log.get_logger()
+
     for suit in deck.ranks["suits"]:
         if deck.ranks["suits"][suit] == const.TRUMP_VALUE:
+            mylog.debug(f"Determined that {suit} is trump.")
             return suit
 
 
@@ -62,16 +68,19 @@ def _nines(deck: PinochleDeck) -> int:
     :return: Score for 9s
     :rtype: int
     """
+    mylog = custom_log.get_logger()
+
     score = 0
 
     trump = _trump_suit(deck)
-    # print(f"Trump is: {trump}")
+
     abbr = card.card_abbrev("9", trump)
     cards = deck.find(abbr)
 
     if len(cards) > 0:
         score += len(cards)
 
+    mylog.debug(f"Nines score: {score}")
     return score
 
 
@@ -86,6 +95,8 @@ def _marriages(deck: PinochleDeck) -> int:
     :return: Score for 9s
     :rtype: int
     """
+    mylog = custom_log.get_logger()
+
     score = 0
 
     trump = _trump_suit(deck)
@@ -97,10 +108,12 @@ def _marriages(deck: PinochleDeck) -> int:
         qcards = deck.find(qsuit)
 
         temp_score = 2 * min(len(kcards), len(qcards))
+        mylog.debug(f"{min(len(kcards), len(qcards))} Marriages found!")
         if suit == trump:
             temp_score = temp_score * 2
         score = score + temp_score
 
+    mylog.debug(f"Marriages score: {score}")
     return score
 
 
@@ -114,6 +127,8 @@ def _jacks(deck: PinochleDeck) -> int:
     :return: Score for 9s
     :rtype: int
     """
+    mylog = custom_log.get_logger()
+
     score = 0
 
     array = []
@@ -127,9 +142,12 @@ def _jacks(deck: PinochleDeck) -> int:
 
     if count == 1:
         score = score + 4
+        mylog.debug("Single jacks!")
     elif count == 2:
         score = score + 40
+        mylog.debug("Double jacks!!")
 
+    mylog.debug(f"Jacks score: {score}")
     return score
 
 
@@ -143,6 +161,8 @@ def _queens(deck: PinochleDeck) -> int:
     :return: Score for 9s
     :rtype: int
     """
+    mylog = custom_log.get_logger()
+
     score = 0
 
     array = []
@@ -156,9 +176,12 @@ def _queens(deck: PinochleDeck) -> int:
 
     if count == 1:
         score = score + 6
+        mylog.debug("Single Queens!")
     elif count == 2:
         score = score + 60
+        mylog.debug("Double Queens!!")
 
+    mylog.debug(f"Queens score: {score}")
     return score
 
 
@@ -172,6 +195,8 @@ def _kings(deck: PinochleDeck) -> int:
     :return: Score for 9s
     :rtype: int
     """
+    mylog = custom_log.get_logger()
+
     score = 0
 
     array = []
@@ -185,9 +210,12 @@ def _kings(deck: PinochleDeck) -> int:
 
     if count == 1:
         score = score + 8
+        mylog.debug("Single Kings!")
     elif count == 2:
         score = score + 80
+        mylog.debug("Double Kings!!")
 
+    mylog.debug(f"Kings score: {score}")
     return score
 
 
@@ -202,6 +230,8 @@ def _aces(deck: PinochleDeck) -> int:
     :return: Score for 9s
     :rtype: int
     """
+    mylog = custom_log.get_logger()
+
     score = 0
 
     array = []
@@ -215,9 +245,12 @@ def _aces(deck: PinochleDeck) -> int:
 
     if count == 1:
         score = score + 10
+        mylog.debug("Single Aces!")
     elif count == 2:
         score = score + 100
+        mylog.debug("Double Aces!!")
 
+    mylog.debug(f"Aces score: {score}")
     return score
 
 
@@ -232,6 +265,8 @@ def _run(deck: PinochleDeck) -> int:
     :return: Score for 9s
     :rtype: int
     """
+    mylog = custom_log.get_logger()
+
     score = 0
     values = const.VALUES.copy()
     values.remove("9")
@@ -248,6 +283,7 @@ def _run(deck: PinochleDeck) -> int:
 
     score = score + count * 11
 
+    mylog.debug(f"Run score: {score}")
     return score
 
 
@@ -262,6 +298,8 @@ def _pinochle(deck: PinochleDeck) -> int:
     :return: Score for 9s
     :rtype: int
     """
+    mylog = custom_log.get_logger()
+
     score = 0
 
     qspade = card.card_abbrev("Queen", "Spades")
@@ -271,7 +309,10 @@ def _pinochle(deck: PinochleDeck) -> int:
 
     if min(len(qcards), len(jcards)) == 1:
         score = 4
+        mylog.debug("Single Pinochle!")
     elif min(len(qcards), len(jcards)) == 2:
         score = 30
+        mylog.debug("Double Pinochle!!")
 
+    mylog.debug(f"Pinochle score: {score}")
     return score
