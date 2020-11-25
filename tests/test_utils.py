@@ -63,6 +63,19 @@ class TestUtils(TestCase):
         assert len(hands) == players
         assert len(kitty) == 3
 
+    def test_hand_uneven_players(self):
+        """
+        Tests a invalid combinations of pinochle players and kitty sizes.
+        """
+        players = 5
+        kitty_cards = 1
+
+        test_deck = utils.populate_deck()
+        with pytest.raises(AssertionError):
+            __, __ = utils.deal_hands(
+                deck=test_deck, players=players, kitty_cards=kitty_cards
+            )
+
     def test_uninitialized_deck(self):
         """
         Tests the default combination of pinochle players and kitty sizes.

@@ -9,11 +9,13 @@ Modernized and modified for Pinochle by Paul Kronenwetter
 import copy
 from typing import List
 
-from . import const, score_meld, score_tricks
-from .card import PinochleCard
-from .deck import PinochleDeck
-from .exceptions import InvalidDeckError, InvalidSuitError
-from .log_decorator import log_decorator
+from game.hand import Hand
+from game.player import Player
+from pinochle import const, score_meld, score_tricks
+from pinochle.card import PinochleCard
+from pinochle.deck import PinochleDeck
+from pinochle.exceptions import InvalidDeckError, InvalidSuitError
+from pinochle.log_decorator import log_decorator
 
 
 @log_decorator
@@ -162,7 +164,7 @@ def set_trump(trump="", hand=PinochleDeck()) -> PinochleDeck:
 
 
 @log_decorator
-def hands_summary(
+def deck_list_summary(
     hands: List[PinochleDeck], players: int, kitty: PinochleDeck = None
 ) -> str:
     output = ""
@@ -199,5 +201,53 @@ def hands_summary(
         output += "\nKitty:\n"
         output += str(kitty)
         output += "\n"
+
+    return output
+
+
+@log_decorator
+def hand_summary(hand: Hand) -> str:
+    output = ""
+
+    player_list: List[Player] = []
+    for team_index in range(len(hand.teams)):
+        for player_index in range(len(hand.teams[team_index].players)):
+            output += " Player %1d (Team %1d)%9s" % (player_index, team_index, "")
+            player_list.append(hand.teams[team_index].players[player_index])
+    output += "\n"
+    for line in range(player_list[0].hand.size):
+        for player_index in range(len(player_list)):
+            output += "%25s" % player_list[player_index].hand.cards[line]
+        output += "\n"
+    output += "-" * (25 * len(player_list))
+    return output
+
+
+@log_decorator
+def hand_summary_score(hand: Hand) -> str:
+    player_list: List[Player] = []
+    for team_index in range(len(hand.teams)):
+        for player_index in range(len(hand.teams[team_index].players)):
+            player_list.append(hand.teams[team_index].players[player_index])
+
+    output = r"  9  P  M  J  Q  K  A  R|" * len(player_list)
+    output += "\n"
+    for player_index in range(len(player_list)):
+        output += " %2d " % score_meld._nines(player_list[player_index].hand)
+        output += "%2d " % score_meld._pinochle(player_list[player_index].hand)
+        output += "%2d " % score_meld._marriages(player_list[player_index].hand)
+        output += "%2d " % score_meld._jacks(player_list[player_index].hand)
+        output += "%2d " % score_meld._queens(player_list[player_index].hand)
+        output += "%2d " % score_meld._kings(player_list[player_index].hand)
+        output += "%2d " % score_meld._aces(player_list[player_index].hand)
+        output += r"%2d|" % score_meld._run(player_list[player_index].hand)
+    output += "\n"
+    output += "Meld  "
+    for player_index in range(len(player_list)):
+        output += "%12d%12s" % (score_meld.score(player_list[player_index].hand), "")
+    output += "\n"
+    output += "Trick "
+    for player_index in range(len(player_list)):
+        output += "%12d%12s" % (score_tricks.score(player_list[player_index].hand), "")
 
     return output
