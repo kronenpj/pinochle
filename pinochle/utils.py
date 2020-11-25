@@ -215,7 +215,11 @@ def hand_summary(hand: Hand) -> str:
     player_list: List[Player] = []
     for team_index in range(len(hand.teams)):
         for player_index in range(len(hand.teams[team_index].players)):
-            output += " %8s (%6s)%9s" % (hand.teams[team_index].players[player_index].name, hand.teams[team_index].name, "")
+            output += " %8s (%6s)%9s" % (
+                hand.teams[team_index].players[player_index].name,
+                hand.teams[team_index].name,
+                "",
+            )
             player_list.append(hand.teams[team_index].players[player_index])
     output += "\n"
     for line in range(player_list[0].hand.size):

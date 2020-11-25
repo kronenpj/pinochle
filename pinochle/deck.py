@@ -26,14 +26,14 @@ a subclass of the ``Stack`` class, with a few extra/differing methods.
 
 """
 
-from copy import deepcopy
 import uuid
 from collections import deque
+from copy import deepcopy
 
-from . import const
-from .card import PinochleCard
-from .log_decorator import log_decorator
-from .stack import PinochleStack
+from pinochle import const
+from pinochle.card import PinochleCard
+from pinochle.log_decorator import log_decorator
+from pinochle.stack import PinochleStack
 
 
 class PinochleDeck(PinochleStack):

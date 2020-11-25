@@ -12,6 +12,11 @@ from pinochle.deck import PinochleDeck
 class Player:
     """
     Class to encapsulate a player and their attributes.
+
+    Class properties:
+        name: The player's name
+        hand: The player's deck / hand
+        score: Player's cumulative score for this game
     """
 
     __hand: PinochleDeck
