@@ -7,26 +7,33 @@ License: GPLv3
 import uuid
 from typing import List
 
-from pinochle import const
 from pinochle.deck import PinochleDeck
-from pinochle.stack import PinochleStack
+
 from game.player import Player
 
 
 class Team:
     """
     Class to encapsulate a team and associated attributes.
+
+    Class properties:
+        collection: The deck of cards collected from tricks.
+        name: Friendly name of the team.
+        players: List of players on the team.
+        score: List of scores associated with the team at the same index.
     """
 
     __collection: PinochleDeck = PinochleDeck(build=False)
     __name: str
     __players: List[Player]
+    __score: int
     __team_id: uuid.UUID
 
     def __init__(self, **kwargs):
         self.__team_id = kwargs.get("team_id", uuid.uuid4())
         self.__name = kwargs.get("name", "team")
         self.__players = kwargs.get("players", list())
+        self.__score = kwargs.get("score", 0)
 
     def __repr__(self) -> str:
         """
@@ -36,11 +43,31 @@ class Team:
             A string representation of the Team instance.
 
         """
-        return "\nTeam(team_id=%r, name=%r, collection=\n  %r, players=\n  %r)" % (
+        return "Team(team_id=%r, name=%r, score=%r, collection=%r, players=%r)" % (
             self.__team_id,
             self.__name,
+            self.__score,
             self.__collection,
             self.__players,
+        )
+
+    def repr(self) -> str:
+        """
+        Returns a string representation of the ``Team`` instance.
+
+        :returns:
+            A string representation of the Team instance.
+
+        """
+        return (
+            "\nTeam(team_id=%r, name=%r, score=%r, collection=\n  %r, players=\n  %r)"
+            % (
+                self.__team_id,
+                self.__name,
+                self.__score,
+                self.__collection,
+                self.__players,
+            )
         )
 
     @property

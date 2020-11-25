@@ -5,9 +5,7 @@ License: GPLv3
 """
 
 import uuid
-from typing import List
 
-from pinochle import const
 from pinochle.deck import PinochleDeck
 
 
@@ -34,6 +32,21 @@ class Player:
             A string representation of the Player instance.
 
         """
+        return "Player(player_id=%r, name=%r, score=%r, hand=%r)" % (
+            self.__player_id,
+            self.__name,
+            self.__score,
+            self.__hand,
+        )
+
+    def repr(self) -> str:
+        """
+        Returns a string representation of the ``Player`` instance.
+
+        :returns:
+            A string representation of the Player instance.
+
+        """
         return "\nPlayer(player_id=%r, name=%r, score=%r, hand=\n  %r)" % (
             self.__player_id,
             self.__name,
@@ -42,19 +55,19 @@ class Player:
         )
 
     @property
-    def hand(self) -> int:
+    def hand(self) -> PinochleDeck:
         return self.__hand
 
     @hand.setter
-    def hand(self, temp: int) -> None:
+    def hand(self, temp: PinochleDeck) -> None:
         self.__hand = temp
 
     @property
-    def name(self) -> PinochleDeck:
+    def name(self) -> str:
         return self.__name
 
     @name.setter
-    def name(self, temp: PinochleDeck):
+    def name(self, temp: str):
         self.__name = temp
 
     @property
@@ -62,8 +75,8 @@ class Player:
         return self.__player_id
 
     @player_id.setter
-    def player_id(self, uuid: uuid.UUID) -> None:
-        self.__player_id = uuid
+    def player_id(self, f_uuid: uuid.UUID) -> None:
+        self.__player_id = f_uuid
 
     @property
     def score(self) -> int:
