@@ -7,7 +7,7 @@ if [ -z "$VIRTUAL_ENV" ]; then
 fi
 
 if [ -z "$@" ]; then
-  $DEBUG mutmut run
+  $DEBUG mutmut --use-coverage run
 else
   UNTESTED=$(sqlite3 .mutmut-cache -cmd 'select id from mutant where status="untested";' < /dev/null)
 
@@ -16,6 +16,6 @@ else
 
   for index in $UNTESTED
   do
-    $DEBUG mutmut run $index
+    $DEBUG mutmut --use-coverage run $index
   done
 fi
