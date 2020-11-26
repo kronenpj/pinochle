@@ -200,7 +200,7 @@ def deck_list_summary(
     for index in range(players):
         output += "%12d%12s" % (score_tricks.score(hands[index]), "")
     output += "\n"
-    if len(kitty):
+    if len(kitty) > 0:
         output += "\nKitty:\n"
         output += str(kitty)
         output += "\n"
@@ -213,18 +213,18 @@ def hand_summary(hand: Hand) -> str:  # pragma: no cover
     output = ""
 
     player_list: List[Player] = []
-    for team_index in range(len(hand.teams)):
-        for player_index in range(len(hand.teams[team_index].players)):
+    for __, e_team in enumerate(hand.teams):
+        for __, e_player in enumerate(e_team.players):
             output += " %8s (%6s)%9s" % (
-                hand.teams[team_index].players[player_index].name,
-                hand.teams[team_index].name,
+                e_player.name,
+                e_team.name,
                 "",
             )
-            player_list.append(hand.teams[team_index].players[player_index])
+            player_list.append(e_player)
     output += "\n"
     for line in range(player_list[0].hand.size):
-        for player_index in range(len(player_list)):
-            output += "%25s" % player_list[player_index].hand.cards[line]
+        for __, e_player in enumerate(player_list):
+            output += "%25s" % e_player.hand.cards[line]
         output += "\n"
     output += "-" * (25 * len(player_list))
     return output
@@ -233,28 +233,28 @@ def hand_summary(hand: Hand) -> str:  # pragma: no cover
 @log_decorator
 def hand_summary_score(hand: Hand) -> str:  # pragma: no cover
     player_list: List[Player] = []
-    for team_index in range(len(hand.teams)):
-        for player_index in range(len(hand.teams[team_index].players)):
-            player_list.append(hand.teams[team_index].players[player_index])
+    for __, e_team in enumerate(hand.teams):
+        for __, e_player in enumerate(e_team.players):
+            player_list.append(e_player)
 
     output = r"  9  P  M  J  Q  K  A  R|" * len(player_list)
     output += "\n"
-    for player_index in range(len(player_list)):
-        output += " %2d " % score_meld._nines(player_list[player_index].hand)
-        output += "%2d " % score_meld._pinochle(player_list[player_index].hand)
-        output += "%2d " % score_meld._marriages(player_list[player_index].hand)
-        output += "%2d " % score_meld._jacks(player_list[player_index].hand)
-        output += "%2d " % score_meld._queens(player_list[player_index].hand)
-        output += "%2d " % score_meld._kings(player_list[player_index].hand)
-        output += "%2d " % score_meld._aces(player_list[player_index].hand)
-        output += r"%2d|" % score_meld._run(player_list[player_index].hand)
+    for __, e_player in enumerate(player_list):
+        output += " %2d " % score_meld._nines(e_player.hand)
+        output += "%2d " % score_meld._pinochle(e_player.hand)
+        output += "%2d " % score_meld._marriages(e_player.hand)
+        output += "%2d " % score_meld._jacks(e_player.hand)
+        output += "%2d " % score_meld._queens(e_player.hand)
+        output += "%2d " % score_meld._kings(e_player.hand)
+        output += "%2d " % score_meld._aces(e_player.hand)
+        output += r"%2d|" % score_meld._run(e_player.hand)
     output += "\n"
     output += "Meld  "
-    for player_index in range(len(player_list)):
-        output += "%12d%12s" % (score_meld.score(player_list[player_index].hand), "")
+    for __, e_player in enumerate(player_list):
+        output += "%12d%12s" % (score_meld.score(e_player.hand), "")
     output += "\n"
     output += "Trick "
-    for player_index in range(len(player_list)):
-        output += "%12d%12s" % (score_tricks.score(player_list[player_index].hand), "")
+    for __, e_player in enumerate(player_list):
+        output += "%12d%12s" % (score_tricks.score(e_player.hand), "")
 
     return output
