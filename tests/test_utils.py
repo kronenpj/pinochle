@@ -22,6 +22,34 @@ class TestUtils(TestCase):
                 len(test_deck.find(card_v)), 8, f"Incorrect number of {card_v} cards."
             )
 
+    def test_build_cards_util(self):
+        """
+        Simple test to make sure the generated deck is the right size, contains
+        the appropriate collection and quantities of cards.
+        """
+        test_deck = deck.PinochleDeck(build=False)
+        test_deck += utils.build_cards()
+        test_deck += utils.build_cards()
+
+        assert test_deck.size == 48
+        assert test_deck.find_list(["2", "3", "4", "5", "6", "7", "8"]) == []
+        for card_v in ["Ace", "10", "King", "Queen", "Jack", "9"]:
+            self.assertEqual(
+                len(test_deck.find(card_v)), 8, f"Incorrect number of {card_v} cards."
+            )
+
+    def test_deck_sort_util(self):
+        """
+        Tests sorting a full deck using the utility sort function.
+        """
+        test_deck = deck.PinochleDeck(build=False)
+        test_deck += utils.sort_cards(utils.populate_deck())
+
+        self.assertEqual(test_deck.size, 48)
+        while test_deck.size > 0:
+            one, two = test_deck.deal(2)
+            self.assertEqual(one, two)
+
     def test_hand_sizes_dealt(self):
         """
         Tests various combinations of pinochle players and kitty sizes.

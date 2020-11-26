@@ -1,10 +1,12 @@
 """
 Tests for the application module.
 """
+import random
+from copy import deepcopy
 from unittest import TestCase
 
 import pytest
-from pinochle import card, stack, utils
+from pinochle import card, const, stack, utils
 from pinochle.deck import PinochleDeck
 
 
@@ -116,15 +118,16 @@ class TestDeck(TestCase):
 
     def test_deck_sort(self):
         """
-        Tests sorting a full deck.
+        Tests sorting a full deck using the deck's (stack's) sort function.
         """
-        self.deck = PinochleDeck(build=True)
-        self.empty_deck = PinochleDeck(build=False)
+        test_deck = PinochleDeck(build=True)
+        test_deck += deepcopy(test_deck)
+        test_deck.shuffle()
+        test_deck.sort()
 
-        deck = PinochleDeck(build=False)
-        self.empty_deck += utils.sort_cards(utils.populate_deck())
-        while deck.size > 0:
-            one, two = deck.deal(2)
+        self.assertGreater(test_deck.size, 0)
+        while test_deck.size > 0:
+            one, two = test_deck.deal(2)
             self.assertEqual(one, two)
 
     def test_verify(self):

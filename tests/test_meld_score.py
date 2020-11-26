@@ -153,12 +153,12 @@ class TestMeldScoring(unittest.TestCase):
     def test_run(self):
         """"""
         temp_deck = deck.PinochleDeck(build=False)
-        temp_deck += [card.PinochleCard("Ace",  "Hearts")]
+        temp_deck += [card.PinochleCard("Ace", "Hearts")]
         temp_deck += [card.PinochleCard("Jack", "Hearts")]
-        temp_deck += [card.PinochleCard("Queen","Hearts")]
-        temp_deck += [card.PinochleCard("10",  "Hearts")]
-        temp_deck += [card.PinochleCard("King",  "Hearts")]
-        temp_deck += [card.PinochleCard("10",  "Clubs")]
+        temp_deck += [card.PinochleCard("Queen", "Hearts")]
+        temp_deck += [card.PinochleCard("10", "Hearts")]
+        temp_deck += [card.PinochleCard("King", "Hearts")]
+        temp_deck += [card.PinochleCard("10", "Clubs")]
 
         assert score_meld._run(utils.set_trump("Clubs", temp_deck)) == 0
         assert score_meld._run(utils.set_trump("Diamonds", temp_deck)) == 0
@@ -169,7 +169,6 @@ class TestMeldScoring(unittest.TestCase):
         assert score_meld.score(utils.set_trump("Diamonds", temp_deck)) == 2
         assert score_meld.score(utils.set_trump("Hearts", temp_deck)) == 15
         assert score_meld.score(utils.set_trump("Spades", temp_deck)) == 2
-
 
     def test_score_deck(self):
         """"""
