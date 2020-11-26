@@ -111,7 +111,7 @@ def build_cards(jokers=False, num_jokers=0):
 
 
 @log_decorator
-def sort_cards(cards, ranks=None):
+def sort_cards(cards, ranks=None):  # pragma: no cover
     """
     Sorts a given list of cards, either by poker ranks, or big two ranks.
 
@@ -169,7 +169,7 @@ def set_trump(trump="", f_deck=PinochleDeck()) -> PinochleDeck:
 @log_decorator
 def deck_list_summary(
     hands: List[PinochleDeck], players: int, kitty: PinochleDeck = None
-) -> str:
+) -> str:  # pragma: no cover
     output = ""
 
     for index in range(players):
@@ -209,7 +209,7 @@ def deck_list_summary(
 
 
 @log_decorator
-def hand_summary(hand: Hand) -> str:
+def hand_summary(hand: Hand) -> str:  # pragma: no cover
     output = ""
 
     player_list: List[Player] = []
@@ -231,7 +231,7 @@ def hand_summary(hand: Hand) -> str:
 
 
 @log_decorator
-def hand_summary_score(hand: Hand) -> str:
+def hand_summary_score(hand: Hand) -> str:  # pragma: no cover
     player_list: List[Player] = []
     for team_index in range(len(hand.teams)):
         for player_index in range(len(hand.teams[team_index].players)):

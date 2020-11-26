@@ -567,7 +567,7 @@ class PinochleStack:
         """
         ranks = ranks or self.ranks
 
-        return check_sorted(self, ranks)
+        return tools.check_sorted(self, ranks)
 
     def open_cards(self, filename=None):
         """
