@@ -20,7 +20,7 @@ cache:
 
 stages:
   - test
-  - deploy
+#  - deploy
 
 before_script:
   - python -V  # Print out python version for debugging
