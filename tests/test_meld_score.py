@@ -13,7 +13,12 @@ class TestMeldScoring(unittest.TestCase):
         """"""
         temp_deck = deck.PinochleDeck(build=True)
 
-        assert score_meld.score(temp_deck) == 0
+        # Scores everything except nines and runs and marriages are not doubled
+        # as there is no trump suit.
+        # Marriages: 8
+        # Pinochle: 4
+        # Jacks, Queens, Kings and Aces: 4 + 6 + 8 + 10
+        assert score_meld.score(temp_deck) == 40
 
     def test_nines(self):
         """"""
