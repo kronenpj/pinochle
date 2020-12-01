@@ -157,11 +157,14 @@ class NewGameH(BaseHandler):
 
 class GameDataH(BaseHandler):
     def get(self) -> None:
+        gameid = self.get_query_argument(name="gameid", default=None)
+        LOG.error(f"Game ID: {gameid}")
         try:
-            json = ds.game_info()
+            json = ds.game_info(gameid)
             self.set_header("Content-Type", "application/json; charset=UTF-8")
             self.write(json)
-        except KeyError:
+        except KeyError as e:
+            LOG.error(f"Exception: {e}")
             self.send_error(status_code=405)
 
     def post(self) -> None:
@@ -315,7 +318,7 @@ def make_app() -> web.Application:
             (r"/playerdeck", PlayerDeckDataH),
             (r"/ws", WebSocketHandler),
         ],
-        **settings
+        **settings,
     )
 
 

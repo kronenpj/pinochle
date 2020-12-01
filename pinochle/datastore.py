@@ -12,7 +12,7 @@ from copy import deepcopy
 
 import jsonpickle
 
-from pinochle import object_helpers
+from pinochle import custom_log, object_helpers
 from pinochle.card import PinochleCard
 from pinochle.deck import PinochleDeck
 from pinochle.game.game import Game
@@ -62,29 +62,6 @@ class DataStore:
         """
         pickle.dump(data, open(self.game_file, "wb"))
 
-    def gen_newkeys(self, data) -> OrderedDict:
-        newkeys = OrderedDict()
-        for uuid in data:
-            # self.log.info(data.get(uuid).ticket)
-            try:
-                newkeys.update(
-                    {
-                        "|".join(["%s" % str(data.get(uuid).ticket), uuid]): data.get(
-                            uuid
-                        )
-                    }
-                )
-            except TypeError as e:  # pragma: no cover
-                self.log.error(FAULTY_PICKLE_E)
-                self.log.debug("{}".format(e))
-            except ValueError as e:  # pragma: no cover
-                self.log.error(FAULTY_PICKLE_E)
-                newkeys.update(
-                    {"|".join(["%s" % data.get(uuid).ticket, uuid]): data.get(uuid)}
-                )
-                self.log.debug("{}".format(e))
-        return newkeys
-
     def new_game(self, teams: typing.Optional[typing.List[Team]] = None):
         """
         Setup a team, hands and a game.
@@ -115,7 +92,7 @@ class DataStore:
         # Finally create a new game with the teams defined above.
         # This comes with the first hand defined.
         temp_game = object_helpers.create_new_game(z_b_teams)
-        self.__current = temp_game.game_id
+        self.__current = temp_game.game_id.hex
         self.__games[self.__current] = temp_game
 
         # Just for fun, add a new hand to the game.
@@ -140,14 +117,31 @@ class DataStore:
 
     def game_info(self, which: str = None) -> typing.Union[str, None]:
         """
-        Returns the current game and conveys it as a JSON string.
-        :param user: UUID of player whose hand to return.
-        :return: A player's hand (deck) represented in JSON.
+        Returns the current or specified game and conveys it as a JSON string.
+        :param which: The UUID of the game to return.
+        :return: Information about the game represented in JSON.
         :rtype: str
         """
+        LOG = custom_log.get_logger()
         which_game = which or self.__current
+        LOG.info(f"Game ID: {which_game}")
 
-        output = jsonpickle.dumps(self.__games[which_game])
+        # Assemble the subset of information to be displayed
+        tempinfo = dict()
+        tempinfo["game_id"] = which_game
+        tempinfo["hands"] = []
+        for ihand in self.__games[which_game].hands:
+            tempinfo["hands"].append(dict())
+            tempinfo["hands"][ihand.hand_seq]["hand"] = ihand.hand_seq
+            tempinfo["hands"][ihand.hand_seq]["teams"] = []
+            tempinfo["hands"][ihand.hand_seq]["players"] = []
+            for iteam in ihand.teams:
+                tempinfo["hands"][ihand.hand_seq]["teams"].append(iteam.name)
+                for iplayer in iteam.players:
+                    tempinfo["hands"][ihand.hand_seq]["players"].append(iplayer.name)
+
+        output = jsonpickle.dumps(tempinfo)
+        LOG.error(f"Data: {output}")
         return output
 
     def game_list(self) -> typing.Union[typing.List[str], None]:
@@ -157,11 +151,19 @@ class DataStore:
         :rtype: str
         """
 
-        output = jsonpickle.dumps(list(self.__games.keys()))
+        templist = list()
+        for item in self.__games:
+            templist.append(item)
+        output = jsonpickle.dumps(templist)
         return output
 
-    def trick_deck_json(self):
-        pass
+    def trick_deck_json(self) -> typing.Union[str, None]:
+        """
+        Returns the deck that contains cards used in the current trick.
+        """
+        templist = list()
+        output = jsonpickle.dumps(templist)
+        return output
 
     def player_hand_json(self, user: str) -> typing.Union[typing.Any, None]:
         """
@@ -194,6 +196,29 @@ class DataStore:
             result.append(ann_data)
         output = jsonpickle.dumps(result)
         return output
+
+    # def gen_newkeys(self, data) -> OrderedDict:
+    #     newkeys = OrderedDict()
+    #     for uuid in data:
+    #         # self.log.info(data.get(uuid).ticket)
+    #         try:
+    #             newkeys.update(
+    #                 {
+    #                     "|".join(["%s" % str(data.get(uuid).ticket), uuid]): data.get(
+    #                         uuid
+    #                     )
+    #                 }
+    #             )
+    #         except TypeError as e:  # pragma: no cover
+    #             self.log.error(FAULTY_PICKLE_E)
+    #             self.log.debug("{}".format(e))
+    #         except ValueError as e:  # pragma: no cover
+    #             self.log.error(FAULTY_PICKLE_E)
+    #             newkeys.update(
+    #                 {"|".join(["%s" % data.get(uuid).ticket, uuid]): data.get(uuid)}
+    #             )
+    #             self.log.debug("{}".format(e))
+    #     return newkeys
 
     # def retrieve_prize(self) -> typing.OrderedDict[str, Prize]:
     #     """

@@ -33,7 +33,7 @@ class Game:
             A string representation of the Game instance.
 
         """
-        return "Game(game_id=%r, hands=%r)" % (
+        return "Game(game_id=%r, hands=\n  %r)" % (
             self.__game_id,
             self.__hands,
         )
@@ -46,7 +46,7 @@ class Game:
             A string representation of the Game instance.
 
         """
-        return "Game(game_id=%r, hands=\n  %r)" % (
+        return "Game(game_id=%r, hands=%r)" % (
             self.__game_id,
             self.__hands,
         )

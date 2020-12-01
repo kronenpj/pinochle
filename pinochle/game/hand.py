@@ -24,16 +24,16 @@ class Hand:
     """
 
     __bid: int
-    __bid_winner: Player
+    __bid_winner: str
     __hand_id: uuid.UUID
     __hand_seq: int
-    __score: List[int]
+    __score: List[int]  # One score per team
     __teams: List[Team]
     __trump: str
 
     def __init__(self, **kwargs):
-        self.__bid = kwargs.get("bid", int)
-        self.__bid_winner = kwargs.get("bid_winner", Player())
+        self.__bid = kwargs.get("bid", 20)
+        self.__bid_winner = kwargs.get("bid_winner", "NoOne")
         self.__hand_id = kwargs.get("hand_id", uuid.uuid4())
         self.__hand_seq = kwargs.get("hand_id", 0)
         self.__score = kwargs.get("score", [0])
@@ -117,11 +117,11 @@ class Hand:
         self.__bid = temp
 
     @property
-    def bid_winner(self) -> int:
+    def bid_winner(self) -> str:
         return self.__bid_winner
 
     @bid_winner.setter
-    def bid_winner(self, temp: int) -> int:
+    def bid_winner(self, temp: str) -> int:
         self.__bid_winner = temp
 
     @property
