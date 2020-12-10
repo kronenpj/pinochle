@@ -15,10 +15,12 @@ import jsonpickle
 from tornado import escape, ioloop, template, web, websocket
 
 from pinochle import custom_log
-from pinochle.datastore import DataStore
+from pinochle.datastore import DataStore, J_GAMEID, J_HAND, J_HANDS, J_PLAYERS, J_TEAMS
 from pinochle.log_decorator import log_decorator
 
 CHECKED = " checked"
+CONTENT_TYPE = "Content-type"
+CONTENT_JSON = "application/json; charset=UTF-8"
 HAND_UPDATED = "{hand: true}"
 LOGIN = "/login"
 TRICK_UPDATED = "{trick: true}"
@@ -94,32 +96,14 @@ class BaseHandler(web.RequestHandler):
             LOG.debug("User cookie contained '%s'." % user)
             return user
         except AttributeError:
-            # LOG.debug("User cookie didn't exist.")
-            return None  # pragma: no cover
-
-    def get_tempuser_cookie(self) -> typing.Union[str, None]:
-        """
-        Determine if a cookie with the name of 'tempuser' exists and return the contents if it does.
-        :return: None or a str representing the user name retrieved from the cookie.
-        """
-        try:
-            tempuser = self.get_secure_cookie("tempuser").decode()  # type: str
-            tempuser = tempuser.strip("'")
-            LOG.debug("Tempuser cookie contained '{}'.".format(tempuser))
-            return tempuser
-        except AttributeError:
-            LOG.debug("Tempuser cookie didn't exist.")
+            LOG.debug("User cookie didn't exist.")
             return None  # pragma: no cover
 
     def get(self) -> None:
-        self.set_secure_cookie(
-            name="user", value=self.get_user_cookie(), expires_days=COOKIE_LIFETIME_DAYS
-        )
+        self.send_error(status_code=400)
 
     def post(self) -> None:
-        self.set_secure_cookie(
-            name="user", value=self.get_user_cookie(), expires_days=COOKIE_LIFETIME_DAYS
-        )
+        self.send_error(status_code=405)
 
 
 class LogoutHandler(BaseHandler):
@@ -133,6 +117,23 @@ class LogoutHandler(BaseHandler):
 
 
 class LoginHandler(BaseHandler):
+    def get_tempuser_cookie(self) -> typing.Union[str, None]:
+        """
+        Determine if a cookie with the name of 'tempuser' exists and return the contents if it does. This is used during login to hold the username before the
+        password has been verified to be correct.
+        :return: None or a str representing the user name retrieved from the cookie.
+        """
+        try:
+            # tempuser = self.get_cookie("tempuser")  # type: str
+            tempuser = self.get_secure_cookie("tempuser").decode()  # type: str
+            tempuser = tempuser.strip("'")
+            LOG.debug("Tempuser cookie contained '{}'.".format(tempuser))
+            return tempuser
+        except AttributeError:
+            LOG.debug("Tempuser cookie didn't exist.")
+            return None  # pragma: no cover
+
+    @log_decorator
     def get(self) -> None:
         default_user = ""
         if self.get_current_user() is not None:
@@ -152,42 +153,32 @@ class LoginHandler(BaseHandler):
 
 class NewGameH(BaseHandler):
     def get(self) -> None:
-        ds.new_game()
-        json = ds.game_info()
-        self.set_header("Content-Type", "application/json; charset=UTF-8")
+        json = ds.new_game()
+        self.set_header(CONTENT_TYPE, CONTENT_JSON)
         self.write(json)
-
-    def post(self) -> None:
-        self.send_error(status_code=405)
 
 
 class GameDataH(BaseHandler):
     def get(self) -> None:
-        gameid = self.get_query_argument(name="gameid", default=None)
+        gameid = self.get_query_argument(name=J_GAMEID, default=None)
         LOG.error(f"Game ID: {gameid}")
         try:
             json = ds.game_info(gameid)
-            self.set_header("Content-Type", "application/json; charset=UTF-8")
+            self.set_header(CONTENT_TYPE, CONTENT_JSON)
             self.write(json)
         except KeyError as e:
             LOG.error(f"Exception: {e}")
             self.send_error(status_code=405)
-
-    def post(self) -> None:
-        self.send_error(status_code=405)
 
 
 class GamesH(BaseHandler):
     def get(self) -> None:
         try:
             json = ds.game_list()
-            self.set_header("Content-Type", "application/json; charset=UTF-8")
+            self.set_header(CONTENT_TYPE, CONTENT_JSON)
             self.write(json)
         except KeyError:
             self.send_error(status_code=405)
-
-    def post(self) -> None:
-        self.send_error(status_code=405)
 
 
 class PlayerDeckDataH(BaseHandler):
@@ -195,22 +186,16 @@ class PlayerDeckDataH(BaseHandler):
     def get(self) -> None:
         user = self.get_current_user()  # UUID probably works best here.
         json = ds.player_hand_json(user)
-        self.set_header("Content-Type", "application/json; charset=UTF-8")
+        self.set_header(CONTENT_TYPE, CONTENT_JSON)
         self.write(json)
-
-    def post(self) -> None:
-        self.send_error(status_code=405)
 
 
 class TrickDeckDataH(BaseHandler):
     @web.authenticated
     def get(self) -> None:
         json = ds.trick_deck_json()
-        self.set_header("Content-Type", "application/json; charset=UTF-8")
+        self.set_header(CONTENT_TYPE, CONTENT_JSON)
         self.write(json)
-
-    def post(self) -> None:
-        self.send_error(status_code=405)
 
 
 # class NewPrizeHandler(BaseHandler):
