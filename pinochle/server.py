@@ -11,6 +11,7 @@ import os
 import typing
 from collections import OrderedDict
 
+import jsonpickle
 from tornado import escape, ioloop, template, web, websocket
 
 from pinochle import custom_log
@@ -39,7 +40,7 @@ USERNAME_PROMPT_HTML_ = (
 
 MAIN_HTML = "index.html"
 
-LOG = logging.getLogger(__name__)
+LOG = logging.getLogger(__package__)
 if TESTING:  # pragma: no cover
     TALOG = logging.getLogger("tornado.access")  # pragma: no cover
     LOG.error("Setting debug level to DEBUG.")  # pragma: no cover
@@ -72,6 +73,7 @@ class BaseHandler(web.RequestHandler):
     def data_received(self, chunk) -> None:
         pass  # pragma: no cover
 
+    @log_decorator
     def get_current_user(self) -> typing.Union[str, None]:
         """
         Determine if a cookie with the name of 'user' exists and return the contents of user if it does.
@@ -79,15 +81,17 @@ class BaseHandler(web.RequestHandler):
         """
         return self.get_user_cookie()
 
+    @log_decorator
     def get_user_cookie(self) -> typing.Union[str, None]:
         """
         Determine if a cookie with the name of 'user' exists and return the contents if it does.
         :return: None or a str representing the user name retrieved from the cookie.
         """
         try:
+            # user = self.get_cookie("user")  # type: str
             user = self.get_secure_cookie("user").decode()  # type: str
             user = user.strip("'")
-            # LOG.debug("User cookie contained '{}'.".format(user))
+            LOG.debug("User cookie contained '%s'." % user)
             return user
         except AttributeError:
             # LOG.debug("User cookie didn't exist.")
@@ -136,10 +140,12 @@ class LoginHandler(BaseHandler):
             default_user = ' value="{}"'.format(str(self.get_current_user()))
         self.write(USERNAME_PROMPT_HTML_.format(default_user))
 
+    @log_decorator
     def post(self) -> None:
         # LOG.debug("\nName from form: {0}".format(escape.xhtml_escape(self.get_argument('name'))))
+        # self.set_cookie(
         self.set_secure_cookie(
-            name="tempuser", value=escape.xhtml_escape(self.get_argument("name"))
+            name="user", value=escape.xhtml_escape(self.get_argument("name"))
         )
         self.write('<html><meta http-equiv="refresh" content="0;url=/"/></html>')
 
@@ -171,7 +177,7 @@ class GameDataH(BaseHandler):
         self.send_error(status_code=405)
 
 
-class ListGames(BaseHandler):
+class GamesH(BaseHandler):
     def get(self) -> None:
         try:
             json = ds.game_list()
@@ -311,11 +317,11 @@ def make_app() -> web.Application:
             (r"/(.*\.jpg)", web.StaticFileHandler, {"path": "./"}),
             (r"/login", LoginHandler),
             (r"/logout", LogoutHandler),
+            (r"/game", GameDataH),
+            (r"/games", GamesH),
             (r"/newgame", NewGameH),
-            (r"/gamelist", ListGames),
-            (r"/gamedata", GameDataH),
-            (r"/trickdata", TrickDeckDataH),
             (r"/playerdeck", PlayerDeckDataH),
+            (r"/trickdata", TrickDeckDataH),
             (r"/ws", WebSocketHandler),
         ],
         **settings,
