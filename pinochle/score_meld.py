@@ -54,6 +54,7 @@ def _trump_suit(deck: PinochleDeck) -> Union[str, None]:
             return suit
     return None
 
+
 def _nines(deck: PinochleDeck) -> int:
     """
     Score nines in a deck.
