@@ -21,6 +21,11 @@ from pinochle.game.team import Team
 from pinochle.stack import PinochleStack
 
 FAULTY_PICKLE_E = "Encountered faulty pickle data. Continuing."
+J_GAMEID = "game_id"
+J_HANDS = "hands"
+J_HAND = "hand"
+J_PLAYERS = "players"
+J_TEAMS = "teams"
 
 TESTING = False
 if os.getenv("TESTING", "false").strip("'").lower() == "true":  # pragma: no cover
@@ -62,7 +67,7 @@ class DataStore:
         """
         pickle.dump(data, open(self.game_file, "wb"))
 
-    def new_game(self, teams: typing.Optional[typing.List[Team]] = None):
+    def new_game(self, teams: typing.Optional[typing.List[Team]] = None) -> str:
         """
         Setup a team, hands and a game.
         """
@@ -72,6 +77,7 @@ class DataStore:
         n_teams = len(team_names)
         n_players = len(player_names)
         n_kitty = 4
+        # TODO: These need to be created elsewhere and passed in, later.
 
         # Create teams
         z_b_teams = []
@@ -97,6 +103,9 @@ class DataStore:
 
         # Just for fun, add a new hand to the game.
         object_helpers.append_new_hand_to_game(self.__games[self.__current])
+
+        # Return the UUID of the newly created game.
+        return jsonpickle.dumps({J_GAMEID: self.__current})
 
     def populate_teams(self, game_id: typing.Optional[str] = None):
         """
@@ -128,17 +137,17 @@ class DataStore:
 
         # Assemble the subset of information to be displayed
         tempinfo = dict()
-        tempinfo["game_id"] = which_game
-        tempinfo["hands"] = []
+        tempinfo[J_GAMEID] = which_game
+        tempinfo[J_HANDS] = []
         for ihand in self.__games[which_game].hands:
-            tempinfo["hands"].append(dict())
-            tempinfo["hands"][ihand.hand_seq]["hand"] = ihand.hand_seq
-            tempinfo["hands"][ihand.hand_seq]["teams"] = []
-            tempinfo["hands"][ihand.hand_seq]["players"] = []
+            tempinfo[J_HANDS].append(dict())
+            tempinfo[J_HANDS][ihand.hand_seq][J_HAND] = ihand.hand_seq
+            tempinfo[J_HANDS][ihand.hand_seq][J_TEAMS] = []
+            tempinfo[J_HANDS][ihand.hand_seq][J_PLAYERS] = []
             for iteam in ihand.teams:
-                tempinfo["hands"][ihand.hand_seq]["teams"].append(iteam.name)
+                tempinfo[J_HANDS][ihand.hand_seq][J_TEAMS].append(iteam.name)
                 for iplayer in iteam.players:
-                    tempinfo["hands"][ihand.hand_seq]["players"].append(iplayer.name)
+                    tempinfo[J_HANDS][ihand.hand_seq][J_PLAYERS].append(iplayer.name)
 
         output = jsonpickle.dumps(tempinfo)
         LOG.error(f"Data: {output}")
