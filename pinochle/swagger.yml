@@ -1,0 +1,414 @@
+swagger: "2.0"
+info:
+  description: This is the swagger file that goes with our server code
+  version: "1.0.0"
+  title: Pinochle Game
+consumes:
+  - application/json
+produces:
+  - application/json
+
+basePath: /api
+
+# Paths supported by the server application
+paths:
+  /game:
+    get:
+      operationId: pinochle.game.read_all
+      tags:
+        - Games
+      summary: Read the entire set of games, sorted by ID
+      description: Read the entire set of games, sorted by ID
+      responses:
+        200:
+          description: Successfully read game set operation
+          schema:
+            type: array
+            items:
+              properties:
+                _id:
+                  type: integer
+                  description: Index of the game in the database
+                game_id:
+                  type: string
+                  description: UUID of the game
+                team_ids:
+                  type: array
+                  description: List of team IDs participating in the game
+                  items:
+                    properties:
+                      team_id:
+                        type: string
+                        description: Id of a team in this game
+                timestamp:
+                  type: string
+                  description: Create/Update timestamp of the game
+
+    post:
+      operationId: pinochle.game.create
+      tags:
+        - Games
+      summary: Create a game
+      description: Create a new game
+      parameters:
+        - name: teams
+          in: body
+          description: Teams to to play in created game
+          required: True
+          schema:
+            type: array
+            items:
+              properties:
+                team_id:
+                  type: string
+                  description: Id of a team in this game
+
+      responses:
+        201:
+          description: Successfully created game
+          schema:
+            properties:
+              game_id:
+                type: string
+                description: Id of the game
+              timestamp:
+                type: string
+                description: Creation/Update timestamp of the game record
+
+  /game/{game_id}:
+    get:
+      operationId: pinochle.game.read_one
+      tags:
+        - Games
+      summary: Read one game
+      description: Read one game
+      parameters:
+        - name: game_id
+          in: path
+          description: Id of the game to get
+          type: string
+          required: True
+      responses:
+        200:
+          description: Successfully read game from game data operation
+          schema:
+            type: object
+            properties:
+              game_id:
+                type: string
+                description: Id of the game
+              team_ids:
+                type: array
+                description: List of team references
+                items:
+                  properties:
+                    team_id:
+                      type: string
+                      description: Id of a team in this game
+
+    put:
+      operationId: pinochle.game.update
+      tags:
+        - Games
+      summary: Update aspect of game that I'm not thinking of now.
+      description: TODO- Figure out what could go here.
+      parameters:
+        - name: game_id
+          in: path
+          description: Id the game to update
+          type: string
+          required: True
+        - name: team_id
+          in: body
+          schema:
+            type: string
+            properties:
+              team:
+                type: object
+                description: TODO- Replace with something that updates an aspect of the team. An updated team in the game
+      responses:
+        200:
+          description: Successfully updated game
+          schema:
+            properties:
+              game_id:
+                type: string
+                description: Id of the game in the database
+              team_id:
+                type: string
+                description: Id of the new team in the database
+              timestamp:
+                type: string
+                description: Creation/Update timestamp of the game record
+
+    delete:
+      operationId: pinochle.game.delete
+      tags:
+        - Games
+      summary: Delete a game from the game list
+      description: Delete a game
+      parameters:
+        - name: game_id
+          in: path
+          type: string
+          description: Id of the game to delete
+          required: true
+      responses:
+        200:
+          description: Successfully deleted a game
+
+  /team:
+    get:
+      operationId: pinochle.team.read_all
+      tags:
+        - Teams
+      summary: Read the entire set of teams, sorted by timestamp
+      description: Read the entire set of teams, sorted by timestamp
+      responses:
+        200:
+          description: Successfully read teams operation
+          schema:
+            type: array
+            items:
+              properties:
+                team_id:
+                  type: string
+                  description: Id of a team
+                player_id:
+                  type: string
+                  description: Id of a player on the team
+                timestamp:
+                  type: string
+                  description: Create/Update timestamp of the team
+    post:
+      operationId: pinochle.team.create
+      tags:
+        - Teams
+      summary: Create a team identity
+      description: Create a team identity
+      parameters:
+        - name: name
+          in: body
+          description: Name of team
+          type: string
+          required: True
+          schema:
+            name: name
+            type: string
+        - name: player_ids
+          in: body
+          required: True
+          schema:
+            type: array
+            items:
+              properties:
+                player_id:
+                  type: string
+                  description: Id of a player on the team
+      responses:
+        201:
+          description: Successfully created a team
+          schema:
+            properties:
+              team_id:
+                type: string
+                description: Id of the created team
+              timestamp:
+                type: string
+                description: Creation/Update timestamp of the team record
+
+
+  /player:
+    get:
+      operationId: pinochle.player.read_all
+      tags:
+        - Players
+      summary: Read the entire set of players, sorted by timestamp
+      description: Read the entire set of players, sorted by timestamp
+      responses:
+        200:
+          description: Successfully read players operation
+          schema:
+            type: array
+            items:
+              properties:
+                player_id:
+                  type: string
+                  description: Id of a player
+                player_name:
+                  type: string
+                  description: Name of a player on the player
+                timestamp:
+                  type: string
+                  description: Create/Update timestamp of the player
+    post:
+      operationId: pinochle.player.create
+      tags:
+        - Players
+      summary: Create a player identity
+      description: Create a player identity
+      parameters:
+        - name: player
+          in: body
+          description: Name of player
+          required: True
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+                description: Name of player to create
+      responses:
+        201:
+          description: Successfully created a player
+          schema:
+            properties:
+              player_id:
+                type: string
+                description: Id of the created player
+              timestamp:
+                type: string
+                description: Creation/Update timestamp of the game record
+
+
+  /game/{game_id}/hand:
+    post:
+      operationId: pinochle.hand.create
+      tags:
+        - Hands
+      summary: Create a hand associated with a game
+      description: Create a hand associated with a game
+      parameters:
+        - name: game_id
+          in: path
+          description: Id of game associated with hand
+          type: string
+          required: True
+        - name: hand
+          in: body
+          description: Text content of the hand to create
+          required: True
+          schema:
+            type: object
+            properties:
+              content:
+                type: string
+                description: Text of the hand to create
+      responses:
+        201:
+          description: Successfully created a hand
+          schema:
+            properties:
+              game_id:
+                type: string
+                description: Id of the game associated with the hand
+              hand_id:
+                type: string
+                description: Id of the created hand
+              content:
+                type: string
+                description: Text content of the hand
+              timestamp:
+                type: string
+                description: Creation/Update timestamp of the game record
+
+  /game/{game_id}/hand/{hand_id}:
+    get:
+      operationId: pinochle.hand.read_one
+      tags:
+        - Hands
+      summary: Read a particular hand associated with a game
+      description: Read a particular hand associated with a game
+      parameters:
+        - name: game_id
+          in: path
+          description: Id of game associated with hand
+          type: string
+          required: True
+        - name: hand_id
+          in: path
+          description: Id of hand
+          type: string
+          required: True
+      responses:
+        200:
+          description: Successfully read hand for a game
+          schema:
+            type: object
+            properties:
+              hand_id:
+                type: string
+                description: Id of the hand
+              game_id:
+                type: string
+                description: Id of the game hand associated with
+              content:
+                type: string
+                description: Text content of the hand
+              timestamp:
+                type: string
+                description: Creation/Update timestamp of the hand record
+
+    put:
+      operationId: pinochle.hand.update
+      tags:
+        - Hands
+      summary: Update a hand associated with a game
+      description: Update a hand associated with a game
+      parameters:
+        - name: game_id
+          in: path
+          description: Id the game to update
+          type: string
+          required: True
+        - name: hand_id
+          in: path
+          description: Id of the hand associated with a game
+          type: string
+          required: True
+        - name: hand
+          in: body
+          schema:
+            type: object
+            properties:
+              content:
+                type: string
+                description: Text content of the hand to updated
+      responses:
+        200:
+          description: Successfully updated hand
+          schema:
+            properties:
+              hand_id:
+                type: string
+                description: Id of the hand associated with a game
+              game_id:
+                type: string
+                description: Id of the game in the database
+              content:
+                type: string
+                description: Text content of the updated hand
+              timestamp:
+                type: string
+                description: Creation/Update timestamp of the hand record
+
+    delete:
+      operationId: pinochle.hand.delete
+      tags:
+        - Hands
+      summary: Delete a hand associated with a game
+      description: Delete a hand associated with a game
+      parameters:
+        - name: game_id
+          in: path
+          description: Id of game associated with hand
+          type: string
+          required: True
+        - name: hand_id
+          in: path
+          description: Id of hand
+          type: string
+          required: True
+      responses:
+        200:
+          description: Successfully deleted a hand

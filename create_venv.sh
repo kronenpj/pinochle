@@ -8,4 +8,4 @@ fi
 
 /usr/bin/${PY} -m venv venv --clear --prompt pinochle
 source venv/bin/activate
-pip install -r requirements.txt -r requirements-test.txt
+pip install --use-feature=2020-resolver -r requirements.txt -r requirements-test.txt

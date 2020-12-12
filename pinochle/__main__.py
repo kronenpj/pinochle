@@ -1,12 +1,9 @@
 import os
 
-from .server import ioloop, make_app
+from pinochle.server import connex_app
 
-if __name__ == "__main__":  # pragma: no cover
-    if not os.path.exists("server.py") and os.path.exists("pinochle/server.py"):
-        print("Changing current directory to pinochle.")
-        os.chdir("pinochle")
+# If we're running in stand alone mode, run the application
+if __name__ == "__main__":
 
-    APP = make_app()
-    APP.listen(8888)
-    ioloop.IOLoop.current().start()
+    # app.run(host="0.0.0.0", port=5000, debug=True)
+    connex_app.run(host="0.0.0.0", port=5000, debug=True)
