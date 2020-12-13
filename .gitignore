@@ -1,18 +1,17 @@
 *.bak
-ExamTemplate.db
-examtemplates
+.envrc
 *full*
+gitlab-runner-linux-amd64
 .gitmodules
-*.iml
 .idea/
+*.iml
 .mutmut-cache
+pinochle.db
 releases
-*/shuffle_templates.py
 .scannerwork
 sonar-scan
 *.sql
 .vscode/
-gitlab-runner-linux-amd64
 
 # Created by https://www.gitignore.io/api/python
 # Edit at https://www.gitignore.io/?templates=python
