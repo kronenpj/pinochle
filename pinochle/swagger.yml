@@ -157,120 +157,6 @@ paths:
         200:
           description: Successfully deleted a game
 
-  /team:
-    get:
-      operationId: pinochle.team.read_all
-      tags:
-        - Teams
-      summary: Read the entire set of teams, sorted by timestamp
-      description: Read the entire set of teams, sorted by timestamp
-      responses:
-        200:
-          description: Successfully read teams operation
-          schema:
-            type: array
-            items:
-              properties:
-                team_id:
-                  type: string
-                  description: Id of a team
-                player_id:
-                  type: string
-                  description: Id of a player on the team
-                timestamp:
-                  type: string
-                  description: Create/Update timestamp of the team
-    post:
-      operationId: pinochle.team.create
-      tags:
-        - Teams
-      summary: Create a team identity
-      description: Create a team identity
-      parameters:
-        - name: name
-          in: body
-          description: Name of team
-          type: string
-          required: True
-          schema:
-            name: name
-            type: string
-        - name: player_ids
-          in: body
-          required: True
-          schema:
-            type: array
-            items:
-              properties:
-                player_id:
-                  type: string
-                  description: Id of a player on the team
-      responses:
-        201:
-          description: Successfully created a team
-          schema:
-            properties:
-              team_id:
-                type: string
-                description: Id of the created team
-              timestamp:
-                type: string
-                description: Creation/Update timestamp of the team record
-
-
-  /player:
-    get:
-      operationId: pinochle.player.read_all
-      tags:
-        - Players
-      summary: Read the entire set of players, sorted by timestamp
-      description: Read the entire set of players, sorted by timestamp
-      responses:
-        200:
-          description: Successfully read players operation
-          schema:
-            type: array
-            items:
-              properties:
-                player_id:
-                  type: string
-                  description: Id of a player
-                player_name:
-                  type: string
-                  description: Name of a player on the player
-                timestamp:
-                  type: string
-                  description: Create/Update timestamp of the player
-    post:
-      operationId: pinochle.player.create
-      tags:
-        - Players
-      summary: Create a player identity
-      description: Create a player identity
-      parameters:
-        - name: player
-          in: body
-          description: Name of player
-          required: True
-          schema:
-            type: object
-            properties:
-              name:
-                type: string
-                description: Name of player to create
-      responses:
-        201:
-          description: Successfully created a player
-          schema:
-            properties:
-              player_id:
-                type: string
-                description: Id of the created player
-              timestamp:
-                type: string
-                description: Creation/Update timestamp of the game record
-
-
   /game/{game_id}/hand:
     post:
       operationId: pinochle.hand.create
@@ -312,7 +198,7 @@ paths:
                 type: string
                 description: Creation/Update timestamp of the game record
 
-  /game/{game_id}/hand/{hand_id}:
+  /game/{game_id}/{hand_id}:
     get:
       operationId: pinochle.hand.read_one
       tags:
@@ -412,3 +298,279 @@ paths:
       responses:
         200:
           description: Successfully deleted a hand
+
+  /hand:
+    get:
+      operationId: pinochle.hand.read_all
+      tags:
+        - Hands
+      summary: Read the entire set of hands, sorted by timestamp
+      description: Read the entire set of hands, sorted by timestamp
+      responses:
+        200:
+          description: Successfully read hands operation
+          schema:
+            type: array
+            items:
+              properties:
+                hand_id:
+                  type: string
+                  description: Id of a hand
+                hand_seq:
+                  type: integer
+                  description: Sequence number of hand within the game
+                bid:
+                  type: integer
+                  description: High bid
+                bid_winner:
+                  type: string
+                  description: UUID of the bid winner
+                trump:
+                  type: string
+                  description: Trump suit called for this hand
+                timestamp:
+                  type: string
+                  description: Create/Update timestamp of the team
+
+  /team:
+    get:
+      operationId: pinochle.team.read_all
+      tags:
+        - Teams
+      summary: Read the entire set of teams, sorted by timestamp
+      description: Read the entire set of teams, sorted by timestamp
+      responses:
+        200:
+          description: Successfully read teams operation
+          schema:
+            type: array
+            items:
+              properties:
+                team_id:
+                  type: string
+                  description: Id of a team
+                player_id:
+                  type: string
+                  description: Id of a player on the team
+                timestamp:
+                  type: string
+                  description: Create/Update timestamp of the team
+    post:
+      operationId: pinochle.team.create
+      tags:
+        - Teams
+      summary: Create a team identity
+      description: Create a team identity
+      parameters:
+        - name: team
+          in: body
+          required: True
+          schema:
+            properties:
+              name:
+                type: string
+                description: Name of the team to be created
+      responses:
+        201:
+          description: Successfully created a team
+          schema:
+            properties:
+              team_id:
+                type: string
+                description: Id of the created team
+              timestamp:
+                type: string
+                description: Creation/Update timestamp of the team record
+
+  /team/{team_id}:
+    get:
+      operationId: pinochle.teamplayers.read_one
+      tags:
+        - Teams
+      summary: Read the entire set of teams, sorted by timestamp
+      description: Read the entire set of teams, sorted by timestamp
+      parameters:
+        - name: team_id
+          in: path
+          description: Id of team to be retrieved
+          type: string
+          required: True
+      responses:
+        200:
+          description: Successfully read team operation
+          schema:
+            properties:
+              team_id:
+                type: string
+                description: Id of a team
+              player_ids:
+                type: array
+                items:
+                  type: string
+                  description: Id of a player
+
+    post:
+      operationId: pinochle.teamplayers.create
+      tags:
+        - Teams
+      summary: Add a player to a team
+      description: Add a player to a team
+      parameters:
+        - name: team_id
+          in: path
+          description: Id of team to be updated
+          type: string
+          required: True
+        - name: player_id
+          in: body
+          description: Player ID to be added to team
+          required: True
+          schema:
+            properties:
+              player_id:
+                type: string
+                description: Player ID to be added to team
+      responses:
+        201:
+          description: Successfully added player to team
+          schema:
+            properties:
+              team_id:
+                type: string
+                description: Id of the team to which the player was added
+              player_id:
+                type: string
+                description: Id of the player added to the team
+              timestamp:
+                type: string
+                description: Creation/Update timestamp of the game record
+    delete:
+      operationId: pinochle.team.delete
+      tags:
+        - Teams
+      summary: Remove a team
+      description: Remove a team
+      parameters:
+        - name: team_id
+          in: path
+          description: Id of team to be removed
+          type: string
+          required: True
+      responses:
+        200:
+          description: Successfully removed team
+
+  /team/{team_id}/{player_id}:
+    delete:
+      operationId: pinochle.teamplayers.delete
+      tags:
+        - Teams
+      summary: Remove a player from a team
+      description: Remove a player from a team
+      parameters:
+        - name: team_id
+          in: path
+          description: Id of team from which the player is to be removed
+          type: string
+          required: True
+        - name: player_id
+          in: path
+          description: Id of player to be removed
+          type: string
+          required: True
+      responses:
+        200:
+          description: Successfully removed player from team
+
+  /teamplayers:
+    get:
+      operationId: pinochle.teamplayers.read_all
+      tags:
+        - Teams
+      summary: Read the entire set of team players, sorted by team_uuid
+      description: Read the entire set of team players, sorted by team_uuid
+      responses:
+        200:
+          description: Successfully read team operation
+          schema:
+            type: array
+            items:
+              properties:
+                team_id:
+                  type: string
+                  description: Id of a team
+                player_id:
+                  type: string
+                  description: Id of a player
+                timestamp:
+                  type: string
+                  description: Create/Update timestamp of the association of the player with the team
+
+  /player:
+    get:
+      operationId: pinochle.player.read_all
+      tags:
+        - Players
+      summary: Read the entire set of players, sorted by timestamp
+      description: Read the entire set of players, sorted by timestamp
+      responses:
+        200:
+          description: Successfully read players operation
+          schema:
+            type: array
+            items:
+              properties:
+                player_id:
+                  type: string
+                  description: Id of a player
+                player_name:
+                  type: string
+                  description: Name of a player on the player
+                timestamp:
+                  type: string
+                  description: Create/Update timestamp of the player
+    post:
+      operationId: pinochle.player.create
+      tags:
+        - Players
+      summary: Create a player identity
+      description: Create a player identity
+      parameters:
+        - name: player
+          in: body
+          description: Name of player
+          required: True
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+                description: Name of player to create
+      responses:
+        201:
+          description: Successfully created a player
+          schema:
+            properties:
+              player_id:
+                type: string
+                description: Id of the created player
+              timestamp:
+                type: string
+                description: Creation/Update timestamp of the game record
+
+  /player/{player_id}:
+    delete:
+      operationId: pinochle.player.delete
+      tags:
+        - Players
+      summary: Remove a player
+      description: Remove a player
+      parameters:
+        - name: player_id
+          in: path
+          description: Id of player to be removed
+          type: string
+          required: True
+      responses:
+        200:
+          description: Successfully removed player from team

@@ -1,13 +1,12 @@
 """
-This is the people module and supports all the REST actions for the
-people data
+This is the teamplayer module and supports all the REST actions teamplayer data
 """
 
 import sqlalchemy
 from flask import abort, make_response
 
 from pinochle.config import db
-from pinochle.models import Team, TeamSchema
+from pinochle.models import Player, Team, TeamPlayers, TeamPlayersSchema
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member
@@ -22,13 +21,13 @@ def read_all():
     """
     try:
         # Create the list of team from our data
-        teams = Team.query.order_by(Team.name).all()
+        teams = TeamPlayers.query.order_by(TeamPlayers.team_id).all()
     except sqlalchemy.exc.NoForeignKeysError:
         # Otherwise, nope, didn't find any players
-        abort(404, "No Teams defined in database")
+        abort(404, "No TeamPlayers defined in database")
 
     # Serialize the data for the response
-    team_schema = TeamSchema(many=True)
+    team_schema = TeamPlayersSchema(many=True)
     data = team_schema.dump(teams).data
     return data
 
@@ -43,17 +42,19 @@ def read_one(team_id):
     """
     # Build the initial query
     team = (
-        Team.query.filter(Team.team_id == team_id)
+        TeamPlayers.query.filter(TeamPlayers.team_id == team_id)
         # .outerjoin(Hand)
-        .one_or_none()
+        .all()
     )
 
     # Did we find a team?
     if team is not None:
-
         # Serialize the data for the response
-        team_schema = TeamSchema()
-        data = team_schema.dump(team).data
+        data = {"team_id": team[0].team_id}
+        temp = list()
+        for _, t in enumerate(team):
+            temp.append(t.player_id)
+        data["player_ids"] = temp
         return data
 
     # Otherwise, nope, didn't find that team
@@ -61,37 +62,46 @@ def read_one(team_id):
         abort(404, f"Team not found for Id: {team_id}")
 
 
-def create(team):
+def create(team_id, player_id):
     """
     This function creates a new team in the team structure
     based on the passed in team data
 
-    :param team:  team to create in team structure
-    :return:        201 on success, 406 on team exists
+    :param team_id:   team to add player to
+    :param player_id: player to add to team
+    :return:          201 on success, 406 on team doesn't exist
     """
-    name = team.get("name")
+    # Player_id comes as a dict, extract the value.
+    p_id = player_id["player_id"]
 
-    existing_team = Team.query.filter(Team.name == name).one_or_none()
+    existing_team = Team.query.filter(Team.team_id == team_id).one_or_none()
+    existing_player = Player.query.filter(Player.player_id == p_id).one_or_none()
+    player_on_team = TeamPlayers.query.filter(
+        TeamPlayers.team_id == team_id, TeamPlayers.player_id == p_id
+    ).one_or_none()
 
     # Can we insert this team?
     if existing_team is None:
+        abort(409, f"Team {team_id} doesn't already exist.")
+    if existing_player is None:
+        abort(409, f"Player {p_id} doesn't already exist.")
+    if player_on_team is not None:
+        abort(409, f"Player {p_id} is already on Team {team_id}.")
 
-        # Create a team instance using the schema and the passed in team
-        schema = TeamSchema()
-        new_team = schema.load(team, session=db.session).data
+    # Create a team instance using the schema and the passed in team
+    schema = TeamPlayersSchema()
+    new_teamplayer = schema.load(
+        {"team_id": team_id, "player_id": p_id}, session=db.session
+    ).data
 
-        # Add the team to the database
-        db.session.add(new_team)
-        db.session.commit()
+    # Add the team to the database
+    db.session.add(new_teamplayer)
+    db.session.commit()
 
-        # Serialize and return the newly created team in the response
-        data = schema.dump(new_team).data
+    # Serialize and return the newly created team in the response
+    data = schema.dump(new_teamplayer).data
 
-        return data, 201
-
-    # Otherwise, nope, team exists already
-    else:
-        abort(409, f"Team {name} exists already")
+    return data, 201
 
 
 def update(team_id, team):
@@ -103,13 +113,13 @@ def update(team_id, team):
     :return:            updated team structure
     """
     # Get the team requested from the db into session
-    update_team = Team.query.filter(Team.team_id == team_id).one_or_none()
+    update_team = TeamPlayers.query.filter(TeamPlayers.team_id == team_id).one_or_none()
 
     # Did we find an existing team?
     if update_team is not None:
 
         # turn the passed in team into a db object
-        schema = TeamSchema()
+        schema = TeamPlayersSchema()
         update = schema.load(team, session=db.session).data
 
         # Set the id to the team we want to update
@@ -137,7 +147,7 @@ def delete(team_id):
     :return:            200 on successful delete, 404 if not found
     """
     # Get the team requested
-    team = Team.query.filter(Team.team_id == team_id).one_or_none()
+    team = TeamPlayers.query.filter(TeamPlayers.team_id == team_id).one_or_none()
 
     # Did we find a team?
     if team is not None:

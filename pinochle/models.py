@@ -61,53 +61,6 @@ class Game(db.Model):
     timestamp = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
-    # These are serialized lists.
-    teams = db.Column(db.String)
-    hands = db.Column(db.String)
-
-
-class Hand(db.Model):
-    __tablename__ = "hand"
-    _id = db.Column(db.Integer, primary_key=True)
-    hand_id = db.Column(GUID, default=lambda: uuid.uuid4())
-    hand_seq = db.Column(db.Integer, autoincrement=True)
-    content = db.Column(db.String, nullable=False)
-    bid = db.Column(db.Integer, default=20, nullable=False)
-    bid_winner = db.Column(GUID, db.ForeignKey("player.player_id"))
-    score = db.Column(db.Integer, default=0)
-
-    # This is a serialized list.
-    teams = db.Column(db.String)
-
-    trump = db.Column(db.String, default="")
-    timestamp = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
-
-
-class Team(db.Model):
-    __tablename__ = "team"
-    _id = db.Column(db.Integer, primary_key=True)
-    team_id = db.Column(GUID, default=lambda: uuid.uuid4())
-    collection = db.Column(db.String)
-    name = db.Column(db.String(32))
-
-    # This is a serialized list.
-    players = db.Column(db.String)
-
-    score = db.Column(db.Integer, default=0)
-
-
-class Player(db.Model):
-    __tablename__ = "player"
-    _id = db.Column(db.Integer, primary_key=True)
-    player_id = db.Column(GUID, default=lambda: uuid.uuid4())
-    hand = db.Column(db.String(32))
-    name = db.Column(db.String(32))
-    score = db.Column(db.Integer, default=0)
-    timestamp = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
 
 
 class GameSchema(ma.ModelSchema):
@@ -118,9 +71,26 @@ class GameSchema(ma.ModelSchema):
         model = Game
         sqla_session = db.session
 
-    game_id = fields.UUID()
-    hands = fields.List(fields.Nested("HandSchema"))
-    teams = fields.List(fields.Nested("TeamSchema"))
+    _id = fields.Int()
+    game_id = fields.Str()
+    timestamp = fields.DateTime()
+
+
+class Hand(db.Model):
+    __tablename__ = "hand"
+    _id = db.Column(db.Integer, primary_key=True)
+    hand_id = db.Column(GUID, default=lambda: uuid.uuid4())
+    hand_seq = db.Column(db.Integer, autoincrement=True)
+    bid = db.Column(db.Integer, default=20, nullable=False)
+    bid_winner = db.Column(GUID, db.ForeignKey("player.player_id"))
+
+    # This is a serialized list.
+    # content = db.Column(db.String, nullable=False)
+
+    trump = db.Column(db.String, default="")
+    timestamp = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
 
 class HandSchema(ma.ModelSchema):
@@ -132,27 +102,54 @@ class HandSchema(ma.ModelSchema):
         sqla_session = db.session
 
     _id = fields.Int()
-    bid = fields.Int()
-    bid_winner = fields.Nested("PlayerSchema")
-    hand_id = fields.UUID()
+    # hand_id = fields.UUID()
+    hand_id = fields.Str()
     hand_seq = fields.Int()
-    score = fields.Int()
-    # teams = fields.List(fields.Nested("TeamSchema"))
+    bid = fields.Int()
+    # bid_winner = fields.UUID()
+    bid_winner = fields.Str()
     trump = fields.Str()
+    timestamp = fields.DateTime()
 
 
-class PlayerSchema(ma.ModelSchema):
+class HandTeam(db.Model):
+    __tablename__ = "hand_team"
+    _id = db.Column(db.Integer, primary_key=True)
+    hand_id = db.Column(GUID, db.ForeignKey("hand.hand_id"))
+    team_id = db.Column(GUID, db.ForeignKey("team.team_id"))
+    timestamp = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+
+class HandTeamSchema(ma.ModelSchema):
     def __init__(self, **kwargs):
         super().__init__(strict=True, **kwargs)
 
     class Meta:
-        model = Player
+        model = HandTeam
         sqla_session = db.session
 
-    name = fields.Str()
-    player_id = fields.UUID()
-    hand = fields.Str()
-    score = fields.Int()
+    _id = fields.Int()
+    hand_id = fields.Str()
+    team_id = fields.Str()
+    timestamp = fields.DateTime()
+
+
+class Team(db.Model):
+    __tablename__ = "team"
+    _id = db.Column(db.Integer, primary_key=True)
+    team_id = db.Column(GUID, default=lambda: uuid.uuid4())
+    name = db.Column(db.String(32))
+
+    # These are serialized list.
+    # hands = db.Column(db.String)
+    # players = db.Column(db.String)
+
+    score = db.Column(db.Integer, default=0)
+    timestamp = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
 
 class TeamSchema(ma.ModelSchema):
@@ -163,7 +160,60 @@ class TeamSchema(ma.ModelSchema):
         model = Team
         sqla_session = db.session
 
+    _id = fields.Int()
+    team_id = fields.Str()
     name = fields.Str()
-    player_id = fields.List(fields.UUID())
-    hand = fields.List(fields.Str())
     score = fields.Int()
+    timestamp = fields.DateTime()
+
+
+class TeamPlayers(db.Model):
+    __tablename__ = "team_players"
+    _id = db.Column(db.Integer, primary_key=True)
+    team_id = db.Column(GUID, db.ForeignKey("team.team_id"))
+    player_id = db.Column(GUID, db.ForeignKey("player.player_id"))
+    timestamp = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+
+class TeamPlayersSchema(ma.ModelSchema):
+    def __init__(self, **kwargs):
+        super().__init__(strict=True, **kwargs)
+
+    class Meta:
+        model = TeamPlayers
+        sqla_session = db.session
+
+    _id = fields.Int()
+    team_id = fields.Str()
+    player_id = fields.Str()
+    timestamp = fields.DateTime()
+
+
+class Player(db.Model):
+    __tablename__ = "player"
+    _id = db.Column(db.Integer, primary_key=True)
+    player_id = db.Column(GUID, default=lambda: uuid.uuid4())
+    name = db.Column(db.String(32))
+    hand = db.Column(db.String(32))
+    score = db.Column(db.Integer, default=0)
+    timestamp = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+
+class PlayerSchema(ma.ModelSchema):
+    def __init__(self, **kwargs):
+        super().__init__(strict=True, **kwargs)
+
+    class Meta:
+        model = Player
+        sqla_session = db.session
+
+    _id = fields.Int()
+    name = fields.Str()
+    player_id = fields.UUID()
+    hand = fields.Str()
+    score = fields.Int()
+    timestamp = fields.DateTime()

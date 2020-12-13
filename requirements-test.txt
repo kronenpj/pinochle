@@ -4,6 +4,7 @@ mutmut>=2.0.0
 pylint
 pytest>=6.0.1
 pytest-cov>=2.10.0
+pytest-flask>=1.1.0
 rope>=0.18.0
 tox>=3.18.1
 # I'm torn about using these.
