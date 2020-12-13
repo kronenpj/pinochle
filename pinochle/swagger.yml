@@ -50,19 +50,6 @@ paths:
         - Games
       summary: Create a game
       description: Create a new game
-      parameters:
-        - name: teams
-          in: body
-          description: Teams to to play in created game
-          required: True
-          schema:
-            type: array
-            items:
-              properties:
-                team_id:
-                  type: string
-                  description: Id of a team in this game
-
       responses:
         201:
           description: Successfully created game
@@ -157,168 +144,165 @@ paths:
         200:
           description: Successfully deleted a game
 
-  /game/{game_id}/hand:
+  /game/{game_id}/round:
     post:
-      operationId: pinochle.hand.create
+      operationId: pinochle.round.create
       tags:
-        - Hands
-      summary: Create a hand associated with a game
-      description: Create a hand associated with a game
+        - Games
+      summary: Create a round associated with a game
+      description: Create a round associated with a game
       parameters:
         - name: game_id
           in: path
-          description: Id of game associated with hand
+          description: Id of game associated with round
           type: string
           required: True
-        - name: hand
+        - name: round
           in: body
-          description: Text content of the hand to create
+          description: Text content of the round to create
           required: True
           schema:
             type: object
             properties:
               content:
                 type: string
-                description: Text of the hand to create
+                description: Text of the round to create
       responses:
         201:
-          description: Successfully created a hand
+          description: Successfully created a round
           schema:
             properties:
               game_id:
                 type: string
-                description: Id of the game associated with the hand
-              hand_id:
+                description: Id of the game associated with the round
+              round_id:
                 type: string
-                description: Id of the created hand
+                description: Id of the created round
               content:
                 type: string
-                description: Text content of the hand
+                description: Text content of the round
               timestamp:
                 type: string
                 description: Creation/Update timestamp of the game record
 
-  /game/{game_id}/{hand_id}:
+  /game/{game_id}/{round_id}:
     get:
-      operationId: pinochle.hand.read_one
+      operationId: pinochle.round.read_one
       tags:
-        - Hands
-      summary: Read a particular hand associated with a game
-      description: Read a particular hand associated with a game
+        - Games
+      summary: Read a particular round associated with a game
+      description: Read a particular round associated with a game
       parameters:
         - name: game_id
           in: path
-          description: Id of game associated with hand
+          description: Id of game associated with round
           type: string
           required: True
-        - name: hand_id
+        - name: round_id
           in: path
-          description: Id of hand
+          description: Id of round
           type: string
           required: True
       responses:
         200:
-          description: Successfully read hand for a game
+          description: Successfully read round for a game
           schema:
             type: object
             properties:
-              hand_id:
+              round_id:
                 type: string
-                description: Id of the hand
+                description: Id of the round
               game_id:
                 type: string
-                description: Id of the game hand associated with
-              content:
-                type: string
-                description: Text content of the hand
+                description: Id of the game round associated with
               timestamp:
                 type: string
-                description: Creation/Update timestamp of the hand record
+                description: Creation/Update timestamp of the round record
 
     put:
-      operationId: pinochle.hand.update
+      operationId: pinochle.round.update
       tags:
-        - Hands
-      summary: Update a hand associated with a game
-      description: Update a hand associated with a game
+        - Games
+      summary: Update a round associated with a game
+      description: Update a round associated with a game
       parameters:
         - name: game_id
           in: path
           description: Id the game to update
           type: string
           required: True
-        - name: hand_id
+        - name: round_id
           in: path
-          description: Id of the hand associated with a game
+          description: Id of the round associated with a game
           type: string
           required: True
-        - name: hand
+        - name: a_round
           in: body
           schema:
             type: object
             properties:
               content:
                 type: string
-                description: Text content of the hand to updated
+                description: Text content of the round to updated
       responses:
         200:
-          description: Successfully updated hand
+          description: Successfully updated round
           schema:
             properties:
-              hand_id:
+              round_id:
                 type: string
-                description: Id of the hand associated with a game
+                description: Id of the round associated with a game
               game_id:
                 type: string
                 description: Id of the game in the database
               content:
                 type: string
-                description: Text content of the updated hand
+                description: Text content of the updated round
               timestamp:
                 type: string
-                description: Creation/Update timestamp of the hand record
+                description: Creation/Update timestamp of the round record
 
     delete:
-      operationId: pinochle.hand.delete
+      operationId: pinochle.round.delete
       tags:
-        - Hands
-      summary: Delete a hand associated with a game
-      description: Delete a hand associated with a game
+        - Games
+      summary: Delete a round associated with a game
+      description: Delete a round associated with a game
       parameters:
         - name: game_id
           in: path
-          description: Id of game associated with hand
+          description: Id of game associated with round
           type: string
           required: True
-        - name: hand_id
+        - name: round_id
           in: path
-          description: Id of hand
+          description: Id of round
           type: string
           required: True
       responses:
         200:
-          description: Successfully deleted a hand
+          description: Successfully deleted a round
 
-  /hand:
+  /round:
     get:
-      operationId: pinochle.hand.read_all
+      operationId: pinochle.round.read_all
       tags:
-        - Hands
-      summary: Read the entire set of hands, sorted by timestamp
-      description: Read the entire set of hands, sorted by timestamp
+        - Rounds
+      summary: Read the entire set of rounds, sorted by timestamp
+      description: Read the entire set of rounds, sorted by timestamp
       responses:
         200:
-          description: Successfully read hands operation
+          description: Successfully read rounds operation
           schema:
             type: array
             items:
               properties:
-                hand_id:
+                round_id:
                   type: string
-                  description: Id of a hand
-                hand_seq:
+                  description: Id of a round
+                round_seq:
                   type: integer
-                  description: Sequence number of hand within the game
+                  description: Sequence number of round within the game
                 bid:
                   type: integer
                   description: High bid
@@ -327,10 +311,116 @@ paths:
                   description: UUID of the bid winner
                 trump:
                   type: string
-                  description: Trump suit called for this hand
+                  description: Trump suit called for this round
                 timestamp:
                   type: string
                   description: Create/Update timestamp of the team
+
+  /round/{round_id}:
+    get:
+      operationId: pinochle.roundteams.read_one
+      tags:
+        - Rounds
+      summary: Read teams associated with a round
+      description: Read teams associated with a round
+      parameters:
+        - name: round_id
+          in: path
+          description: Id of round
+          type: string
+          required: True
+      responses:
+        200:
+          description: Successfully read teams for round
+          schema:
+            type: object
+            properties:
+              round_id:
+                type: string
+                description: Id of the round
+              team_ids:
+                type: array
+                description: Id of the game round associated with
+              timestamp:
+                type: string
+                description: Creation/Update timestamp of the round record
+
+    post:
+      operationId: pinochle.roundteams.create
+      tags:
+        - Rounds
+      summary: Associate a round with teams
+      description: Associate a round with teams
+      parameters:
+        - name: round_id
+          in: path
+          description: Id of round
+          type: string
+          required: True
+        - name: teams
+          in: body
+          description: Text content of the teams to associate with the round
+          required: True
+          schema:
+            type: object
+            properties:
+              content:
+                type: string
+                description: Team IDs to associate with the round
+      responses:
+        201:
+          description: Successfully created a round
+          schema:
+            properties:
+              round_id:
+                type: string
+                description: Id of the created round
+              team_ids:
+                type: array
+                description: Ids of the game associated with the round
+              timestamp:
+                type: string
+                description: Creation/Update timestamp of the game record
+
+    put:
+      operationId: pinochle.roundteams.update
+      tags:
+        - Rounds
+      summary: Update teams associated with a round
+      description: Update teams associated with a round
+      parameters:
+        - name: round_id
+          in: path
+          description: Id of round
+          type: string
+          required: True
+        - name: teams
+          in: body
+          description: Text content of the teams to update round with
+          required: True
+          schema:
+            type: object
+            properties:
+              content:
+                type: string
+                description: Team IDs to associate with the round
+      responses:
+        201:
+          description: Successfully updated a round-team association
+          schema:
+            properties:
+              round_id:
+                type: string
+                description: Id of the updated round
+              team_ids:
+                type: array
+                properties:
+                  content:
+                    type: string
+                    description: Team IDs to associate with the round
+              timestamp:
+                type: string
+                description: Creation/Update timestamp of the round-team record
 
   /team:
     get:

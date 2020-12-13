@@ -69,9 +69,9 @@ def create(team):
     :param team:  team to create in team structure
     :return:        201 on success, 406 on team exists
     """
-    name = team.get("name")
-
-    existing_team = Team.query.filter(Team.name == name).one_or_none()
+    # name = team.get("name")
+    # existing_team = Team.query.filter(Team.name == name).one_or_none()
+    existing_team = None
 
     # Can we insert this team?
     if existing_team is None:

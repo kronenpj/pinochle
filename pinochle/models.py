@@ -57,10 +57,21 @@ class Game(db.Model):
     __tablename__ = "game"
     _id = db.Column(db.Integer, primary_key=True)
     # NOTE: Without lambda: the uuid.uuid4() function is invoked once, upon class instantiation.
-    game_id = db.Column(GUID, default=lambda: uuid.uuid4())
+    game_id = db.Column(
+        GUID,
+        default=lambda: uuid.uuid4(),
+        primary_key=True,
+        nullable=False,
+        index=True,
+        unique=True,
+    )
     timestamp = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
+
+    def __repr__(self):
+        output = "<Game %r>" % self.game_id
+        return output
 
 
 class GameSchema(ma.ModelSchema):
@@ -72,39 +83,95 @@ class GameSchema(ma.ModelSchema):
         sqla_session = db.session
 
     _id = fields.Int()
+    # game_id = fields.UUID()
     game_id = fields.Str()
     timestamp = fields.DateTime()
 
 
-class Hand(db.Model):
-    __tablename__ = "hand"
+class GameRound(db.Model):
+    __tablename__ = "game_round"
     _id = db.Column(db.Integer, primary_key=True)
-    hand_id = db.Column(GUID, default=lambda: uuid.uuid4())
-    hand_seq = db.Column(db.Integer, autoincrement=True)
+    game_id = db.Column(
+        GUID,
+        db.ForeignKey("game.game_id"),
+        primary_key=True,
+        nullable=False,
+        index=True,
+    )
+    round_id = db.Column(
+        GUID,
+        db.ForeignKey("round.round_id"),
+        primary_key=True,
+        nullable=False,
+        index=True,
+    )
+    timestamp = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    def __repr__(self):
+        output = "<GameRound: "
+        output += "Game %r, " % self.game_id
+        output += "Round %r, " % self.round_id
+        return output
+
+
+class GameRoundSchema(ma.ModelSchema):
+    def __init__(self, **kwargs):
+        super().__init__(strict=True, **kwargs)
+
+    class Meta:
+        model = GameRound
+        sqla_session = db.session
+
+    _id = fields.Int()
+    # game_id = fields.UUID()
+    game_id = fields.Str()
+    # round_id = fields.UUID()
+    round_id = fields.Str()
+    timestamp = fields.DateTime()
+
+
+class Round(db.Model):
+    __tablename__ = "round"
+    _id = db.Column(db.Integer, primary_key=True)
+    round_id = db.Column(
+        GUID,
+        default=lambda: uuid.uuid4(),
+        primary_key=True,
+        nullable=False,
+        index=True,
+        unique=True,
+    )
+    round_seq = db.Column(db.Integer)
     bid = db.Column(db.Integer, default=20, nullable=False)
     bid_winner = db.Column(GUID, db.ForeignKey("player.player_id"))
-
-    # This is a serialized list.
-    # content = db.Column(db.String, nullable=False)
-
     trump = db.Column(db.String, default="")
     timestamp = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
+    def __repr__(self):
+        output = "<Round %r, " % self.round_id
+        output += "Seq %r, " % self.round_seq
+        output += "Bid %r, " % self.bid
+        output += "Winner %r, " % self.bid_winner
+        output += "Trump %r>" % self.trump
+        return output
 
-class HandSchema(ma.ModelSchema):
+
+class RoundSchema(ma.ModelSchema):
     def __init__(self, **kwargs):
         super().__init__(strict=True, **kwargs)
 
     class Meta:
-        model = Hand
+        model = Round
         sqla_session = db.session
 
     _id = fields.Int()
-    # hand_id = fields.UUID()
-    hand_id = fields.Str()
-    hand_seq = fields.Int()
+    # round_id = fields.UUID()
+    round_id = fields.Str()
+    round_seq = fields.Int()
     bid = fields.Int()
     # bid_winner = fields.UUID()
     bid_winner = fields.Str()
@@ -112,26 +179,46 @@ class HandSchema(ma.ModelSchema):
     timestamp = fields.DateTime()
 
 
-class HandTeam(db.Model):
-    __tablename__ = "hand_team"
+class RoundTeam(db.Model):
+    __tablename__ = "round_team"
     _id = db.Column(db.Integer, primary_key=True)
-    hand_id = db.Column(GUID, db.ForeignKey("hand.hand_id"))
-    team_id = db.Column(GUID, db.ForeignKey("team.team_id"))
+    round_id = db.Column(
+        GUID,
+        db.ForeignKey("round.round_id"),
+        primary_key=True,
+        nullable=False,
+        index=True,
+    )
+    team_id = db.Column(
+        GUID,
+        db.ForeignKey("team.team_id"),
+        primary_key=True,
+        nullable=False,
+        index=True,
+    )
     timestamp = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
+    def __repr__(self):
+        output = "<RoundTeam: "
+        output += "Round %r, " % self.round_id
+        output += "Team %r, " % self.team_id
+        return output
 
-class HandTeamSchema(ma.ModelSchema):
+
+class RoundTeamSchema(ma.ModelSchema):
     def __init__(self, **kwargs):
         super().__init__(strict=True, **kwargs)
 
     class Meta:
-        model = HandTeam
+        model = RoundTeam
         sqla_session = db.session
 
     _id = fields.Int()
-    hand_id = fields.Str()
+    # round_id = fields.UUID()
+    round_id = fields.Str()
+    # team_id = fields.UUID()
     team_id = fields.Str()
     timestamp = fields.DateTime()
 
@@ -139,17 +226,25 @@ class HandTeamSchema(ma.ModelSchema):
 class Team(db.Model):
     __tablename__ = "team"
     _id = db.Column(db.Integer, primary_key=True)
-    team_id = db.Column(GUID, default=lambda: uuid.uuid4())
-    name = db.Column(db.String(32))
-
-    # These are serialized list.
-    # hands = db.Column(db.String)
-    # players = db.Column(db.String)
-
+    team_id = db.Column(
+        GUID,
+        default=lambda: uuid.uuid4(),
+        primary_key=True,
+        nullable=False,
+        index=True,
+        unique=True,
+    )
+    name = db.Column(db.String)
     score = db.Column(db.Integer, default=0)
     timestamp = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
+
+    def __repr__(self):
+        output = "<Team %r, " % self.team_id
+        output += "Name %r, " % self.name
+        output += "Score %r, " % self.score
+        return output
 
 
 class TeamSchema(ma.ModelSchema):
@@ -161,6 +256,7 @@ class TeamSchema(ma.ModelSchema):
         sqla_session = db.session
 
     _id = fields.Int()
+    # team_id = fields.UUID()
     team_id = fields.Str()
     name = fields.Str()
     score = fields.Int()
@@ -170,11 +266,29 @@ class TeamSchema(ma.ModelSchema):
 class TeamPlayers(db.Model):
     __tablename__ = "team_players"
     _id = db.Column(db.Integer, primary_key=True)
-    team_id = db.Column(GUID, db.ForeignKey("team.team_id"))
-    player_id = db.Column(GUID, db.ForeignKey("player.player_id"))
+    team_id = db.Column(
+        GUID,
+        db.ForeignKey("team.team_id"),
+        primary_key=True,
+        nullable=False,
+        index=True,
+    )
+    player_id = db.Column(
+        GUID,
+        db.ForeignKey("player.player_id"),
+        primary_key=True,
+        nullable=False,
+        index=True,
+    )
     timestamp = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
+
+    def __repr__(self):
+        output = "<TeamPlayers: "
+        output += "Team %r, " % self.team_id
+        output += "Player %r, " % self.player_id
+        return output
 
 
 class TeamPlayersSchema(ma.ModelSchema):
@@ -186,7 +300,9 @@ class TeamPlayersSchema(ma.ModelSchema):
         sqla_session = db.session
 
     _id = fields.Int()
+    # team_id = fields.UUID()
     team_id = fields.Str()
+    # player_id = fields.UUID()
     player_id = fields.Str()
     timestamp = fields.DateTime()
 
@@ -194,13 +310,27 @@ class TeamPlayersSchema(ma.ModelSchema):
 class Player(db.Model):
     __tablename__ = "player"
     _id = db.Column(db.Integer, primary_key=True)
-    player_id = db.Column(GUID, default=lambda: uuid.uuid4())
-    name = db.Column(db.String(32))
-    hand = db.Column(db.String(32))
+    player_id = db.Column(
+        GUID,
+        default=lambda: uuid.uuid4(),
+        primary_key=True,
+        nullable=False,
+        index=True,
+        unique=True,
+    )
+    name = db.Column(db.String)
+    hand = db.Column(db.String)
     score = db.Column(db.Integer, default=0)
     timestamp = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
+
+    def __repr__(self):
+        output = "<Player %r, " % self.player_id
+        output += "Name %r, " % self.name
+        output += "Hand %r, " % self.hand
+        output += "Score %r, " % self.score
+        return output
 
 
 class PlayerSchema(ma.ModelSchema):
@@ -213,7 +343,8 @@ class PlayerSchema(ma.ModelSchema):
 
     _id = fields.Int()
     name = fields.Str()
-    player_id = fields.UUID()
+    # player_id = fields.UUID()
+    player_id = fields.Str()
     hand = fields.Str()
     score = fields.Int()
     timestamp = fields.DateTime()

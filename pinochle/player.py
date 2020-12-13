@@ -68,9 +68,9 @@ def create(player):
     :param player:  player to create in player structure
     :return:        201 on success, 406 on player exists
     """
-    name = player.get("name")
-
-    existing_player = Player.query.filter(Player.name == name).one_or_none()
+    # name = player.get("name")
+    # existing_player = Player.query.filter(Player.name == name).one_or_none()
+    existing_player = None
 
     # Can we insert this player?
     if existing_player is None:
@@ -78,7 +78,6 @@ def create(player):
         # Create a player instance using the schema and the passed in player
         schema = PlayerSchema()
         new_player = schema.load(player, session=db.session).data
-        # new_player = schema.load(player).data
 
         # Add the player to the database
         db.session.add(new_player)

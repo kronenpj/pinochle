@@ -6,7 +6,7 @@ gitlab-runner-linux-amd64
 .idea/
 *.iml
 .mutmut-cache
-pinochle.db
+*/pinochle.db
 releases
 .scannerwork
 sonar-scan
