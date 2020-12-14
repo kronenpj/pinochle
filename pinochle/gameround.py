@@ -39,29 +39,29 @@ def read_all():
     return data
 
 
-def read_one(game_id):
+def read_one(game_id, round_id):
     """
-    This function responds to a request for /api/round/{game_id}
+    This function responds to a request for /api/game/{game_id}/{round_id}
     with one matching round from round
 
-    :param game_id:   Id of round to find
+    :param game_id:     Id of round to find
+    :param round_id:    Id of round to find
     :return:            round matching id
     """
     # Build the initial query
     a_round = (
-        GameRound.query.filter(GameRound.game_id == game_id)
+        GameRound.query.filter(
+            GameRound.game_id == game_id, GameRound.round_id == round_id
+        )
         # .outerjoin(Hand)
-        .all()
+        .one_or_none()
     )
 
     # Did we find a round?
     if a_round is not None:
         # Serialize the data for the response
-        data = {"game_id": a_round[0].game_id}
-        temp = list()
-        for _, t in enumerate(a_round):
-            temp.append(t.round_id)
-        data["round_ids"] = temp
+        game_schema = GameRoundSchema()
+        data = game_schema.dump(a_round).data
         return data
 
     # Otherwise, nope, didn't find any rounds

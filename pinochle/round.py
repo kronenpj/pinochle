@@ -7,7 +7,7 @@ import sqlalchemy
 from flask import abort, make_response
 
 from pinochle.config import db
-from pinochle.models import Round, RoundSchema
+from pinochle.models import Game, Round, RoundSchema, GameRoundSchema
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member
@@ -22,7 +22,7 @@ def read_all():
     """
     try:
         # Create the list of round from our data
-        rounds = Round.query.order_by(Round.name).all()
+        rounds = Round.query.order_by(Round.timestamp).all()
     except sqlalchemy.exc.NoForeignKeysError:
         # Otherwise, nope, didn't find any players
         abort(404, "No Rounds defined in database")
@@ -61,27 +61,42 @@ def read_one(round_id):
         abort(404, f"Round not found for Id: {round_id}")
 
 
-def create(a_round):
+def create(game_id):
     """
     This function creates a new round in the round structure
-    based on the passed in round data
+    using the passed in game ID
 
-    :param round:  round to create in round structure
-    :return:        201 on success, 406 on round exists
+    :param game_id:  Game ID to attach the new round
+    :return:         201 on success, 406 on round exists
     """
+    # Get the round requested from the db into session
+    existing_game = Game.query.filter(Game.game_id == game_id).one_or_none()
 
-    # Create a round instance using the schema and the passed in round
-    schema = RoundSchema()
-    new_round = schema.load(a_round, session=db.session).data
+    # Did we find an existing round?
+    if existing_game is not None:
+        # Create a round instance using the schema and the passed in round
+        schema = RoundSchema()
+        new_round = schema.load({}, session=db.session).data
 
-    # Add the round to the database
-    db.session.add(new_round)
-    db.session.commit()
+        # Add the round to the database
+        db.session.add(new_round)
+        db.session.commit()
 
-    # Serialize and return the newly created round in the response
-    data = schema.dump(new_round).data
+        # Serialize and return the newly created round in the response
+        data = schema.dump(new_round).data
 
-    return data, 201
+        # Also insert a record into the game_round table
+        gr_schema = GameRoundSchema()
+        gr_update = gr_schema.load(data, session=db.session).data
+
+        # Set the id to the round we want to update
+        gr_update.game_id = game_id
+
+        # merge the new object into the old and commit it to the db
+        db.session.merge(gr_update)
+        db.session.commit()
+
+        return data, 201
 
 
 def update(round_id, a_round):

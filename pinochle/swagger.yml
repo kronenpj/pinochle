@@ -26,9 +26,6 @@ paths:
             type: array
             items:
               properties:
-                _id:
-                  type: integer
-                  description: Index of the game in the database
                 game_id:
                   type: string
                   description: UUID of the game
@@ -157,16 +154,6 @@ paths:
           description: Id of game associated with round
           type: string
           required: True
-        - name: round
-          in: body
-          description: Text content of the round to create
-          required: True
-          schema:
-            type: object
-            properties:
-              content:
-                type: string
-                description: Text of the round to create
       responses:
         201:
           description: Successfully created a round
@@ -187,7 +174,7 @@ paths:
 
   /game/{game_id}/{round_id}:
     get:
-      operationId: pinochle.round.read_one
+      operationId: pinochle.gameround.read_one
       tags:
         - Games
       summary: Read a particular round associated with a game
@@ -362,14 +349,13 @@ paths:
           description: Text content of the teams to associate with the round
           required: True
           schema:
-            type: object
-            properties:
-              content:
-                type: string
-                description: Team IDs to associate with the round
+            type: array
+            items:
+              type: string
+            example: ["team_id1", "team_id2", "team_id3"]
       responses:
         201:
-          description: Successfully created a round
+          description: Successfully created a round-team association
           schema:
             properties:
               round_id:
@@ -445,6 +431,7 @@ paths:
                 timestamp:
                   type: string
                   description: Create/Update timestamp of the team
+
     post:
       operationId: pinochle.team.create
       tags:

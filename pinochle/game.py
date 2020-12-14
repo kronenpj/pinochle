@@ -22,7 +22,7 @@ def read_all():
     """
     try:
         # Create the list of game from our data
-        games = Game.query.order_by(Game._id).all()
+        games = Game.query.order_by(Game.timestamp).all()
     except sqlalchemy.exc.NoForeignKeysError:
         # Otherwise, nope, didn't find any players
         abort(404, "No Games defined in database")
@@ -61,37 +61,25 @@ def read_one(game_id):
         abort(404, f"Game not found for Id: {game_id}")
 
 
-def create(game):
+def create():
     """
     This function creates a new game in the game structure
-    based on the passed in game data
 
-    :param game:  game to create in game structure
     :return:        201 on success, 406 on game exists
     """
-    name = game.get("name")
 
-    existing_game = Game.query.filter(Game.name == name).one_or_none()
+    # Create a game instance using the schema and the passed in game
+    schema = GameSchema()
+    new_game = schema.load({}, session=db.session).data
 
-    # Can we insert this game?
-    if existing_game is None:
+    # Add the game to the database
+    db.session.add(new_game)
+    db.session.commit()
 
-        # Create a game instance using the schema and the passed in game
-        schema = GameSchema()
-        new_game = schema.load(game, session=db.session).data
+    # Serialize and return the newly created game in the response
+    data = schema.dump(new_game).data
 
-        # Add the game to the database
-        db.session.add(new_game)
-        db.session.commit()
-
-        # Serialize and return the newly created game in the response
-        data = schema.dump(new_game).data
-
-        return data, 201
-
-    # Otherwise, nope, game exists already
-    else:
-        abort(409, f"Game {name} exists already")
+    return data, 201
 
 
 def update(game_id, game):

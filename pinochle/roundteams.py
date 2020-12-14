@@ -6,14 +6,7 @@ import sqlalchemy
 from flask import abort, make_response
 
 from pinochle.config import db
-from pinochle.models import (
-    Round,
-    RoundSchema,
-    RoundTeam,
-    RoundTeamSchema,
-    Team,
-    TeamSchema,
-)
+from pinochle.models import Round, RoundTeam, RoundTeamSchema, Team
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member
@@ -21,27 +14,27 @@ from pinochle.models import (
 
 def read_all():
     """
-    This function responds to a request for /api/gameround
+    This function responds to a request for /api/RoundTeam
     with the complete lists of game rounds
 
     :return:        json string of list of game rounds
     """
     try:
         # Create the list of game-rounds from our data
-        games = GameRound.query.order_by(GameRound.timestamp).all()
+        games = RoundTeam.query.order_by(RoundTeam.timestamp).all()
     except sqlalchemy.exc.NoForeignKeysError:
         # Otherwise, nope, didn't find any game rounds
         abort(404, "No Rounds defined in database for any game")
 
     # Serialize the data for the response
-    game_schema = GameRoundSchema(many=True)
+    game_schema = RoundTeamSchema(many=True)
     data = game_schema.dump(games).data
     return data
 
 
-def read_one(game_id):
+def read_one(round_id):
     """
-    This function responds to a request for /api/round/{game_id}
+    This function responds to a request for /api/round/{round_id}
     with one matching round from round
 
     :param game_id:   Id of round to find
@@ -49,7 +42,7 @@ def read_one(game_id):
     """
     # Build the initial query
     a_round = (
-        GameRound.query.filter(GameRound.game_id == game_id)
+        RoundTeam.query.filter(RoundTeam.round_id == round_id)
         # .outerjoin(Hand)
         .all()
     )
@@ -57,16 +50,16 @@ def read_one(game_id):
     # Did we find a round?
     if a_round is not None:
         # Serialize the data for the response
-        data = {"game_id": a_round[0].game_id}
+        data = {"round_id": round_id}
         temp = list()
         for _, t in enumerate(a_round):
-            temp.append(t.round_id)
-        data["round_ids"] = temp
+            temp.append(t.team_id)
+        data["team_ids"] = temp
         return data
 
     # Otherwise, nope, didn't find any rounds
     else:
-        abort(404, f"No rounds found for game {game_id}")
+        abort(404, f"No rounds found ID {round_id}")
 
 
 def create(round_id, teams):
@@ -104,10 +97,12 @@ def create(round_id, teams):
 
         # Add the round to the database
         db.session.add(new_roundteam)
+
     db.session.commit()
 
     # Serialize and return the newly created round in the response
     data = schema.dump(new_roundteam).data
+    # NOTE: This only returns the last team supplied, not the entire list.
 
     return data, 201
 
@@ -121,15 +116,15 @@ def update(game_id, round_id):
     :return:            updated round structure
     """
     # Get the round requested from the db into session
-    update_round = GameRound.query.filter(
-        GameRound.game_id == game_id, GameRound.round_id == round_id
+    update_round = RoundTeam.query.filter(
+        RoundTeam.game_id == game_id, RoundTeam.round_id == round_id
     ).one_or_none()
 
     # Did we find an existing round?
     if update_round is not None:
 
         # turn the passed in round into a db object
-        schema = GameRoundSchema()
+        schema = RoundTeamSchema()
         update = schema.load(round_id, session=db.session).data
 
         # Set the id to the round we want to update
@@ -157,7 +152,7 @@ def delete(game_id):
     :return:            200 on successful delete, 404 if not found
     """
     # Get the round requested
-    a_round = GameRound.query.filter(GameRound.game_id == game_id).one_or_none()
+    a_round = RoundTeam.query.filter(RoundTeam.game_id == game_id).one_or_none()
 
     # Did we find a round?
     if a_round is not None:

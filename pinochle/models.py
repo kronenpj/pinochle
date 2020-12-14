@@ -55,7 +55,6 @@ class GUID(TypeDecorator):
 
 class Game(db.Model):
     __tablename__ = "game"
-    _id = db.Column(db.Integer, primary_key=True)
     # NOTE: Without lambda: the uuid.uuid4() function is invoked once, upon class instantiation.
     game_id = db.Column(
         GUID,
@@ -82,7 +81,6 @@ class GameSchema(ma.ModelSchema):
         model = Game
         sqla_session = db.session
 
-    _id = fields.Int()
     # game_id = fields.UUID()
     game_id = fields.Str()
     timestamp = fields.DateTime()
@@ -90,7 +88,6 @@ class GameSchema(ma.ModelSchema):
 
 class GameRound(db.Model):
     __tablename__ = "game_round"
-    _id = db.Column(db.Integer, primary_key=True)
     game_id = db.Column(
         GUID,
         db.ForeignKey("game.game_id"),
@@ -134,7 +131,6 @@ class GameRoundSchema(ma.ModelSchema):
 
 class Round(db.Model):
     __tablename__ = "round"
-    _id = db.Column(db.Integer, primary_key=True)
     round_id = db.Column(
         GUID,
         default=lambda: uuid.uuid4(),
@@ -143,10 +139,10 @@ class Round(db.Model):
         index=True,
         unique=True,
     )
-    round_seq = db.Column(db.Integer)
+    round_seq = db.Column(db.Integer, default=0)
     bid = db.Column(db.Integer, default=20, nullable=False)
     bid_winner = db.Column(GUID, db.ForeignKey("player.player_id"))
-    trump = db.Column(db.String, default="")
+    trump = db.Column(db.String, default="NONE")
     timestamp = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
@@ -168,7 +164,6 @@ class RoundSchema(ma.ModelSchema):
         model = Round
         sqla_session = db.session
 
-    _id = fields.Int()
     # round_id = fields.UUID()
     round_id = fields.Str()
     round_seq = fields.Int()
@@ -181,7 +176,6 @@ class RoundSchema(ma.ModelSchema):
 
 class RoundTeam(db.Model):
     __tablename__ = "round_team"
-    _id = db.Column(db.Integer, primary_key=True)
     round_id = db.Column(
         GUID,
         db.ForeignKey("round.round_id"),
@@ -215,7 +209,6 @@ class RoundTeamSchema(ma.ModelSchema):
         model = RoundTeam
         sqla_session = db.session
 
-    _id = fields.Int()
     # round_id = fields.UUID()
     round_id = fields.Str()
     # team_id = fields.UUID()
@@ -225,7 +218,6 @@ class RoundTeamSchema(ma.ModelSchema):
 
 class Team(db.Model):
     __tablename__ = "team"
-    _id = db.Column(db.Integer, primary_key=True)
     team_id = db.Column(
         GUID,
         default=lambda: uuid.uuid4(),
@@ -255,7 +247,6 @@ class TeamSchema(ma.ModelSchema):
         model = Team
         sqla_session = db.session
 
-    _id = fields.Int()
     # team_id = fields.UUID()
     team_id = fields.Str()
     name = fields.Str()
@@ -265,7 +256,6 @@ class TeamSchema(ma.ModelSchema):
 
 class TeamPlayers(db.Model):
     __tablename__ = "team_players"
-    _id = db.Column(db.Integer, primary_key=True)
     team_id = db.Column(
         GUID,
         db.ForeignKey("team.team_id"),
@@ -299,7 +289,6 @@ class TeamPlayersSchema(ma.ModelSchema):
         model = TeamPlayers
         sqla_session = db.session
 
-    _id = fields.Int()
     # team_id = fields.UUID()
     team_id = fields.Str()
     # player_id = fields.UUID()
@@ -309,7 +298,6 @@ class TeamPlayersSchema(ma.ModelSchema):
 
 class Player(db.Model):
     __tablename__ = "player"
-    _id = db.Column(db.Integer, primary_key=True)
     player_id = db.Column(
         GUID,
         default=lambda: uuid.uuid4(),
@@ -341,7 +329,6 @@ class PlayerSchema(ma.ModelSchema):
         model = Player
         sqla_session = db.session
 
-    _id = fields.Int()
     name = fields.Str()
     # player_id = fields.UUID()
     player_id = fields.Str()
