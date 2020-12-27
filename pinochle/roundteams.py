@@ -58,8 +58,7 @@ def read_one(round_id):
         return data
 
     # Otherwise, nope, didn't find any rounds
-    else:
-        abort(404, f"No rounds found ID {round_id}")
+    abort(404, f"No rounds found ID {round_id}")
 
 
 def create(round_id, teams):
@@ -140,8 +139,7 @@ def update(game_id, round_id):
         return data, 200
 
     # Otherwise, nope, didn't find that round
-    else:
-        abort(404, f"Round {round_id} not found for Id: {game_id}")
+    abort(404, f"Round {round_id} not found for Id: {game_id}")
 
 
 def delete(game_id):
@@ -161,5 +159,4 @@ def delete(game_id):
         return make_response(f"round {game_id} deleted", 200)
 
     # Otherwise, nope, didn't find that round
-    else:
-        abort(404, f"round not found for Id: {game_id}")
+    abort(404, f"round not found for Id: {game_id}")

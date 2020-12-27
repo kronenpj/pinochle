@@ -57,8 +57,7 @@ def read_one(team_id):
         return data
 
     # Otherwise, nope, didn't find that team
-    else:
-        abort(404, f"Team not found for Id: {team_id}")
+    abort(404, f"Team not found for Id: {team_id}")
 
 
 def create(team):
@@ -90,8 +89,7 @@ def create(team):
         return data, 201
 
     # Otherwise, nope, team exists already
-    else:
-        abort(409, f"Team {name} exists already")
+    abort(409, f"Team {existing_team} exists already")
 
 
 def update(team_id, team):
@@ -125,8 +123,7 @@ def update(team_id, team):
         return data, 200
 
     # Otherwise, nope, didn't find that team
-    else:
-        abort(404, f"Team not found for Id: {team_id}")
+    abort(404, f"Team not found for Id: {team_id}")
 
 
 def delete(team_id):
@@ -146,5 +143,4 @@ def delete(team_id):
         return make_response(f"Team {team_id} deleted", 200)
 
     # Otherwise, nope, didn't find that team
-    else:
-        abort(404, f"Team not found for Id: {team_id}")
+    abort(404, f"Team not found for Id: {team_id}")

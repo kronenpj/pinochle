@@ -6,8 +6,8 @@ License: GPLv3
 import unittest
 from typing import List
 
-from pinochle import card, deck, object_helpers, score_meld, utils
-from pinochle.game import game, hand, player, team
+from pinochle.cards import card, deck, object_helpers, score_meld, utils
+from pinochle.game_old import game, hand, player, team
 
 
 class TestGameClasses(unittest.TestCase):

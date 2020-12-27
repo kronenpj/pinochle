@@ -9,12 +9,13 @@ Modernized and modified for Pinochle by Paul Kronenwetter
 from copy import deepcopy
 from typing import List
 
-from pinochle import const, score_meld, score_tricks
-from pinochle.card import PinochleCard
-from pinochle.deck import PinochleDeck
+from pinochle import score_meld, score_tricks
+from pinochle.cards import const
+from pinochle.cards.card import PinochleCard
+from pinochle.cards.deck import PinochleDeck
 from pinochle.exceptions import InvalidDeckError, InvalidSuitError
-from pinochle.game.hand import Hand
-from pinochle.game.player import Player
+from pinochle.game_old.hand import Hand
+from pinochle.game_old.player import Player
 from pinochle.log_decorator import log_decorator
 
 

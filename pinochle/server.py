@@ -8,7 +8,6 @@ from flask import render_template
 
 # Local modules
 from pinochle import config
-from pinochle.config import db
 
 # Get the application instance
 connex_app = config.connex_app
@@ -19,7 +18,7 @@ connex_app.add_api("swagger.yml")
 # Delete database file if it exists currently
 if not os.path.exists(config.sqlite_url):
     # Create the database
-    db.create_all()
+    config.db.create_all()
 
 # Create a URL route in our application for "/"
 @connex_app.route("/")

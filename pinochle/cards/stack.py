@@ -33,12 +33,12 @@ be used as a hand, or a discard pile, etc.
 # Imports
 # ===============================================================================
 
-from copy import deepcopy
 import random
 from collections import deque
+from copy import deepcopy
 
-from pinochle import tools
-from pinochle.const import BOTTOM, DEFAULT_RANKS, TOP
+from pinochle.cards import tools
+from pinochle.cards.const import BOTTOM, DEFAULT_RANKS, TOP
 
 # ===============================================================================
 # PinochleStack Class

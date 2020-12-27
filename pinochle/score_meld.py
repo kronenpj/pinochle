@@ -7,8 +7,9 @@ License: GPLv3
 
 from typing import Union
 
-from pinochle import card, const, custom_log
-from pinochle.deck import PinochleDeck
+from pinochle import custom_log
+from pinochle.cards import card, const
+from pinochle.cards.deck import PinochleDeck
 
 
 def score(deck: PinochleDeck) -> int:

@@ -4,8 +4,8 @@ This scores a PinochleDeck or a PinochleStack (not a list).
 License: GPLv3
 """
 
-from pinochle import const
-from pinochle.stack import PinochleStack
+from pinochle.cards import const
+from pinochle.cards.stack import PinochleStack
 
 
 def score(deck: PinochleStack) -> int:

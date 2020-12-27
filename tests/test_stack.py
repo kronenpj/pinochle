@@ -23,8 +23,8 @@ Modernized and modified for Pinochle by Paul Kronenwetter
 import unittest
 
 from pinochle.log_decorator import log_decorator
-from pinochle import card, stack, tools
-from pinochle.const import BOTTOM
+from pinochle.cards import card, stack, tools
+from pinochle.cards.const import BOTTOM
 
 # ===============================================================================
 # TestStack Class

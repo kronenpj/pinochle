@@ -13,12 +13,12 @@ from copy import deepcopy
 import jsonpickle
 
 from pinochle import custom_log, object_helpers
-from pinochle.card import PinochleCard
-from pinochle.deck import PinochleDeck
-from pinochle.game.game import Game
-from pinochle.game.player import Player
-from pinochle.game.team import Team
-from pinochle.stack import PinochleStack
+from pinochle.cards.card import PinochleCard
+from pinochle.cards.deck import PinochleDeck
+from pinochle.cards.stack import PinochleStack
+from pinochle.game_old.game import Game
+from pinochle.game_old.player import Player
+from pinochle.game_old.team import Team
 
 FAULTY_PICKLE_E = "Encountered faulty pickle data. Continuing."
 J_GAMEID = "game_id"

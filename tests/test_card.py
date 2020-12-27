@@ -23,7 +23,7 @@ Modernized and modified for Pinochle by Paul Kronenwetter
 import unittest
 
 import pytest
-from pinochle import card
+from pinochle.cards import card
 from pinochle.exceptions import InvalidSuitError, InvalidValueError
 
 # ===============================================================================

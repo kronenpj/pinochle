@@ -30,10 +30,10 @@ import uuid
 from collections import deque
 from copy import deepcopy
 
-from pinochle import const
-from pinochle.card import PinochleCard
+from pinochle.cards import const
+from pinochle.cards.card import PinochleCard
+from pinochle.cards.stack import PinochleStack
 from pinochle.log_decorator import log_decorator
-from pinochle.stack import PinochleStack
 
 
 class PinochleDeck(PinochleStack):

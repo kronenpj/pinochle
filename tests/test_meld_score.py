@@ -5,7 +5,7 @@ License: GPLv3
 """
 import unittest
 
-from pinochle import card, deck, score_meld, utils
+from pinochle.cards import card, deck, score_meld, utils
 
 
 class TestMeldScoring(unittest.TestCase):

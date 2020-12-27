@@ -56,8 +56,7 @@ def read_one(player_id):
         return data
 
     # Otherwise, nope, didn't find that player
-    else:
-        abort(404, f"Player not found for Id: {player_id}")
+    abort(404, f"Player not found for Id: {player_id}")
 
 
 def create(player):
@@ -89,8 +88,7 @@ def create(player):
         return data, 201
 
     # Otherwise, nope, player exists already
-    else:
-        abort(409, f"Player {name} exists already")
+    abort(409, f"Player {existing_player} exists already")
 
 
 def update(player_id, player):
@@ -124,8 +122,7 @@ def update(player_id, player):
         return data, 200
 
     # Otherwise, nope, didn't find that player
-    else:
-        abort(404, f"Player not found for Id: {player_id}")
+    abort(404, f"Player not found for Id: {player_id}")
 
 
 def delete(player_id):
@@ -145,5 +142,4 @@ def delete(player_id):
         return make_response(f"Player {player_id} deleted", 200)
 
     # Otherwise, nope, didn't find that player
-    else:
-        abort(404, f"Player not found for Id: {player_id}")
+    abort(404, f"Player not found for Id: {player_id}")

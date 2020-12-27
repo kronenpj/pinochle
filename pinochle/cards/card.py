@@ -30,7 +30,7 @@ single playing card, of a given value and suit.
 
 from typing import Union
 
-from pinochle import const
+from pinochle.cards import const
 from pinochle.exceptions import InvalidSuitError, InvalidValueError
 
 # ===============================================================================

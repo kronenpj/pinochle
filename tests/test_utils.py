@@ -4,7 +4,7 @@ Tests for the application module.
 from unittest import TestCase
 
 import pytest
-from pinochle import deck, utils
+from pinochle.cards import deck, utils
 from pinochle.exceptions import InvalidDeckError, InvalidSuitError
 
 

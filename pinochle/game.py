@@ -57,8 +57,7 @@ def read_one(game_id):
         return data
 
     # Otherwise, nope, didn't find that game
-    else:
-        abort(404, f"Game not found for Id: {game_id}")
+    abort(404, f"Game not found for Id: {game_id}")
 
 
 def create():
@@ -113,8 +112,7 @@ def update(game_id, game):
         return data, 200
 
     # Otherwise, nope, didn't find that game
-    else:
-        abort(404, f"Game not found for Id: {game_id}")
+    abort(404, f"Game not found for Id: {game_id}")
 
 
 def delete(game_id):
@@ -134,5 +132,4 @@ def delete(game_id):
         return make_response(f"Game {game_id} deleted", 200)
 
     # Otherwise, nope, didn't find that game
-    else:
-        abort(404, f"Game not found for Id: {game_id}")
+    abort(404, f"Game not found for Id: {game_id}")

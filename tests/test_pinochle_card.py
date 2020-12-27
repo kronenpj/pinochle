@@ -14,7 +14,7 @@ Modernized and modified for Pinochle by Paul Kronenwetter
 
 import unittest
 
-from pinochle import card
+from pinochle.cards import card
 
 
 # ===============================================================================

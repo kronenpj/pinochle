@@ -35,8 +35,8 @@ of which are used by the classes in the PyDealer package, such as the functions
 import random
 import time
 
-from pinochle.card import PinochleCard
-from pinochle.const import DEFAULT_RANKS, SUITS, VALUES
+from pinochle.cards.card import PinochleCard
+from pinochle.cards.const import DEFAULT_RANKS, SUITS, VALUES
 
 # ===============================================================================
 # Utility Functions

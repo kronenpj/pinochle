@@ -8,13 +8,14 @@ import uuid
 from copy import deepcopy
 from typing import List, Union
 
-from pinochle import const, custom_log
-from pinochle.deck import PinochleDeck
-from pinochle.game.game import Game
-from pinochle.game.hand import Hand
-from pinochle.game.player import Player
-from pinochle.game.team import Team
-from pinochle.stack import PinochleStack
+from pinochle import custom_log
+from pinochle.cards import const
+from pinochle.cards.deck import PinochleDeck
+from pinochle.cards.stack import PinochleStack
+from pinochle.game_old.game import Game
+from pinochle.game_old.hand import Hand
+from pinochle.game_old.player import Player
+from pinochle.game_old.team import Team
 
 
 def create_new_game(teams: List[Team]) -> Game:

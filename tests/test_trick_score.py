@@ -5,7 +5,7 @@ License: GPLv3
 """
 import unittest
 
-from pinochle import card, deck, score_tricks
+from pinochle.cards import card, deck, score_tricks
 
 
 class TestTrickScoring(unittest.TestCase):

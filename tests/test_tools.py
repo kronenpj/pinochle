@@ -22,7 +22,7 @@ Modernized and modified for Pinochle by Paul Kronenwetter
 
 import unittest
 
-from pinochle import const, card, deck, stack, tools
+from pinochle.cards import const, card, deck, stack, tools
 
 # ===============================================================================
 # TestTools Class
