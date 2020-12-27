@@ -52,8 +52,8 @@ def read_one(team_id):
         # Serialize the data for the response
         data = {"team_id": team[0].team_id}
         temp = list()
-        for _, t in enumerate(team):
-            temp.append(t.player_id)
+        for _, one_team in enumerate(team):
+            temp.append(one_team.player_id)
         data["player_ids"] = temp
         return data
 
@@ -119,13 +119,13 @@ def update(team_id, team):
 
         # turn the passed in team into a db object
         schema = TeamPlayersSchema()
-        update = schema.load(team, session=db.session).data
+        db_update = schema.load(team, session=db.session).data
 
         # Set the id to the team we want to update
-        update.team_id = update_team.team_id
+        db_update.team_id = update_team.team_id
 
         # merge the new object into the old and commit it to the db
-        db.session.merge(update)
+        db.session.merge(db_update)
         db.session.commit()
 
         # return updated team in the response

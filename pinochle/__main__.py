@@ -1,4 +1,3 @@
-import os
 
 from pinochle.server import connex_app
 

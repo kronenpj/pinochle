@@ -128,13 +128,13 @@ def update(game_id, round_id):
 
         # turn the passed in round into a db object
         schema = GameRoundSchema()
-        update = schema.load(round_id, session=db.session).data
+        db_update = schema.load(round_id, session=db.session).data
 
         # Set the id to the round we want to update
-        update.game_id = update_round.game_id
+        db_update.game_id = update_round.game_id
 
         # merge the new object into the old and commit it to the db
-        db.session.merge(update)
+        db.session.merge(db_update)
         db.session.commit()
 
         # return updated round in the response

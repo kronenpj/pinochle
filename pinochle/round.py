@@ -114,13 +114,13 @@ def update(round_id, a_round):
 
         # turn the passed in round into a db object
         schema = RoundSchema()
-        update = schema.load(a_round, session=db.session).data
+        db_update = schema.load(a_round, session=db.session).data
 
         # Set the id to the round we want to update
-        update.round_id = update_round.round_id
+        db_update.round_id = update_round.round_id
 
         # merge the new object into the old and commit it to the db
-        db.session.merge(update)
+        db.session.merge(db_update)
         db.session.commit()
 
         # return updated round in the response

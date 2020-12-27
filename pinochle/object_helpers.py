@@ -43,8 +43,8 @@ def append_new_hand_to_game(game: Game, teams: Union[None, List[Team]] = None) -
     else:
         last_team = deepcopy(teams)
 
-    for team_idx in range(len(last_team)):
-        for player_idx in range(len(last_team[team_idx].players)):
+    for team_idx, _ in enumerate(last_team):
+        for player_idx, _ in enumerate(last_team[team_idx].players):
             last_team[team_idx].collection = PinochleDeck(build=False)
             last_team[team_idx].players[player_idx].hand = PinochleDeck(build=False)
 

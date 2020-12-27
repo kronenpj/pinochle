@@ -107,13 +107,13 @@ def update(player_id, player):
 
         # turn the passed in player into a db object
         schema = PlayerSchema()
-        update = schema.load(player, session=db.session).data
+        db_update = schema.load(player, session=db.session).data
 
         # Set the id to the player we want to update
-        update.player_id = update_player.player_id
+        db_update.player_id = update_player.player_id
 
         # merge the new object into the old and commit it to the db
-        db.session.merge(update)
+        db.session.merge(db_update)
         db.session.commit()
 
         # return updated player in the response

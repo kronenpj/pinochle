@@ -459,10 +459,10 @@ class TestStack(unittest.TestCase):
 
     def test_split(self):
         """"""
-        s1, s2 = self.small_stack.split()
+        split1, split2 = self.small_stack.split()
 
-        self.assertEqual(list(s1.cards), self.small_stack[0:2])
-        self.assertEqual(list(s2.cards), self.small_stack[2::])
+        self.assertEqual(list(split1.cards), self.small_stack[0:2])
+        self.assertEqual(list(split2.cards), self.small_stack[2::])
 
     def test_str(self):
         """"""

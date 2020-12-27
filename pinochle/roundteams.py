@@ -52,8 +52,8 @@ def read_one(round_id):
         # Serialize the data for the response
         data = {"round_id": round_id}
         temp = list()
-        for _, t in enumerate(a_round):
-            temp.append(t.team_id)
+        for _, team in enumerate(a_round):
+            temp.append(team.team_id)
         data["team_ids"] = temp
         return data
 
@@ -124,13 +124,13 @@ def update(game_id, round_id):
 
         # turn the passed in round into a db object
         schema = RoundTeamSchema()
-        update = schema.load(round_id, session=db.session).data
+        db_update = schema.load(round_id, session=db.session).data
 
         # Set the id to the round we want to update
-        update.game_id = update_round.game_id
+        db_update.game_id = update_round.game_id
 
         # merge the new object into the old and commit it to the db
-        db.session.merge(update)
+        db.session.merge(db_update)
         db.session.commit()
 
         # return updated round in the response

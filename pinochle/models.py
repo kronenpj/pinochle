@@ -1,4 +1,4 @@
-import os
+
 import uuid
 from datetime import datetime
 
@@ -58,7 +58,7 @@ class Game(db.Model):
     # NOTE: Without lambda: the uuid.uuid4() function is invoked once, upon class instantiation.
     game_id = db.Column(
         GUID,
-        default=lambda: uuid.uuid4(),
+        default=lambda: uuid.uuid4(),  # pragma pylint: disable=unnecessary-lambda
         primary_key=True,
         nullable=False,
         index=True,
@@ -133,7 +133,7 @@ class Round(db.Model):
     __tablename__ = "round"
     round_id = db.Column(
         GUID,
-        default=lambda: uuid.uuid4(),
+        default=lambda: uuid.uuid4(),  # pragma pylint: disable=unnecessary-lambda
         primary_key=True,
         nullable=False,
         index=True,
@@ -220,7 +220,7 @@ class Team(db.Model):
     __tablename__ = "team"
     team_id = db.Column(
         GUID,
-        default=lambda: uuid.uuid4(),
+        default=lambda: uuid.uuid4(),  # pragma pylint: disable=unnecessary-lambda
         primary_key=True,
         nullable=False,
         index=True,
@@ -300,7 +300,7 @@ class Player(db.Model):
     __tablename__ = "player"
     player_id = db.Column(
         GUID,
-        default=lambda: uuid.uuid4(),
+        default=lambda: uuid.uuid4(),  # pragma pylint: disable=unnecessary-lambda
         primary_key=True,
         nullable=False,
         index=True,

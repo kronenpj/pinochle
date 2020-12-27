@@ -97,13 +97,13 @@ def update(game_id, game):
 
         # turn the passed in game into a db object
         schema = GameSchema()
-        update = schema.load(game, session=db.session).data
+        db_update = schema.load(game, session=db.session).data
 
         # Set the id to the game we want to update
-        update.game_id = update_game.game_id
+        db_update.game_id = update_game.game_id
 
         # merge the new object into the old and commit it to the db
-        db.session.merge(update)
+        db.session.merge(db_update)
         db.session.commit()
 
         # return updated game in the response
