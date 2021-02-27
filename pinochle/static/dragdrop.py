@@ -319,7 +319,7 @@ class Game(html.DIV):
         self.bind("mousemove", self.mousemove)
         self.bind("mouseup", self.mouseup)
         self.bind("touchmove", self.mousemove)
-        self.level = level
+        self.level = 1
         # diffs = rowdiffs[level]
         pattern = patterns[choice(patternnumbers[level])]
         domcount = len(pattern)
@@ -490,9 +490,8 @@ class Game(html.DIV):
 
 def setupgame(event):
     global game
-    document["winner"].style.display = "none"
     del document["game"]
-    level = int(document["level"].value)
+    level = 1
     game = Game(level)
     document["drawarea"] <= game
 
@@ -507,30 +506,12 @@ def randomline(count, difficulty):
 
 
 def showwin():
-    document["rank"].text = levels[game.level] + " Dominator"
-    document["winner"].style.display = "block"
+    pass
 
 
 def restart(event):
     game.clearboard()
 
-
-def showrules(event):
-    alert(rules)
-
-
-rules = """How to play:
-Drag the dominos onto the board, arranging them so that the total number of spots in each row and column is equal to the number in the green box.
-
-To rotate a domino, click or tap on it.
-
-To replace a domino, drag another one on top of it.  The dominos will swap places.
-
-To start a new game, choose a different level, or click "New game".
-
-To remove a domino from the board, just drag it anywhere off the board.
-To remove all dominos from the board, click "Restart".
-"""
 
 touchevents = False
 Xdragstart = 0
@@ -727,16 +708,7 @@ extralists = {
 }
 
 rowdiffs = {1: "EEM", 2: "EMM", 3: "MMH", 4: "EMMM", 5: "MMMH", 6: "HHHH"}
-levels = {
-    1: "Novice",
-    2: "Apprentice",
-    3: "Qualified",
-    4: "Senior",
-    5: "Expert",
-    6: "Master",
-    7: "Grand Master",
-    8: "Supreme Master",
-}
+
 patternnumbers = {
     1: [0],
     2: [1],
@@ -748,13 +720,8 @@ patternnumbers = {
     8: [8, 9],
 }
 
-document["level"] <= (
-    html.OPTION(str(i) + " - " + levels[i], value=i) for i in range(1, 9)
-)
-document["level"].bind("change", setupgame)
 document["startgame"].bind("click", setupgame)
 document["restart"].bind("click", restart)
-document["showrules"].bind("click", showrules)
 
 (boxwidth, boxheight) = (
     document["drawarea"].clientWidth,
