@@ -21,6 +21,26 @@ if not os.path.exists(config.sqlite_url):
     config.db.create_all()
 
 # Create a URL route in our application for "/"
+@connex_app.route("/home2.html")
+def home2():
+    """
+    This function just responds to the browser URL
+    localhost:5000/
+    :return:        the rendered template 'home.html'
+    """
+    return render_template("home2.html")
+
+# Create a URL route in our application for "/"
+@connex_app.route("/home3.html")
+def home3():
+    """
+    This function just responds to the browser URL
+    localhost:5000/
+    :return:        the rendered template 'home.html'
+    """
+    return render_template("home3.html")
+
+# Create a URL route in our application for "/"
 @connex_app.route("/")
 def home():
     """

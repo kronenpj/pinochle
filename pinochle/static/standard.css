@@ -1,0 +1,58 @@
+body {
+  background-color: #1c8a18;
+  font-family: verdana,"sans serif";
+  
+}
+
+div, table {
+  background-color: #1c8a18;
+}
+
+div.padded {
+  margin: 3% 5%;
+  padding: 2% 2% 1% 2%;
+}
+
+div.margins {
+  margin: 2% 5%;
+  padding: 1%;
+  text-align:center;
+}
+
+div.home {
+  padding: 0% 1%;
+}
+
+h1, h2, thead, tr.head, tr.subjarea, td.currentQ {
+  margin-top: 0%;
+  background-color: #4d6fdd;
+}
+h1 {
+  text-align: center;
+}
+h3 {
+  margin-top: 0%;
+}
+h4 {
+  padding-top: 0%;
+  padding-bottom: 0%;
+  margin-top: 0%;
+  margin-bottom: 0%;
+}
+h5 {
+  text-align: center;
+  font-family: verdana,"sans serif";
+  font-size: 1.2em;
+}
+table {
+  border: none;
+  border-collapse:collapse;
+  margin: auto
+}
+td {
+  border: 2px solid #a68cc9;
+  border-collapse:collapse;
+  padding-left: 2pt;
+  padding-top: 6px;
+  vertical-align: top;
+}
