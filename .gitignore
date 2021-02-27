@@ -1,3 +1,21 @@
+### TEMPORARY UNTIL I CAN SEE IF I WANT THESE IN GIT
+TODO
+classes_Pinochle.svg
+curl_inserts.sh
+html2-documentation-generated.zip
+openapi3.yml
+packages_Pinochle.svg
+pinochle.db
+pinochle_db.pdf
+pyreverse.sh
+python-client-generated.zip
+python-flask-server-generated.zip
+sqlite_clear_contents.sh
+start_database.sh
+temp.py
+### TEMPORARY UNTIL I CAN SEE IF I WANT THESE IN GIT
+
+
 *.bak
 .envrc
 *full*
