@@ -54,97 +54,6 @@ class Position(html.DIV):
         self.domino = None
 
 
-class RowTotals(html.DIV):
-    def __init__(self, board):
-        html.DIV.__init__(
-            self,
-            "",
-            style={
-                "position": "absolute",
-                "border": "{0}px solid #820a0a".format(borderwidth),
-                "font-size": "{0}px".format(innersize * 0.7),
-                "text-align": "center",
-                "line-height": "{0}px".format(innersize),
-            },
-        )
-        self.left = board.left + board.width + int(innersize / 2)
-        self.top = board.top
-        self.width = outersize * 2
-        self.height = outersize * board.boardheight
-        self.requiredtotals = []
-        self.currenttotals = []
-        for rowindex in range(board.boardheight):
-            t = RequiredTotal("R", rowindex, 17)
-            self.requiredtotals.append(t)
-            self <= t
-            t = CurrentTotal("R", rowindex, 0)
-            self.currenttotals.append(t)
-            self <= t
-
-
-class ColumnTotals(html.DIV):
-    def __init__(self, board):
-        html.DIV.__init__(
-            self,
-            "",
-            style={
-                "position": "absolute",
-                "border": "{0}px solid #820a0a".format(borderwidth),
-                "font-size": "{0}px".format(innersize * 0.7),
-                "text-align": "center",
-                "line-height": "{0}px".format(innersize),
-            },
-        )
-        self.left = board.left
-        self.top = board.top + board.height + int(innersize / 2)
-        self.width = outersize * board.boardwidth
-        self.height = outersize * 2
-        self.requiredtotals = []
-        self.currenttotals = []
-        for colindex in range(board.boardwidth):
-            t = RequiredTotal("C", colindex, 17)
-            self.requiredtotals.append(t)
-            self <= t
-            t = CurrentTotal("C", colindex, 0)
-            self.currenttotals.append(t)
-            self <= t
-
-
-class RequiredTotal(html.DIV):
-    def __init__(self, line, index, total):
-        html.DIV.__init__(
-            self,
-            "",
-            style={
-                "position": "absolute",
-                "border": "{0}px solid #820a0a".format(borderwidth),
-                "background-color": "limegreen",
-            },
-        )
-        self.left = outersize * index if line == "C" else outersize
-        self.top = outersize * index if line == "R" else outersize
-        self.width = self.height = innersize
-        self.total = total
-        self.text = total
-
-
-class CurrentTotal(html.DIV):
-    def __init__(self, line, index, total):
-        html.DIV.__init__(
-            self,
-            "",
-            style={
-                "position": "absolute",
-                "border": "{0}px solid #820a0a".format(borderwidth),
-                "background-color": "inherit",
-            },
-        )
-        self.left = outersize * index if line == "C" else 0
-        self.top = outersize * index if line == "R" else 0
-        self.width = self.height = innersize
-        self.text = total
-
-
 class Dotpattern(html.DIV):
     def __init__(self, n):
         html.DIV.__init__(
@@ -329,26 +238,9 @@ class Game(html.DIV):
 
         self.board = Board(boardwidth, boardheight, pattern)
         self <= self.board
-        self.rowtotals = RowTotals(self.board)
-        self <= self.rowtotals
-        self.coltotals = ColumnTotals(self.board)
-        self <= self.coltotals
 
         dotcount = {(i, j): 0 for i in range(boardwidth) for j in range(boardheight)}
-        """
-        direction = "H" if randrange(2) else "V"
-        if direction == "H":
-            shuffle(list(diffs))
-            for rowno, diff in enumerate(diffs):
-                for i, spots in enumerate(randomline(boardwidth, diff)):
-                    dotcount[(i, rowno)] = spots
-        else:
-            diffs += "H" if level == 6 else "M"
-            shuffle(list(diffs))
-            for colno, diff in enumerate(diffs):
-                for j, spots in enumerate(randomline(boardheight, diff)):
-                    dotcount[(colno, j)] = spots
-        """
+
         extradoms = 1 if domcount == 6 else 2
         hi = True if randrange(2) else False
         (firstdom, lastdom) = mainrange[level]
@@ -367,21 +259,11 @@ class Game(html.DIV):
 
         for rowno in range(boardheight):
             total = sum(dotcount[(i, rowno)] for i in range(boardwidth))
-            self.rowtotals.requiredtotals[rowno].total = total
-            self.rowtotals.requiredtotals[rowno].text = total
         for colno in range(boardwidth):
             total = sum(dotcount[(colno, j)] for j in range(boardheight))
-            self.coltotals.requiredtotals[colno].total = total
-            self.coltotals.requiredtotals[colno].text = total
 
         self.dominos = dominos = [Domino(*dotcounts) for dotcounts in dots]
-        """
-        dominos = []
-        for pos in pattern:
-            (n1, n2) = (dotcount[pos[0]], dotcount[pos[1]])
-            if n1>n2: (n1, n2) = (n2, n1)
-            dominos.append(Domino(n1, n2))
-        """
+
         dominos.sort(key=lambda domino: domino.values)
         C = len(dominos) / 2
         for (i, d) in enumerate(dominos):
@@ -403,47 +285,8 @@ class Game(html.DIV):
         # print (time() - tt)
 
     def updatetotals(self):
-        (boardwidth, boardheight) = (self.board.boardwidth, self.board.boardheight)
-        dotcount = {(i, j): 0 for i in range(boardwidth) for j in range(boardheight)}
-        winner = True
-        for pos in self.board.poslist:
-            domino = pos.domino
-            if domino:
-                for (i, square) in enumerate(pos.squares):
-                    dotcount[square] = (
-                        domino.values[i]
-                        if domino.rotation in [0, 90]
-                        else domino.values[1 - i]
-                    )
-            else:
-                winner = False
-
-        for rowno in range(boardheight):
-            total = sum(dotcount[(i, rowno)] for i in range(boardwidth))
-            self.rowtotals.currenttotals[rowno].text = total
-            if total == self.rowtotals.requiredtotals[rowno].total:
-                self.rowtotals.currenttotals[rowno].style.backgroundColor = "limegreen"
-            elif total > self.rowtotals.requiredtotals[rowno].total:
-                self.rowtotals.currenttotals[rowno].style.backgroundColor = "red"
-                winner = False
-            else:
-                self.rowtotals.currenttotals[rowno].style.backgroundColor = "inherit"
-                winner = False
-
-        for colno in range(boardwidth):
-            total = sum(dotcount[(colno, j)] for j in range(boardheight))
-            self.coltotals.currenttotals[colno].text = total
-            if total == self.coltotals.requiredtotals[colno].total:
-                self.coltotals.currenttotals[colno].style.backgroundColor = "limegreen"
-            elif total > self.coltotals.requiredtotals[colno].total:
-                self.coltotals.currenttotals[colno].style.backgroundColor = "red"
-                winner = False
-            else:
-                self.coltotals.currenttotals[colno].style.backgroundColor = "inherit"
-                winner = False
-
-        if winner:
-            set_timeout(showwin, 1500)
+        # This is called after each move. See what updates the server needs.
+        pass
 
     def mousemove(self, event):
         if drag:
@@ -494,15 +337,6 @@ def setupgame(event):
     level = 1
     game = Game(level)
     document["drawarea"] <= game
-
-
-def randomline(count, difficulty):
-    difficulty += "H" if randrange(2) else "L"
-    rlist = choice(alllists[difficulty])
-    while len(rlist) < count:
-        rlist.append(choice(extralists[difficulty]))
-    shuffle(rlist)
-    return rlist
 
 
 def showwin():
@@ -686,25 +520,6 @@ extrarange = {
     6: (0, 28),
     7: (0, 28),
     8: (0, 28),
-}
-
-
-alllists = {
-    "EL": [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 1, 1]],
-    "ML": [[1, 1, 1], [1, 1, 2], [1, 1, 3], [1, 2, 2]],
-    "HL": [[2, 2, 2], [2, 2, 3], [2, 2, 4], [2, 3, 3], [2, 3, 4]],
-    "HH": [[3, 3, 3], [2, 4, 4], [3, 3, 4], [3, 4, 4], [4, 4, 4]],
-    "MH": [[3, 5, 5], [4, 4, 5], [4, 5, 5], [5, 5, 5]],
-    "EH": [[4, 6, 6], [5, 5, 6], [5, 6, 6], [6, 6, 6]],
-}
-
-extralists = {
-    "EL": [0, 1],
-    "ML": [0, 1, 2, 3],
-    "HL": [1, 2, 3, 4, 5, 6],
-    "HH": [0, 1, 2, 3, 4, 5],
-    "MH": [3, 4, 5, 6],
-    "EH": [5, 6],
 }
 
 rowdiffs = {1: "EEM", 2: "EMM", 3: "MMH", 4: "EMMM", 5: "MMMH", 6: "HHHH"}
