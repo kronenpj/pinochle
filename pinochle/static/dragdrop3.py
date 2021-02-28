@@ -171,7 +171,7 @@ class Domino(html.DIV):
                     self.place(board.currentpos)
                 else:
                     self.place(None)
-            # game.updatetotals()
+            game.updatetotals()
         event.stopPropagation()
 
 
@@ -255,9 +255,7 @@ class Game(html.DIV):
     def updatetotals(self):
         # Called every time a card is moved. Send information back to the server if 
         # something important happened.
-
-        if winner:
-            set_timeout(showwin, 1500)
+        pass
 
     def mousemove(self, event):
         if drag:
