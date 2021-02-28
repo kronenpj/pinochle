@@ -1,35 +1,26 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name=viewport content="width=device-width, initial-scale=1">
-    <title>
-        Pinochle
-    </title>
-    <link rel="stylesheet" href="/static/standard.css" type="text/css" />
-    <link rel="stylesheet" href="/static/dominate.css" type="text/css" />
-    <script src="/static/brython.min.js"></script> 
-    <script src="/static/brython_stdlib.js"></script>
+    <meta charset="UTF-8">
+    <title>Application Home Page</title>
+    <!--
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.9.0/brython.min.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.9.0/brython_stdlib.min.js">
+    <script src="https://cdn.jsdelivr.net/gh/andy31lewis/brySVG@0.4.0/brySVG.brython.js"></script>
+    </script>
+    -->
+    <script type="text/javascript" src="/static/brython.min.js"></script>
+    <script type="text/javascript" src="/static/brython_stdlib.js"></script>
+    <!-- <script type="text/javascript" src="/static/brySVG.brython.js"></script> -->
     <script type="text/python" src="/static/dragdrop.py"></script>
+    <link rel="stylesheet" href="/static/standard.css" type="text/css" />
   </head>
+<body onload="brython(1)">
 
-  <body onLoad="brython(1)" ondragstart="return false;" ondrop="return false;">
-    <div  style = "height:100%; text-align:center; overflow:hidden;">
-      <div id="header" style = "float:left; width:100%">
-        <div>
-          <h1>
-            Pinochle
-          </h1>
-        <div style="clear:both;"></div>
-        </div>
+    <div style = "height:100%; text-align:center; overflow:hidden;">
+      <div id='card_table' style = "position:relative; display:inline-block; width:100%; height:100%; padding:0;">
       </div>
-      <div id="controls" style ="float:left; width:100%; padding:0% 0% 2%;">
-          <button id="startgame" style="margin-right:2%">New Puzzle</button>
-          <button id="restart" style="margin-right:2%">Restart</button>
-      </div>
-      <div id="drawarea", style ="display:inline-block; width:90%; height:100%; padding:0;">
-        <div id="game" style = "position:relative; display:inline-block; width:100%; height:100%; padding:0;">
-        </div>
-      </div>
-    </div>
+  </div>
   </body>
 </html>
