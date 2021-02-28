@@ -6,9 +6,10 @@ from random import sample
 
 # Locate the card table in the HTML document.
 SVGRoot = document["card_table"]
+CARD_URL = "/static/svg-cards.svg#"
 
 # Create the base SVG object for the card table.
-canvas = SVG.CanvasObject("95vw", "95vh", "green", objid="canvas")
+canvas = SVG.CanvasObject("95vw", "95vh", None, objid="canvas")
 SVGRoot <= canvas
 canvas.mouseMode = SVG.MouseMode.DRAG
 
@@ -17,8 +18,8 @@ card_width = 170
 card_height = 245
 
 # Gather information about the display environment
-table_width = document["card_table"].clientWidth
-table_height = document["card_table"].clientHeight
+table_width = document["canvas"].clientWidth
+table_height = document["canvas"].clientHeight
 
 # Calculate relative vertical overlap for cards, if needed.
 yincr = int(card_height / 4)
@@ -37,45 +38,54 @@ players_hand = sample(deck, k=13).sort()
 for choice in players_hand:
     deck.remove(choice)
 
-# Fan out the cards.
-# Where to start the first card on the player's hand.
-(xpos, ypos) = (table_width / 2, table_height - (card_height / 2))
-xincr = int(table_width / (len(deck) + 3))
-for choice in deck:
-    piece = SVG.UseObject(href="/static/svg-cards.svg#" + f"{choice}")
-    canvas.addObject(piece)
-    # Scale down by 0.5 since we're just looking at the rest of the deck.
-    document[piece["id"]].style["transform"] += " scale(0.5)"
 
-    canvas.translateObject(piece, (xpos, ypos))
+def place_cards(deck, location="top", kitty=False):
+    """
+    Place the supplied deck / list of cards on the display. This will need to be 
+    refactored somewhat if a gradual kitty reveal is desired.
 
-    xpos += xincr
-    if xpos > table_width * 2 - xincr:
-        xpos = table_width / 2
-        ypos += yincr
+    :param deck: card names in the format that svg-cards.svg wants.
+    :type deck: list
+    :param location: String of "top", "bottom" or anything else, defaults to "top", instructing where to place the cards vertically.
+    :type location: str, optional
+    :param kitty: Whether or not to draw backs (True) or faces (False), defaults to False
+    :type kitty: bool, optional
+    """
 
-# Fan out the discard cards.
-# Where to start the first card on the discard pile.
-(xpos, ypos) = (table_width / 2 - card_width * 2, 0)
-xincr = int(table_width / len(discard_deck))
-for choice in discard_deck:
-    piece = SVG.UseObject(href="/static/svg-cards.svg#" + f"{choice}")
-    canvas.addObject(piece)
-    canvas.translateObject(piece, (xpos, ypos))
-    xpos += card_width
-    if xpos > table_width - card_width:
-        xpos = table_width / 2
-        ypos += yincr
+    # Where to vertically place first card on the table
+    if location.lower() == "top":
+        start_y = 0
+    elif location.lower() == "bottom":
+        # Place cards one card height above the bottom, plus a bit.
+        start_y = table_height - card_height - 2
+    else:
+        # Place cards in the middle.
+        start_y = table_height / 2 - card_height / 2
 
-# Fan out the player's hand.
-# Where to start the first card on the player's hand.
-(xpos, ypos) = (0, table_height - card_height)
-xincr = int(table_width / (len(players_hand) + 1))
-for choice in players_hand:
-    piece = SVG.UseObject(href="/static/svg-cards.svg#" + f"{choice}")
-    canvas.addObject(piece)
-    canvas.translateObject(piece, (xpos, ypos))
-    xpos += xincr
-    if xpos > table_width - card_width:
-        xpos = 0
-        ypos += yincr
+    # Calculate how far to move each card horizontally and based on that calculate the
+    # starting horizontal position.
+    xincr = int(table_width / (len(deck) + 0.5))
+    if xincr > card_width:
+        xincr = card_width
+        start_x = int(table_width / 2 - xincr * (len(deck) + 0.0) / 2)
+    else:
+        start_x = 0
+    (xpos, ypos) = (start_x, start_y)
+
+    for card_value in deck:
+        if kitty:
+            piece = SVG.UseObject(href=CARD_URL + "back")
+            piece.style["fill"] = "crimson"  # darkblue also looks "right"
+        else:
+            piece = SVG.UseObject(href=CARD_URL + f"{card_value}")
+        canvas.addObject(piece)
+        canvas.translateObject(piece, (xpos, ypos))
+        xpos += xincr
+        if xpos > table_width - xincr:
+            xpos = 0
+            ypos += yincr
+
+# Last-drawn are on top (z-index wise)
+place_cards(deck, "blah")
+place_cards(discard_deck, kitty=True)
+place_cards(players_hand, "bottom")
