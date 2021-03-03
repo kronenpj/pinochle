@@ -1,4 +1,4 @@
-from sys import stderr
+from sys import stdout
 
 from browser import window, document, html, svg
 import brySVG.dragcanvas as SVG
@@ -25,10 +25,11 @@ class PlayingCard(UseObject):
         face_value="back",
         show_face=True,
         flippable=None,
+        movable=True,
     ):
         # Set the initial face to be shown.
         if href is None:
-            href = f"#{face_value}" if show_face else "#back"
+            href = "#back"
         self.face_value = face_value
         self.show_face = show_face
         UseObject.__init__(
@@ -39,57 +40,84 @@ class PlayingCard(UseObject):
             objid=objid,
         )
         self.flippable = flippable
-        self.bind("click", flip_card)  # This doesn't work right now.
-        self.update()
+        if flippable:
+            self.bind("click", self.flip_card)
+        if movable:
+            # FIXME: Registering mouseup causes touch to require double-taps again.
+            # self.bind("mouseup", self.handler)
+            # FIXME: Registering touchend doesn't do anything.
+            # self.bind("touchend", self.handler)
+            pass
 
-    def update(self):
-        super().update()
+        self.handler()
 
+    def handler(self, event=None):
+        # print("In PlayingCard.handler()")
+        obj = self
+        new_y = table_height
+
+        # print(f"{obj.attrs['y']}, {obj.style['transform']}")
         # Moving a card within a card_height of the top "throws" that card.
         if (
-            not self.id.startswith("kitty")  # Can't throw kitty cards
-            and self.show_face  # Don't throw cards that are face-down
-            and float(self.attrs["y"]) < card_height
+            event is not None
+            and obj.id.startswith("hand")  # Can only throw cards from the player's hand
+            and obj.show_face  # Only throw cards that are face-up
+            and obj.style["transform"] != ""  # Empty when not moving
         ):
-            stderr.write(f"Throwing {self.id=} ({self.attrs['y']=})")
+            # The object already has the correct 'Y' value from the move.
+            if "touch" in event.type:
+                new_y = float(obj.attrs["y"])
+                print(f"Touch event: {obj.id=} {new_y=}")
 
-        # Indirectly handle flipping a card over.
-        if self.show_face:
-            self.attrs["href"] = f"#{self.face_value}"
-            self.style["fill"] = ""
+            # Cope with the fact that the original Y coordinate is given rather than the
+            # new one. And that the style element is a string...
+            if "mouse" in event.type:
+                # TODO: See if there's a better way to do this.
+                transform = obj.style["transform"]
+                starting_point = transform.find("translate(")
+                if starting_point >= 0:
+                    y_coord = transform.find("px,", starting_point) + 4
+                    y_coord_end = transform.find("px", y_coord)
+                    y_move = transform[y_coord:y_coord_end]
+                    new_y = float(obj.attrs["y"]) + float(y_move)
+                print(f"Mouse event: {obj.id=} {new_y=}")
+
+            # Determine whether the card is now in a position to be considered thrown.
+            if new_y < card_height:
+                print(f"Throwing {obj.id=} ({obj.face_value=})")
+                players_hand.remove(obj.face_value)
+                discard_deck.insert(0, obj.face_value)
+                discard_deck.remove("card-base")
+                # TODO: Call game API to notify server what card was thrown by which
+                # player.
+                update_display()
+
+        # Display the correct card face.
+        if obj.show_face:
+            obj.attrs["href"] = f"#{obj.face_value}"
+            obj.style["fill"] = ""
         else:
-            self.attrs["href"] = "#back"
-            self.style["fill"] = "crimson"  # darkblue also looks "right"
+            obj.attrs["href"] = "#back"
+            obj.style["fill"] = "crimson"  # darkblue also looks "right"
+        # print("Leaving PlayingCard.handler()")
 
-    def flip_card(self):
+    def flip_card(self, event=None):
+        # print("In PlayingCard.flip_card()")
         if self.flippable:
             self.show_face = not self.show_face
-            self.update()
+            self.handler(event)
 
 
-def flip_card(event):
+def place_cards(deck, target_canvas, location="top", deck_type="hand"):
     """
-    This is intended to be called when a click event is registered.
-
-    :param event: [description]
-    :type event: [type]
-    """
-    obj = document[event.target.id]
-    if obj.flip_card is not None:
-        obj.flip_card()
-
-
-def place_cards(deck, location="top", kitty=False):
-    """
-    Place the supplied deck / list of cards on the display. This will need to be
-    refactored somewhat if a gradual kitty reveal is desired.
+    Place the supplied deck / list of cards on the display.
 
     :param deck: card names in the format that svg-cards.svg wants.
     :type deck: list
     :param location: String of "top", "bottom" or anything else, defaults to "top", instructing where to place the cards vertically.
     :type location: str, optional
-    :param kitty: Whether or not to draw backs (True) or faces (False), defaults to False
-    :type kitty: bool, optional
+    :param deck_type: The type of (sub)-deck this is.
+    :type deck_type: str, optional # TODO: Should probably be enum
     """
 
     # Where to vertically place first card on the table
@@ -116,26 +144,35 @@ def place_cards(deck, location="top", kitty=False):
     counter = 0
 
     for card_value in deck:
-        if not kitty:
-            piece = PlayingCard(
-                face_value=card_value, objid=f"hand{counter}", origin=(xpos, ypos)
-            )
-        else:
+        if deck_type == "hand":
             piece = PlayingCard(
                 face_value=card_value,
-                show_face=False,
-                flippable=True,
-                objid=f"kitty{counter}",
+                objid=f"{deck_type}{counter}",
                 origin=(xpos, ypos),
             )
-        if not kitty:
-            # This replaces the event handler.
-            canvas.addObject(piece)
+            target_canvas.addObject(piece)
+        elif deck_type == "kitty":
+            piece = PlayingCard(
+                face_value=card_value,
+                objid=f"{deck_type}{counter}",
+                origin=(xpos, ypos),
+                show_face=False,
+                flippable=True,
+                movable=False,
+            )
+            target_canvas.addObject(piece, fixed=True)
+        elif deck_type == "discard":
+            piece = PlayingCard(
+                face_value=card_value,
+                objid=f"{deck_type}{counter}",
+                origin=(xpos, ypos),
+                show_face=True,
+                movable=False,
+            )
+            target_canvas.addObject(piece, fixed=True)
         else:
-            # This retains the event handler defined above.
-            canvas <= piece
-            # Marks the card as immovable
-            piece.attrs["fixed"] = True
+            # Throw exception of some species here.
+            pass
 
         counter += 1
         xpos += xincr
@@ -151,19 +188,15 @@ def calculate_dimensions():
     table_height = document["canvas"].clientHeight
 
 
-def clear_canvas():
-    while canvas.firstChild:
-        canvas.removeChild(canvas.firstChild)
-
-
 def update_display():
     calculate_dimensions()
-    clear_canvas()
+    canvas.deleteAll()
 
     # Last-drawn are on top (z-index wise)
-    # place_cards(deck, location="middle")
-    place_cards(discard_deck, kitty=True)
-    place_cards(players_hand, location="bottom")
+    # place_cards(deck, temp_group, location="middle", deck_type="discard")
+    # place_cards(discard_deck, canvas, location="top", deck_type="discard")
+    place_cards(kitty_deck, canvas, location="top", deck_type="kitty")
+    place_cards(players_hand, canvas, location="bottom", deck_type="hand")
 
     SVGRoot <= canvas
 
@@ -179,10 +212,11 @@ table_height = 0
 
 # Create the base SVG object for the card table.
 canvas = SVG.CanvasObject("95vw", "95vh", None, objid="canvas")
+
 SVGRoot <= canvas
 SVGRoot <= SVG.Definitions(filename=CARD_URL)
 
-
+# TODO: Call game API to retrieve list of cards for player's hand and other sub-decks.
 # Quickie deck generation while I'm building the real API
 deck = list()
 for decks in range(0, 2):  # Double deck
@@ -190,11 +224,12 @@ for decks in range(0, 2):  # Double deck
         for suit in ["heart", "diamond", "spade", "club"]:
             deck.append(f"{suit}_{card}")
 
-# Collect cards into discard and player's hand
-discard_deck = sample(deck, k=4).sort()
-for choice in discard_deck:
+# Collect cards into discard, kitty and player's hand
+discard_deck = ["card-base", "card-base", "card-base", "card-base"]
+kitty_deck = sorted(sample(deck, k=4))
+for choice in kitty_deck:
     deck.remove(choice)
-players_hand = sample(deck, k=13).sort()
+players_hand = sorted(sample(deck, k=13))
 for choice in players_hand:
     deck.remove(choice)
 
