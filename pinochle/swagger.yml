@@ -327,6 +327,8 @@ paths:
                 description: Id of the round
               team_ids:
                 type: array
+                items:
+                  type: string
                 description: Id of the game round associated with
               timestamp:
                 type: string
