@@ -19,8 +19,6 @@ class PlayingCard(UseObject):
     def __init__(
         self,
         href=None,
-        origin=(0, 0),
-        angle=0,
         objid=None,
         face_value="back",
         show_face=True,
@@ -35,18 +33,15 @@ class PlayingCard(UseObject):
         UseObject.__init__(
             self,
             href=href,
-            origin=origin,
-            angle=angle,
             objid=objid,
         )
         self.flippable = flippable
         if flippable:
             self.bind("click", self.flip_card)
         if movable:
-            # FIXME: Registering mouseup causes touch to require double-taps again.
-            # self.bind("mouseup", self.handler)
-            # FIXME: Registering touchend doesn't do anything.
-            # self.bind("touchend", self.handler)
+            self.bind("mouseup", self.handler)
+            self.bind("touchend", self.handler)
+            # self.bind("click", self.handler)
             pass
 
         self.handler()
@@ -65,9 +60,9 @@ class PlayingCard(UseObject):
             and obj.style["transform"] != ""  # Empty when not moving
         ):
             # The object already has the correct 'Y' value from the move.
-            if "touch" in event.type:
+            if "touch" in event.type or "click" in event.type:
                 new_y = float(obj.attrs["y"])
-                print(f"Touch event: {obj.id=} {new_y=}")
+                # print(f"Touch event: {obj.id=} {new_y=}")
 
             # Cope with the fact that the original Y coordinate is given rather than the
             # new one. And that the style element is a string...
@@ -80,14 +75,33 @@ class PlayingCard(UseObject):
                     y_coord_end = transform.find("px", y_coord)
                     y_move = transform[y_coord:y_coord_end]
                     new_y = float(obj.attrs["y"]) + float(y_move)
-                print(f"Mouse event: {obj.id=} {new_y=}")
+                # print(f"Mouse event: {obj.id=} {new_y=}")
 
             # Determine whether the card is now in a position to be considered thrown.
             if new_y < card_height:
-                print(f"Throwing {obj.id=} ({obj.face_value=})")
+                # print(f"Throwing {obj.id=} ({obj.face_value=})")
+                parent_canvas = obj.parentElement
+
+                # Decide which card in discard_deck to replace - identify the index of the
+                # first remaining instance of 'card-base'
+                placement = discard_deck.index("card-base")
+                # This doesn't work...
+                # discard_object = parent_canvas[f"discard{placement}"]
+                discard_object = [
+                    x for x in parent_canvas.childNodes if f"discard{placement}" in x.id
+                ][0]
+
+                # Delete the original card.
+                parent_canvas.deleteObject(obj)
+                # Remove the original card from the player's hand and put it in the
+                # discard deck.
                 players_hand.remove(obj.face_value)
-                discard_deck.insert(0, obj.face_value)
-                discard_deck.remove("card-base")
+                discard_deck[placement] = obj.face_value
+                # Replace the discard face with that of the original, moved card.
+                discard_object.face_value = obj.face_value
+                discard_object.movable = False
+                # Promote the discard_object to be the selected object.
+                obj = discard_object
                 # TODO: Call game API to notify server what card was thrown by which
                 # player.
                 update_display()
@@ -105,16 +119,58 @@ class PlayingCard(UseObject):
         # print("In PlayingCard.flip_card()")
         if self.flippable:
             self.show_face = not self.show_face
-            self.handler(event)
+            self.handler()
+
+
+def populate_canvas(deck, target_canvas, deck_type="hand"):
+    """
+    Populate given canvas with the deck of cards but without specific placement.
+
+    :param deck: card names in the format that svg-cards.svg wants.
+    :type deck: list
+    :param target_canvas: [description]
+    :type target_canvas: [type]
+    """
+
+    # DOM ID Counters
+    counter = 0
+
+    for card_value in deck:
+        flippable = None
+        movable = True
+        show_face = True
+        if deck_type == "hand":
+            pass  # Defaults work for this type.
+        elif deck_type == "kitty":
+            show_face = False
+            flippable = True
+            movable = False
+        elif deck_type == "discard":
+            movable = False
+        else:
+            # Throw exception of some species here.
+            pass
+        # Add the card to the canvas.
+        piece = PlayingCard(
+            face_value=card_value,
+            objid=f"{deck_type}{counter}",
+            show_face=show_face,
+            flippable=flippable,
+            movable=movable,
+        )
+        target_canvas.addObject(piece, fixed=not movable)
+
+        counter += 1
 
 
 def place_cards(deck, target_canvas, location="top", deck_type="hand"):
     """
-    Place the supplied deck / list of cards on the display.
+    Place the supplied deck / list of cards in the correct position on the display.
 
     :param deck: card names in the format that svg-cards.svg wants.
     :type deck: list
-    :param location: String of "top", "bottom" or anything else, defaults to "top", instructing where to place the cards vertically.
+    :param location: String of "top", "bottom" or anything else for middle, defaults to
+    "top", instructing routine where to place the cards vertically.
     :type location: str, optional
     :param deck_type: The type of (sub)-deck this is.
     :type deck_type: str, optional # TODO: Should probably be enum
@@ -130,54 +186,35 @@ def place_cards(deck, target_canvas, location="top", deck_type="hand"):
         # Place cards in the middle.
         start_y = table_height / 2 - card_height / 2
 
-    # Calculate how far to move each card horizontally and based on that calculate the
-    # starting horizontal position.
+    # Calculate how far to move each card horizontally then based on that,
+    # calculate the starting horizontal position.
     xincr = int(table_width / (len(deck) + 0.5))
+    start_x = 0
     if xincr > card_width:
         xincr = card_width
-        start_x = int(table_width / 2 - xincr * (len(deck) + 0.0) / 2)
-    else:
-        start_x = 0
-    (xpos, ypos) = (start_x, start_y)
+        start_x = int(table_width / 2 - xincr * (float(len(deck))) / 2)
 
-    # DOM ID Counters
-    counter = 0
+    # Set the initial position
+    xpos = start_x
+    ypos = start_y
+    # print(f"Start position: ({xpos}, {ypos})")
 
-    for card_value in deck:
-        if deck_type == "hand":
-            piece = PlayingCard(
-                face_value=card_value,
-                objid=f"{deck_type}{counter}",
-                origin=(xpos, ypos),
-            )
-            target_canvas.addObject(piece)
-        elif deck_type == "kitty":
-            piece = PlayingCard(
-                face_value=card_value,
-                objid=f"{deck_type}{counter}",
-                origin=(xpos, ypos),
-                show_face=False,
-                flippable=True,
-                movable=False,
-            )
-            target_canvas.addObject(piece, fixed=True)
-        elif deck_type == "discard":
-            piece = PlayingCard(
-                face_value=card_value,
-                objid=f"{deck_type}{counter}",
-                origin=(xpos, ypos),
-                show_face=True,
-                movable=False,
-            )
-            target_canvas.addObject(piece, fixed=True)
-        else:
-            # Throw exception of some species here.
-            pass
+    # Iterate over canvas's child nodes and move any node
+    # where deck_type matches the node's id
+    for node in [x for x in target_canvas.childNodes if deck_type in x.id]:
+        # print(f"Processing node {node.id}. ({xpos=}, {ypos=})")
 
-        counter += 1
+        x = float(node.attrs["x"])
+        y = float(node.attrs["y"])
+        # if (xpos - x) != 0 and (ypos - y) != 0:
+        #     print(f"Moving {node.id} from ({x}, {y}) by ({xpos-x}px, {ypos-y}px) to ({xpos}, {ypos})")
+        target_canvas.translateObject(node, (xpos - x, ypos - y))
+
+        # Each time through the loop, move the next card's starting position.
         xpos += xincr
         if xpos > table_width - xincr:
-            xpos = 0
+            # print(f"Exceeded x.max, resetting position. ({xpos=}, {table_width=}, {xincr=}")
+            xpos = xincr
             ypos += yincr
 
 
@@ -188,20 +225,23 @@ def calculate_dimensions():
     table_height = document["canvas"].clientHeight
 
 
-def update_display():
+def update_display(event=None):
     calculate_dimensions()
-    canvas.deleteAll()
+    # Place the desired decks on the display.
+    if canvas.firstChild is None:
+        populate_canvas(discard_deck, canvas, "discard")
+        # populate_canvas(kitty_deck, canvas, "kitty")
+        # populate_canvas(pinochle_deck, canvas, "discard")
+        populate_canvas(players_hand, canvas, "hand")
 
     # Last-drawn are on top (z-index wise)
-    # place_cards(deck, temp_group, location="middle", deck_type="discard")
-    # place_cards(discard_deck, canvas, location="top", deck_type="discard")
-    place_cards(kitty_deck, canvas, location="top", deck_type="kitty")
+    place_cards(discard_deck, canvas, location="top", deck_type="discard")
+    # place_cards(kitty_deck, canvas, location="top", deck_type="kitty")
+    # place_cards(pinochle_deck, canvas, location="middle", deck_type="discard")
     place_cards(players_hand, canvas, location="bottom", deck_type="hand")
 
-    SVGRoot <= canvas
 
-
-# Make the upadte_display function easily available to scripts.
+# Make the update_display function easily available to scripts.
 window.update_display = update_display
 
 # Locate the card table in the HTML document.
@@ -213,29 +253,37 @@ table_height = 0
 # Create the base SVG object for the card table.
 canvas = SVG.CanvasObject("95vw", "95vh", None, objid="canvas")
 
-SVGRoot <= canvas
+# Attach the card SVG and the new canvas to the card_table div of the document.
 SVGRoot <= SVG.Definitions(filename=CARD_URL)
+SVGRoot <= canvas
+canvas.setDimensions()
+
+# TODO: Create groups to put cards in so that the screen can be cleared without event
+# callbacks being lost (I hope).
 
 # TODO: Call game API to retrieve list of cards for player's hand and other sub-decks.
+
+# TODO: Be sure not to read the kitty until after the bid is won so that the player's
+# can't cheat easily.
+
 # Quickie deck generation while I'm building the real API
-deck = list()
+pinochle_deck = list()
 for decks in range(0, 2):  # Double deck
     for card in ["ace", "10", "king", "queen", "jack", "9"]:
         for suit in ["heart", "diamond", "spade", "club"]:
-            deck.append(f"{suit}_{card}")
+            pinochle_deck.append(f"{suit}_{card}")
 
 # Collect cards into discard, kitty and player's hand
-discard_deck = ["card-base", "card-base", "card-base", "card-base"]
-kitty_deck = sorted(sample(deck, k=4))
+discard_deck = ["card-base" for iter in range(4)]
+kitty_deck = sorted(sample(pinochle_deck, k=4))
 for choice in kitty_deck:
-    deck.remove(choice)
-players_hand = sorted(sample(deck, k=13))
+    pinochle_deck.remove(choice)
+players_hand = sorted(sample(pinochle_deck, k=13))
 for choice in players_hand:
-    deck.remove(choice)
+    pinochle_deck.remove(choice)
 
 
 update_display()
 
-canvas.setDimensions()
 canvas.fitContents()
 canvas.mouseMode = SVG.MouseMode.DRAG
