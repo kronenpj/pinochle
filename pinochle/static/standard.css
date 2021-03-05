@@ -1,7 +1,8 @@
 body {
   background-color: #076324;
   font-family: verdana,"sans serif";
-  
+  font-size: large;
+  color: white;
 }
 
 div, table {

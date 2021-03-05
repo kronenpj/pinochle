@@ -283,6 +283,7 @@ for choice in players_hand:
     pinochle_deck.remove(choice)
 
 
+document['please_wait'].text=""
 update_display()
 
 canvas.fitContents()
