@@ -7,12 +7,13 @@ from random import sample
 
 CARD_URL = "/static/playingcards.svg"
 
+# Define constants
+table_width = 0
+table_height = 0
+
 # Intrinsic dimensions of the cards in the deck.
 card_width = 170
 card_height = 245
-
-# Calculate relative vertical overlap for cards, if needed.
-yincr = int(card_height / 4)
 
 
 class PlayingCard(UseObject):
@@ -175,6 +176,10 @@ def place_cards(deck, target_canvas, location="top", deck_type="hand"):
     :param deck_type: The type of (sub)-deck this is.
     :type deck_type: str, optional # TODO: Should probably be enum
     """
+    print("In place_cards.")
+
+    # Calculate relative vertical overlap for cards, if needed.
+    yincr = int(card_height / 4)
 
     # Where to vertically place first card on the table
     if location.lower() == "top":
@@ -188,11 +193,16 @@ def place_cards(deck, target_canvas, location="top", deck_type="hand"):
 
     # Calculate how far to move each card horizontally then based on that,
     # calculate the starting horizontal position.
-    xincr = int(table_width / (len(deck) + 0.5))
+    xincr = int(table_width / (len(deck) + 0.5))  # Spacing to cover entire width
     start_x = 0
+    if len(deck) == 4:
+        print(f"Calculated: {xincr=}, {start_x=}")
     if xincr > card_width:
-        xincr = card_width
+        xincr = int(card_width)
+        # Start deck/2 cards from table's midpoint horizontally
         start_x = int(table_width / 2 - xincr * (float(len(deck))) / 2)
+        if len(deck) == 4:
+            print(f"Reset to card_width: {xincr=}, {start_x=}")
 
     # Set the initial position
     xpos = start_x
@@ -245,17 +255,14 @@ def update_display(event=None):
 window.update_display = update_display
 
 # Locate the card table in the HTML document.
-SVGRoot = document["card_table"]
-
-table_width = 0
-table_height = 0
+CardTable = document["card_table"]
 
 # Create the base SVG object for the card table.
 canvas = SVG.CanvasObject("95vw", "95vh", None, objid="canvas")
 
 # Attach the card SVG and the new canvas to the card_table div of the document.
-SVGRoot <= SVG.Definitions(filename=CARD_URL)
-SVGRoot <= canvas
+CardTable <= SVG.Definitions(filename=CARD_URL)
+CardTable <= canvas
 canvas.setDimensions()
 
 # TODO: Create groups to put cards in so that the screen can be cleared without event
@@ -282,6 +289,8 @@ players_hand = sorted(sample(pinochle_deck, k=13))
 for choice in players_hand:
     pinochle_deck.remove(choice)
 
+# Attach the card graphics file
+document["card_definitions"] <= SVG.Definitions(filename=CARD_URL)
 
 document['please_wait'].text=""
 update_display()
