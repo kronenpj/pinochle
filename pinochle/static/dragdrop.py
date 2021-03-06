@@ -1,10 +1,10 @@
-from sys import stdout
-
 from browser import window, document, html, svg
 import brySVG.dragcanvas as SVG
 from brySVG.dragcanvas import UseObject
 from random import sample
 
+
+DEBUG = True
 CARD_URL = "/static/playingcards.svg"
 
 # Define constants
@@ -48,11 +48,13 @@ class PlayingCard(UseObject):
         self.handler()
 
     def handler(self, event=None):
-        # print("In PlayingCard.handler()")
+        if DEBUG:
+            print("Entering PlayingCard.handler()")
         obj = self
         new_y = table_height
 
-        # print(f"{obj.attrs['y']}, {obj.style['transform']}")
+        if DEBUG:
+            print(f"PlayingCard.handler: {obj.attrs['y']}, {obj.style['transform']}")
         # Moving a card within a card_height of the top "throws" that card.
         if (
             event is not None
@@ -63,7 +65,8 @@ class PlayingCard(UseObject):
             # The object already has the correct 'Y' value from the move.
             if "touch" in event.type or "click" in event.type:
                 new_y = float(obj.attrs["y"])
-                # print(f"Touch event: {obj.id=} {new_y=}")
+                if DEBUG:
+                    print(f"PlayingCard.handler: Touch event: {obj.id=} {new_y=}")
 
             # Cope with the fact that the original Y coordinate is given rather than the
             # new one. And that the style element is a string...
@@ -76,11 +79,15 @@ class PlayingCard(UseObject):
                     y_coord_end = transform.find("px", y_coord)
                     y_move = transform[y_coord:y_coord_end]
                     new_y = float(obj.attrs["y"]) + float(y_move)
-                # print(f"Mouse event: {obj.id=} {new_y=}")
+                if DEBUG:
+                    print(f"PlayingCard.handler: Mouse event: {obj.id=} {new_y=}")
 
             # Determine whether the card is now in a position to be considered thrown.
             if new_y < card_height:
-                # print(f"Throwing {obj.id=} ({obj.face_value=})")
+                if DEBUG:
+                    print(
+                        f"PlayingCard.handler: Throwing {obj.id=} ({obj.face_value=})"
+                    )
                 parent_canvas = obj.parentElement
 
                 # Decide which card in discard_deck to replace - identify the index of the
@@ -114,10 +121,12 @@ class PlayingCard(UseObject):
         else:
             obj.attrs["href"] = "#back"
             obj.style["fill"] = "crimson"  # darkblue also looks "right"
-        # print("Leaving PlayingCard.handler()")
+        if DEBUG:
+            print("Leaving PlayingCard.handler()")
 
     def flip_card(self, event=None):
-        # print("In PlayingCard.flip_card()")
+        if DEBUG:
+            print("Entering PlayingCard.flip_card()")
         if self.flippable:
             self.show_face = not self.show_face
             self.handler()
@@ -176,7 +185,8 @@ def place_cards(deck, target_canvas, location="top", deck_type="hand"):
     :param deck_type: The type of (sub)-deck this is.
     :type deck_type: str, optional # TODO: Should probably be enum
     """
-    print("In place_cards.")
+    if DEBUG:
+        print("Entering place_cards.")
 
     # Calculate relative vertical overlap for cards, if needed.
     yincr = int(card_height / 4)
@@ -201,35 +211,42 @@ def place_cards(deck, target_canvas, location="top", deck_type="hand"):
     # calculate the starting horizontal position.
     xincr = int(table_width / (len(deck) + 0.5))  # Spacing to cover entire width
     start_x = 0
-    if len(deck) == 4:
-        print(f"Calculated: {xincr=}, {start_x=}")
+    if len(deck) == 4 and DEBUG:
+        print(f"place_cards: Calculated: {xincr=}, {start_x=}")
     if xincr > card_width:
         xincr = int(card_width)
         # Start deck/2 cards from table's midpoint horizontally
         start_x = int(table_width / 2 - xincr * (float(len(deck))) / 2)
-        if len(deck) == 4:
-            print(f"Reset to card_width: {xincr=}, {start_x=}")
+        if len(deck) == 4 and DEBUG:
+            print(f"place_cards: Reset to card_width: {xincr=}, {start_x=}")
 
     # Set the initial position
     xpos = start_x
     ypos = start_y
-    # print(f"Start position: ({xpos}, {ypos})")
+    if DEBUG:
+        print(f"place_cards: Start position: ({xpos}, {ypos})")
 
     # Iterate over canvas's child nodes and move any node
     # where deck_type matches the node's id
     for node in [x for x in target_canvas.childNodes if deck_type in x.id]:
-        # print(f"Processing node {node.id}. ({xpos=}, {ypos=})")
+        if DEBUG:
+            print(f"place_cards: Processing node {node.id}. ({xpos=}, {ypos=})")
 
         x = float(node.attrs["x"])
         y = float(node.attrs["y"])
-        # if (xpos - x) != 0 and (ypos - y) != 0:
-        #     print(f"Moving {node.id} from ({x}, {y}) by ({xpos-x}px, {ypos-y}px) to ({xpos}, {ypos})")
+        if DEBUG and (xpos - x) != 0 and (ypos - y) != 0:
+            print(
+                f"place_cards: Moving {node.id} from ({x}, {y}) by ({xpos-x}px, {ypos-y}px) to ({xpos}, {ypos})"
+            )
         target_canvas.translateObject(node, (xpos - x, ypos - y))
 
         # Each time through the loop, move the next card's starting position.
         xpos += xincr
         if xpos > table_width - xincr:
-            # print(f"Exceeded x.max, resetting position. ({xpos=}, {table_width=}, {xincr=}")
+            if DEBUG:
+                print(
+                    f"place_cards: Exceeded x.max, resetting position. ({xpos=}, {table_width=}, {xincr=}"
+                )
             xpos = xincr
             ypos += yincr
 
