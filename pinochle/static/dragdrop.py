@@ -187,9 +187,15 @@ def place_cards(deck, target_canvas, location="top", deck_type="hand"):
     elif location.lower() == "bottom":
         # Place cards one card height above the bottom, plus a bit.
         start_y = table_height - card_height - 2
+        # Keep the decks relatively close together.
+        if start_y > card_height * 3:
+            start_y = card_height * 3 + card_height / 20
     else:
         # Place cards in the middle.
         start_y = table_height / 2 - card_height / 2
+        # Keep the decks relatively close together.
+        if start_y > card_height * 2:
+            start_y = card_height * 2
 
     # Calculate how far to move each card horizontally then based on that,
     # calculate the starting horizontal position.
@@ -250,18 +256,37 @@ def update_display(event=None):
     # place_cards(pinochle_deck, canvas, location="middle", deck_type="discard")
     place_cards(players_hand, canvas, location="bottom", deck_type="hand")
 
+    # Update button
+    canvas.addObject(button_clear)
+    canvas.addObject(button_refresh)
+
+
+def clear_display(event=None):
+    global canvas
+    document.getElementById("canvas").remove()
+
+    # Attach the card SVG and the new canvas to the card_table div of the document.
+    CardTable <= canvas
+    canvas.setDimensions()
+    update_display()
+    canvas.fitContents()
+    canvas.mouseMode = SVG.MouseMode.DRAG
+
 
 # Make the update_display function easily available to scripts.
 window.update_display = update_display
+window.clear_display = clear_display
 
 # Locate the card table in the HTML document.
 CardTable = document["card_table"]
+
+# Attach the card graphics file
+document["card_definitions"] <= SVG.Definitions(filename=CARD_URL)
 
 # Create the base SVG object for the card table.
 canvas = SVG.CanvasObject("95vw", "95vh", None, objid="canvas")
 
 # Attach the card SVG and the new canvas to the card_table div of the document.
-CardTable <= SVG.Definitions(filename=CARD_URL)
 CardTable <= canvas
 canvas.setDimensions()
 
@@ -289,10 +314,27 @@ players_hand = sorted(sample(pinochle_deck, k=13))
 for choice in players_hand:
     pinochle_deck.remove(choice)
 
-# Attach the card graphics file
-document["card_definitions"] <= SVG.Definitions(filename=CARD_URL)
+# Button to call update_display on demand
+button_refresh = SVG.Button(
+    position=(table_height / 2, 0),
+    size=(70, 35),
+    text="Refresh",
+    onclick=update_display,
+    fontsize=18,
+    objid="button_refresh",
+)
 
-document['please_wait'].text=""
+# Button to call clear_display on demand
+button_clear = SVG.Button(
+    position=(table_height / 2, 40),
+    size=(70, 35),
+    text="Clear",
+    onclick=clear_display,
+    fontsize=18,
+    objid="button_clear",
+)
+
+document.getElementById("please_wait").remove()
 update_display()
 
 canvas.fitContents()
