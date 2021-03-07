@@ -340,9 +340,7 @@ def place_cards(deck, target_canvas, location="top", deck_type="player"):
         if DEBUG > 1:
             print(f"place_cards: Processing node {node.id}. ({xpos=}, {ypos=})")
 
-        x = float(node.attrs["x"])
-        y = float(node.attrs["y"])
-        # (x, y) = node.origin # Suggestion by Andy, not sure it's the right attributes.
+        (x, y) = node.origin
         if DEBUG > 1 and (xpos - x) != 0 and (ypos - y) != 0:
             print(
                 f"place_cards: Moving {node.id} from ({x}, {y}) by ({xpos-x}px, {ypos-y}px) to ({xpos}, {ypos})"
