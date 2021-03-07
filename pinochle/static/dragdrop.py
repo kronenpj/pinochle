@@ -14,7 +14,7 @@ PLAYER_DECK_CONFIG = {
     2: {"flippable": False, "movable": True},
     3: {"flippable": False, "movable": True},
 }
-KITTY_DECK_CONFIG = {  # Doubles as the mode for the meld pile used in the "bid" mode.
+OTHER_DECK_CONFIG = {  # Doubles as the mode for the meld pile used in the "bid" mode.
     # Also doubles as the mode for the discard pile used in the "trick" mode.
     0: {"flippable": False, "movable": False, "show_face": False},  # Bid (Kitty)
     1: {"flippable": True, "movable": False, "show_face": False},  # Reveal (Kitty)
@@ -137,9 +137,9 @@ class PlayingCard(UseObject):
         if new_y < card_height or "click" in event.type:
             if DEBUG > 1:
                 print(
-                    f"PlayingCard.play_handler: Throwing {obj.id=} ({obj.face_value=}) {obj.parentElement}"
+                    f"PlayingCard.play_handler: Throwing {obj.id=} ({obj.face_value=}) {obj.canvas}"
                 )
-            parent_canvas = obj.parentElement
+            parent_canvas = obj.canvas
             card_tag = GAME_MODES[GAME_MODE]
 
             # Protect the player's deck during meld process.
@@ -169,7 +169,8 @@ class PlayingCard(UseObject):
             placement = receiving_deck.index("card-base")
             if DEBUG > 1:
                 print(f"PlayingCard.play_handler: Locating {card_tag}{placement}")
-                id_list = [x.id for x in parent_canvas.childNodes]
+                id_list = [objid for (objid, _) in parent_canvas.objectDict.items()]
+
                 print(
                     f"PlayingCard.play_handler: {parent_canvas.attrs['mode']}: {id_list}"
                 )
@@ -180,7 +181,7 @@ class PlayingCard(UseObject):
             #    discard_object = parent_canvas[f"{card_tag}{placement}"]
             #       wrong access method
             discard_object = [
-                x for x in parent_canvas.childNodes if f"{card_tag}{placement}" in x.id
+                x for (objid, x) in parent_canvas.objectDict.items() if f"{card_tag}{placement}" in objid
             ][0]
 
             # Delete the original card's transparent hit target from the UI.
@@ -194,10 +195,11 @@ class PlayingCard(UseObject):
             # Replace the discard face with that of the original, moved card.
             discard_object.face_value = obj.face_value
             discard_object.href.baseVal = obj.href.baseVal
-            discard_object.movable = False
-            discard_object.fixed = True
+
             # TODO: Remove this when taking meld back is implemented above.
+            discard_object.movable = False
             discard_object.unbind("click")
+            # TODO: Remove this when taking meld back is implemented above.
 
             # TODO: Call game API to notify server what card was added to meld or
             # thrown and by which player.
@@ -255,10 +257,10 @@ def populate_canvas(deck, target_canvas, deck_type="player"):
         if "player" in deck_type:
             flippable = PLAYER_DECK_CONFIG[GAME_MODE]["flippable"]
             movable = PLAYER_DECK_CONFIG[GAME_MODE]["movable"]
-        elif "kitty" in deck_type or "meld" in deck_type or "discard" in deck_type:
-            show_face = KITTY_DECK_CONFIG[GAME_MODE]["show_face"]
-            flippable = KITTY_DECK_CONFIG[GAME_MODE]["flippable"]
-            movable = KITTY_DECK_CONFIG[GAME_MODE]["movable"]
+        elif "kitty" in deck_type or "meld" in deck_type or "trick" in deck_type:
+            show_face = OTHER_DECK_CONFIG[GAME_MODE]["show_face"]
+            flippable = OTHER_DECK_CONFIG[GAME_MODE]["flippable"]
+            movable = OTHER_DECK_CONFIG[GAME_MODE]["movable"]
         else:
             # Throw exception of some species here.
             pass
@@ -285,7 +287,7 @@ def place_cards(deck, target_canvas, location="top", deck_type="player"):
     "top", instructing routine where to place the cards vertically.
     :type location: str, optional
     :param deck_type: The type of (sub)-deck this is.
-    :type deck_type: str, optional # TODO: Should probably be enum
+    :type deck_type: str, optional # TODO: Should probably be enum-like
     """
     if DEBUG:
         print("Entering place_cards(deck={}, deck_type={}).".format(deck, deck_type))
@@ -334,12 +336,13 @@ def place_cards(deck, target_canvas, location="top", deck_type="player"):
 
     # Iterate over canvas's child nodes and move any node
     # where deck_type matches the node's id
-    for node in [x for x in target_canvas.childNodes if deck_type in x.id]:
+    for node in [x for (objid, x) in target_canvas.objectDict.items() if deck_type in objid]:
         if DEBUG > 1:
             print(f"place_cards: Processing node {node.id}. ({xpos=}, {ypos=})")
 
         x = float(node.attrs["x"])
         y = float(node.attrs["y"])
+        # (x, y) = node.origin # Suggestion by Andy, not sure it's the right attributes.
         if DEBUG > 1 and (xpos - x) != 0 and (ypos - y) != 0:
             print(
                 f"place_cards: Moving {node.id} from ({x}, {y}) by ({xpos-x}px, {ypos-y}px) to ({xpos}, {ypos})"
@@ -369,7 +372,7 @@ def update_display(event=None):
         print("Entering update_display. (mode={})".format(GAME_MODES[GAME_MODE]))
     calculate_dimensions()
     # Place the desired decks on the display.
-    if canvas.firstChild is None:
+    if not canvas.objectDict:
         if GAME_MODE == 0:  # Bid
             # Use empty deck to prevent peeking at the kitty.
             populate_canvas(discard_deck, canvas, "kitty")
@@ -395,7 +398,7 @@ def update_display(event=None):
         place_cards(meld_deck, canvas, location="top", deck_type=GAME_MODES[GAME_MODE])
         place_cards(players_meld_deck, canvas, location="bottom", deck_type="player")
     if GAME_MODE == 3:  # Trick
-        # TODO: Retrieve/senf events from API to show cards as they are played.
+        # TODO: Retrieve/send events from API to show cards as they are played.
         place_cards(
             discard_deck, canvas, location="top", deck_type=GAME_MODES[GAME_MODE]
         )
@@ -462,8 +465,8 @@ canvas = SVG.CanvasObject("95vw", "95vh", None, objid="canvas")
 canvas.attrs["mode"] = "initial"
 
 # TODO: Call game API to retrieve game_id, team_id, player_id, player names, etc...
-
 # TODO: Call game API to retrieve list of cards for player's hand and other sub-decks.
+# TODO: Add buttons & display to facilitate bidding. Tie into API.
 
 # Quickie deck generation while I'm building the real API
 pinochle_deck = list()
