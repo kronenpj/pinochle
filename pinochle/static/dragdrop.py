@@ -28,8 +28,8 @@ GAME_MODE = 0
 GAME_ID = ""
 TEAM_ID = ""
 PLAYER_ID = ""
-PLAYER_NAME = ["", "", "", ""]
 PLAYERS = 4
+PLAYER_NAME = ["" for _ in range(PLAYERS)]
 
 table_width = 0
 table_height = 0
@@ -135,7 +135,7 @@ class PlayingCard(UseObject):
 
         # Determine whether the card is now in a position to be considered thrown.
         if new_y < card_height or "click" in event.type:
-            if DEBUG > 1 or DEBUG:  # FIXME: Remove or DEBUG
+            if DEBUG > 1:
                 print(
                     f"PlayingCard.play_handler: Throwing {obj.id=} ({obj.face_value=}) {obj.parentElement}"
                 )
@@ -167,7 +167,7 @@ class PlayingCard(UseObject):
             if add_only and not "card-base" in receiving_deck:
                 receiving_deck.append("card-base")
             placement = receiving_deck.index("card-base")
-            if DEBUG > 1 or DEBUG:  # FIXME: Remove of DEBUG
+            if DEBUG > 1:
                 print(f"PlayingCard.play_handler: Locating {card_tag}{placement}")
                 id_list = [x.id for x in parent_canvas.childNodes]
                 print(
@@ -203,7 +203,6 @@ class PlayingCard(UseObject):
             # thrown and by which player.
             obj.face_update_dom()
             update_display()  # This sort-of works
-            # clear_display() # This really works but causes long UI delays.
 
     def card_click_handler(self, event=None):
         """
@@ -411,7 +410,7 @@ def clear_display(event=None):
         document.getElementById("canvas").remove()
     except AttributeError:
         pass
-    if DEBUG > 1 or DEBUG:
+    if DEBUG > 1:
         print("Destroying canvas with mode: {}".format(canvas.attrs["mode"]))
     canvas.deleteAll()
 
@@ -474,8 +473,10 @@ for decks in range(0, 2):  # Double deck
             pinochle_deck.append(f"{suit}_{card}")
 
 # Collect cards into discard, kitty and player's hand
-discard_deck = ["card-base" for _ in range(4)]
-kitty_deck = sorted(sample(pinochle_deck, k=4))
+discard_deck = ["card-base" for _ in range(PLAYERS)]
+kitty_deck = sorted(
+    sample(pinochle_deck, k=4)
+)  # This will vary depending on the number of players. 4 for four players, 3 or 6 for three players.
 for choice in kitty_deck:
     pinochle_deck.remove(choice)
 HAND_SIZE = int(len(pinochle_deck) / PLAYERS)
