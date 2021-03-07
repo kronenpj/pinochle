@@ -5,7 +5,7 @@ from random import sample
 import copy
 
 # Define constants
-DEBUG = 0
+DEBUG = 1
 CARD_URL = "/static/playingcards.svg"
 GAME_MODES = ["bid", "reveal", "meld", "trick"]
 PLAYER_DECK_CONFIG = {
