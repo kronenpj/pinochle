@@ -80,10 +80,6 @@ class PlayingCard(UseObject):
             self.attrs["href"] = "#back"
             self.style["fill"] = "crimson"  # darkblue also looks "right"
 
-        # This appears to only be needed during the meld mode.
-        # if GAME_MODE == 2:
-        #     canvas.mouseMode = SVG.MouseMode.DRAG
-
     def move_handler(self, event=None):
         if DEBUG:
             print(
@@ -164,7 +160,7 @@ class PlayingCard(UseObject):
 
             # Decide which card in receiving_deck to replace - identify the index of the
             # first remaining instance of 'card-base'
-            if add_only and not "card-base" in receiving_deck:
+            if add_only and "card-base" not in receiving_deck:
                 receiving_deck.append("card-base")
             placement = receiving_deck.index("card-base")
             if DEBUG > 1:
@@ -181,7 +177,9 @@ class PlayingCard(UseObject):
             #    discard_object = parent_canvas[f"{card_tag}{placement}"]
             #       wrong access method
             discard_object = [
-                x for (objid, x) in parent_canvas.objectDict.items() if f"{card_tag}{placement}" in objid
+                x
+                for (objid, x) in parent_canvas.objectDict.items()
+                if f"{card_tag}{placement}" in objid
             ][0]
 
             # Delete the original card's transparent hit target from the UI.
@@ -204,7 +202,7 @@ class PlayingCard(UseObject):
             # TODO: Call game API to notify server what card was added to meld or
             # thrown and by which player.
             obj.face_update_dom()
-            update_display()  # This sort-of works
+            update_display()
 
     def card_click_handler(self, event=None):
         """
@@ -336,7 +334,9 @@ def place_cards(deck, target_canvas, location="top", deck_type="player"):
 
     # Iterate over canvas's child nodes and move any node
     # where deck_type matches the node's id
-    for node in [x for (objid, x) in target_canvas.objectDict.items() if deck_type in objid]:
+    for node in [
+        x for (objid, x) in target_canvas.objectDict.items() if deck_type in objid
+    ]:
         if DEBUG > 1:
             print(f"place_cards: Processing node {node.id}. ({xpos=}, {ypos=})")
 
@@ -477,7 +477,7 @@ for decks in range(0, 2):  # Double deck
 discard_deck = ["card-base" for _ in range(PLAYERS)]
 kitty_deck = sorted(
     sample(pinochle_deck, k=4)
-)  # This will vary depending on the number of players. 4 for four players, 3 or 6 for three players.
+)  # 'k' will vary depending on the number of players. 4 for four players, 3 or 6 for three players. 0 will also need to be a valid option.
 for choice in kitty_deck:
     pinochle_deck.remove(choice)
 HAND_SIZE = int(len(pinochle_deck) / PLAYERS)
@@ -520,6 +520,3 @@ button_advance_mode = SVG.Button(
 
 document.getElementById("please_wait").remove()
 clear_display()
-
-canvas.fitContents()
-canvas.mouseMode = SVG.MouseMode.DRAG
