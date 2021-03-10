@@ -1,5 +1,5 @@
 
-import libuuid as uuid
+import uuid
 from datetime import datetime
 
 import connexion

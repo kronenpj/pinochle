@@ -4,7 +4,7 @@ This encapsulates data and aspects of a single hand.
 License: GPLv3
 """
 
-import libuuid as uuid
+import uuid
 from typing import List
 
 from pinochle.game.player import Player
