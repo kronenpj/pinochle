@@ -8,6 +8,7 @@ import uuid
 from typing import List
 from datetime import datetime
 
+from pinochle.config import db
 import pinochle.config
 
 

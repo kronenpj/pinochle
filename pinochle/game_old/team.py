@@ -7,8 +7,8 @@ License: GPLv3
 import uuid
 from typing import List
 
-from pinochle.deck import PinochleDeck
-from pinochle.game.player import Player
+from pinochle.cards.deck import PinochleDeck
+from pinochle.game_old.player import Player
 
 
 class Team:

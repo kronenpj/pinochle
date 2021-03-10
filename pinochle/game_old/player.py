@@ -6,7 +6,7 @@ License: GPLv3
 
 import uuid
 
-from pinochle.deck import PinochleDeck
+from pinochle.cards.deck import PinochleDeck
 
 
 class Player:
