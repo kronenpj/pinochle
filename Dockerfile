@@ -9,7 +9,7 @@ WORKDIR ${SRC_DIR}
 COPY pyproject.toml poetry.lock poetry.toml ${SRC_DIR}/
 RUN poetry install --no-dev --no-root
 
-COPY pinochle/ ${SRC_DIR}/pinochle/
+COPY src/pinochle/ ${SRC_DIR}/pinochle/
 COPY run-gunicorn ${SRC_DIR}
 RUN chmod +x ${SRC_DIR}/run-gunicorn
 

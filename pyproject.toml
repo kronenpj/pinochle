@@ -6,7 +6,7 @@ authors = ["Paul Kronenwetter <kronenpj@gmail.com>"]
 license = "GPL-2.0-only"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.6"
 jsonpickle = "^2.0.0"
 brython="^3.9"
 connexion = {version = "2.2.0", extras = ["swagger-ui"]}
