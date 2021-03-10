@@ -7,8 +7,8 @@ License: GPLv3
 import uuid
 from typing import List
 
-from pinochle.game_old.player import Player
-from pinochle.game_old.team import Team
+from pinochle.player import Player
+from pinochle.team import Team
 
 
 class Hand:

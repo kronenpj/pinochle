@@ -16,9 +16,9 @@ from pinochle import custom_log, object_helpers
 from pinochle.cards.card import PinochleCard
 from pinochle.cards.deck import PinochleDeck
 from pinochle.cards.stack import PinochleStack
-from pinochle.game_old.game import Game
-from pinochle.game_old.player import Player
-from pinochle.game_old.team import Team
+from pinochle.player import Player
+from pinochle.team import Team
+from pinochle.game import Game
 
 FAULTY_PICKLE_E = "Encountered faulty pickle data. Continuing."
 J_GAMEID = "game_id"

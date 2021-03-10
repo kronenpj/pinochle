@@ -14,9 +14,9 @@ from pinochle.cards import const
 from pinochle.cards.card import PinochleCard
 from pinochle.cards.deck import PinochleDeck
 from pinochle.exceptions import InvalidDeckError, InvalidSuitError
-from pinochle.game_old.hand import Hand
-from pinochle.game_old.player import Player
+from pinochle.player import Player
 from pinochle.log_decorator import log_decorator
+from pinochle.game_old.hand import Hand
 
 
 @log_decorator
