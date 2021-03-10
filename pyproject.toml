@@ -5,7 +5,7 @@ description = "A distributed multi-player Pinochle game."
 authors = [
     "Paul Kronenwetter <kronenpj@gmail.com>"
 ]
-license = "GPL2"
+license = "GPL3"
 readme = "README.md"
 python = "^3.6"
 
