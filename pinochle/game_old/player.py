@@ -4,7 +4,7 @@ Class to represent a player.
 License: GPLv3
 """
 
-import uuid
+import libuuid as uuid
 
 from pinochle.deck import PinochleDeck
 

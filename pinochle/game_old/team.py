@@ -4,7 +4,7 @@ This represents a player.
 License: GPLv3
 """
 
-import uuid
+import libuuid as uuid
 from typing import List
 
 from pinochle.deck import PinochleDeck

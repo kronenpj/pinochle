@@ -4,7 +4,7 @@ This encapsulates data and aspects of a game.
 License: GPLv3
 """
 
-import uuid
+import libuuid as uuid
 from typing import List
 from datetime import datetime
 

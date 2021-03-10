@@ -1,0 +1,46 @@
+[tool.poetry]
+name = "pinochle"
+version = "0.1.0"
+description = "Multi-player, server-based Pinochle game."
+authors = ["Paul Kronenwetter <kronenpj@gmail.com>"]
+license = "GPL-2.0-only"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+jsonpickle = "^2.0.0"
+brython="^3.9"
+connexion = {version = "2.2.0", extras = ["swagger-ui"]}
+openapi-spec-validator="0.2.9"
+Flask="1.0.2"
+flask-marshmallow="0.9.0"
+Flask-SQLAlchemy="2.3.2"
+gunicorn="^20.0.4"
+# marshmallow="^2.18.0"
+# marshmallow-sqlalchemy="^0.15.0"
+# Version 3.x of marshmallow makes incompatible changes.
+# I'm not ready to deal with the updates yet.
+marshmallow="^2.21.0"
+# marshmallow-sqlalchemy 0.24.x requires marshmallow 3.x
+marshmallow-sqlalchemy="^0.23.1"
+psycopg2-binary="^2.8.6"
+SQLAlchemy="^1.2.17"
+Werkzeug="^0.14.1"
+#eralchemy
+python-dateutil = "^2.8.1"
+#libuuid = "^1.0.0"
+libuuid = {file = "libuuid-1.0.0-cp38-cp38-linux_x86_64.whl"}
+
+[tool.poetry.dev-dependencies]
+mockbrython = "^0.0.3"
+pylint = "^2.7.2"
+tox = "^3.23.0"
+black = "^20.8b1"
+pytest-cov = "^2.11.1"
+rope = "^0.18.0"
+mutmut = "^2.1.0"
+typing = "^3.5.2"
+
+[build-system]
+requires = ["poetry_core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+

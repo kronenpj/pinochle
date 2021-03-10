@@ -4,7 +4,7 @@ This orchestrates the phases of a game.
 License: GPLv3
 """
 
-import uuid
+import libuuid as uuid
 from copy import deepcopy
 from typing import List, Union
 

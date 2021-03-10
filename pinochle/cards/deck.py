@@ -26,7 +26,7 @@ a subclass of the ``Stack`` class, with a few extra/differing methods.
 
 """
 
-import uuid
+import libuuid as uuid
 from collections import deque
 from copy import deepcopy
 
