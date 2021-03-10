@@ -4,7 +4,10 @@ if [ -z "$VIRTUAL_ENV" ]; then
   . venv/bin/activate
 fi
 
-tox -p --notest -c tox.ini "$@"
+# With poetry, building this environment before testing doesn't work.
+# Poetry does something where the tox environment needs to be rebuilt
+# each time or it throws weird errors.
+#tox -p --notest -c tox.ini "$@"
 
 if [ "$1" == "" ]; then
   tox -p -c tox.ini -- -m 'not hypothesis'
