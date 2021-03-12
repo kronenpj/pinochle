@@ -12,12 +12,7 @@ from pinochle import custom_log
 from pinochle.cards import const
 from pinochle.cards.deck import PinochleDeck
 from pinochle.cards.stack import PinochleStack
-from pinochle.game import Game
-from pinochle.player import Player
-from pinochle.team import Team
-
-# FIXME: Remove this or refactor to new implementation.
-from pinochle.game_old.hand import Hand
+from pinochle.models import Game, Hand, Player, Team
 
 
 def create_new_game(teams: List[Team]) -> Game:

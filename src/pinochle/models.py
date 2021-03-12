@@ -1,4 +1,3 @@
-
 import uuid
 from datetime import datetime
 
@@ -69,7 +68,8 @@ class Game(db.Model):
     )
 
     def __repr__(self):
-        output = "<Game %r>" % self.game_id
+        output = "<Game %r" % self.game_id
+        output += ">"
         return output
 
 
@@ -110,6 +110,7 @@ class GameRound(db.Model):
         output = "<GameRound: "
         output += "Game %r, " % self.game_id
         output += "Round %r, " % self.round_id
+        output += ">"
         return output
 
 
@@ -152,7 +153,8 @@ class Round(db.Model):
         output += "Seq %r, " % self.round_seq
         output += "Bid %r, " % self.bid
         output += "Winner %r, " % self.bid_winner
-        output += "Trump %r>" % self.trump
+        output += "Trump %r" % self.trump
+        output += ">"
         return output
 
 
@@ -198,6 +200,7 @@ class RoundTeam(db.Model):
         output = "<RoundTeam: "
         output += "Round %r, " % self.round_id
         output += "Team %r, " % self.team_id
+        output += ">"
         return output
 
 
@@ -228,6 +231,7 @@ class Team(db.Model):
     )
     name = db.Column(db.String)
     score = db.Column(db.Integer, default=0)
+    cards = db.Column(db.String)
     timestamp = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
@@ -236,6 +240,8 @@ class Team(db.Model):
         output = "<Team %r, " % self.team_id
         output += "Name %r, " % self.name
         output += "Score %r, " % self.score
+        output += "Cards %r, " % self.cards
+        output += ">"
         return output
 
 
@@ -251,6 +257,7 @@ class TeamSchema(ma.ModelSchema):
     team_id = fields.Str()
     name = fields.Str()
     score = fields.Int()
+    cards = fields.Str()
     timestamp = fields.DateTime()
 
 
@@ -278,6 +285,7 @@ class TeamPlayers(db.Model):
         output = "<TeamPlayers: "
         output += "Team %r, " % self.team_id
         output += "Player %r, " % self.player_id
+        output += ">"
         return output
 
 
@@ -306,8 +314,15 @@ class Player(db.Model):
         index=True,
         unique=True,
     )
+    hand_id = db.Column(
+        GUID,
+        default=lambda: uuid.uuid4(),  # pragma pylint: disable=unnecessary-lambda
+        primary_key=True,
+        nullable=False,
+        index=True,
+        unique=True,
+    )
     name = db.Column(db.String)
-    hand = db.Column(db.String)
     score = db.Column(db.Integer, default=0)
     timestamp = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -316,8 +331,9 @@ class Player(db.Model):
     def __repr__(self):
         output = "<Player %r, " % self.player_id
         output += "Name %r, " % self.name
-        output += "Hand %r, " % self.hand
+        output += "Hand %r, " % self.hand_id
         output += "Score %r, " % self.score
+        output += ">"
         return output
 
 
@@ -332,6 +348,36 @@ class PlayerSchema(ma.ModelSchema):
     name = fields.Str()
     # player_id = fields.UUID()
     player_id = fields.Str()
-    hand = fields.Str()
+    # hand_id = fields.UUID()
+    hand_id = fields.Str()
     score = fields.Int()
     timestamp = fields.DateTime()
+
+
+class Hand(db.Model):
+    __tablename__ = "hand"
+    _id = db.Column(
+        db.Integer, primary_key=True, nullable=False, index=True, unique=True,
+    )
+    hand_id = db.Column(
+        GUID, db.ForeignKey("player.hand_id"), index=True, nullable=False
+    )
+    card = db.Column(db.String, nullable=False)
+
+    def __repr__(self):
+        output = "<Hand %r, " % self.hand_id
+        output += "Card %r, " % self.card
+        output += ">"
+        return output
+
+
+class HandSchema(ma.ModelSchema):
+    def __init__(self, **kwargs):
+        super().__init__(strict=True, **kwargs)
+
+    class Meta:
+        model = Round
+        sqla_session = db.session
+
+    hand_id = fields.Str()
+    card = fields.Str()
