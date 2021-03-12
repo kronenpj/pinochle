@@ -55,10 +55,7 @@ typing = [
 ]
 pytest = "^6.2.2"
 bumpversion = "^0.6.0"
-
-[build-system]
-requires = ["poetry_core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+eralchemy = "^1.2.10"
 
 [tool.black]
 line-length = 88
@@ -83,3 +80,7 @@ exclude = '''
                      # the root of the project
 )
 '''
+[build-system]
+requires = ["poetry_core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+

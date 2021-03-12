@@ -1,0 +1,8 @@
+[run]
+branch = True
+source = src
+
+[paths]
+source =
+   src
+   #.tox/**/site-packages
