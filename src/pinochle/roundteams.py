@@ -6,7 +6,7 @@ import sqlalchemy
 from flask import abort, make_response
 
 from pinochle.config import db
-from pinochle.models import Round, RoundTeam, RoundTeamSchema, Team
+from pinochle.models import Hand, HandSchema, Round, RoundTeam, RoundTeamSchema, Team
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member
@@ -59,6 +59,119 @@ def read_one(round_id):
 
     # Otherwise, nope, didn't find any rounds
     abort(404, f"No rounds found ID {round_id}")
+
+
+def read(round_id, team_id):
+    """
+    This function responds to a request for /api/round/{round_id}/{team_id}
+    with selected team in that round.
+
+    :param round_id:   Id of round to find
+    :param team_id:    Id of the team to report
+    :return:           list of cards collected by that team for the round.
+    """
+    # Build the query
+    team_hand_id = (
+        RoundTeam.query.filter(
+            RoundTeam.round_id == round_id, RoundTeam.team_id == team_id
+        )
+        # .outerjoin(Hand)
+        .one()
+    )
+
+    team_cards = (
+        Hand.query.filter(Hand.hand_id == team_hand_id)
+        # .outerjoin(Hand)
+        .all()
+    )
+
+    # Did we find any cards?
+    if team_cards is not None:
+        # Serialize the data for the response
+        data = {"round_id": round_id, "team_id": team_id}
+        temp = list()
+        for _, team_cards in enumerate(team_cards):
+            temp.append(team_cards)
+        data["team_cards"] = temp
+        return data
+
+    # Otherwise, nope, didn't find any rounds
+    abort(404, f"No cards found for {round_id=}/{team_id=}")
+
+
+def addcard(round_id, team_id, card):
+    """
+    This function responds to a PUT for /api/round/{round_id}/{team_id}
+    by adding the specified card to the team's collection.
+
+    :param round_id:   Id of round to find
+    :param team_id:    Id of the team to report
+    :param card:       String of the card to add to the collection.
+    :return:           None.
+    """
+    if card is not None:
+        # Build the query to extract the hand_id
+        hand_id = (
+            RoundTeam.query.filter(
+                RoundTeam.round_id == round_id, RoundTeam.team_id == team_id
+            )
+            # .outerjoin(Hand)
+            .all()
+        )
+
+        # Create a hand instance using the schema and the passed in card
+        schema = HandSchema()
+        new_card = schema.load(
+            {"hand_id": hand_id, "card": card}, session=db.session
+        ).data
+
+        # Add the round to the database
+        db.session.add(new_card)
+        db.session.commit()
+
+        # Serialize and return the newly created card in the response
+        data = schema.dump(new_card).data
+
+        return data, 201
+
+    # Otherwise, something happened.
+    abort(404, f"Couldn't add {card=} to collection for {round_id=}/{team_id=}")
+
+
+def deletecard(round_id, team_id, card):
+    """
+    This function responds to a DELETE for /api/round/{round_id}/{team_id}
+    by deleting the specified card to the team's collection.
+
+    :param round_id:   Id of round to find
+    :param team_id:    Id of the team to report
+    :param card:       String of the card to add to the collection.
+    :return:           None.
+    """
+    if card is not None:
+        # Build the query to extract the hand_id
+        hand_id = (
+            RoundTeam.query.filter(
+                RoundTeam.round_id == round_id, RoundTeam.team_id == team_id
+            )
+            # .outerjoin(Hand)
+            .all()
+        )
+
+        # Create a hand instance using the schema and the passed in card
+        schema = HandSchema()
+        new_card = schema.load(
+            {"hand_id": hand_id, "card": card}, session=db.session
+        ).data
+
+        # Add the round to the database
+        db.session.delete(new_card)
+        db.session.commit()
+
+        return 200
+
+    # Otherwise, something happened.
+    abort(404, f"Couldn't delete {card=} from collection for {round_id=}/{team_id=}")
 
 
 def create(round_id, teams):
