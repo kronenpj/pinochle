@@ -1,6 +1,6 @@
 swagger: "2.0"
 info:
-  description: This is the swagger file that goes with our server code
+  description: This is the swagger file that defines the API used in the Pinochle game.
   version: "1.0.0"
   title: Pinochle Game
 consumes:
@@ -409,6 +409,141 @@ paths:
               timestamp:
                 type: string
                 description: Creation/Update timestamp of the round-team record
+  /round/{round_id}/{team_id}:
+    get:
+      operationId: pinochle.roundteams.read
+      tags:
+        - Rounds
+      summary: Obtain the team's collected cards
+      description: Obtain the team's collected cards
+      parameters:
+        - name: round_id
+          in: path
+          description: Id of the round to get
+          type: string
+          required: True
+        - name: team_id
+          in: path
+          description: Id of the team to get
+          type: string
+          required: True
+      responses:
+        200:
+          description: Team's collected card hand
+          schema:
+            type: object
+            properties:
+              cards:
+                type: array
+                description: List of cards
+                items:
+                  properties:
+                    team_id:
+                      type: string
+                      description: Suit and value of a card.
+
+    put:
+      operationId: pinochle.roundteams.addcard
+      tags:
+        - Rounds
+      summary: Add a card to the team's collection.
+      description: Add a card to the team's collection.
+      parameters:
+        - name: round_id
+          in: path
+          description: Id of the round to update
+          type: string
+          required: True
+        - name: team_id
+          in: path
+          description: Id of the team to update
+          type: string
+          required: True
+        - name: card
+          in: body
+          required: True
+          schema:
+            type: string
+            properties:
+              card:
+                type: string
+                description: Suit and value of the card to add.
+      responses:
+        200:
+          description: Successfully added card to collection.
+
+    delete:
+      operationId: pinochle.roundteams.deletecard
+      tags:
+        - Rounds
+      summary: Delete a card from the team's collection.
+      description: Delete a card from the team's collection.
+      parameters:
+        - name: round_id
+          in: path
+          description: Id of the round to update
+          type: string
+          required: True
+        - name: team_id
+          in: path
+          description: Id of the team to update
+          type: string
+          required: True
+        - name: card
+          in: body
+          schema:
+            type: string
+            properties:
+              card:
+                type: string
+                description: Suit and value of the card to delete.
+      responses:
+        200:
+          description: Successfully deleted a card from the collection.
+
+  /round/{round_id}/kitty:
+    get:
+      operationId: pinochle.roundkitty.read
+      tags:
+        - Rounds
+      summary: Obtain the round's kitty
+      description: Obtain the round's kitty
+      parameters:
+        - name: round_id
+          in: path
+          description: Id of the round to get
+          type: string
+          required: True
+      responses:
+        200:
+          description: Round's kitty cards
+          schema:
+            type: object
+            properties:
+              cards:
+                type: array
+                description: List of cards
+                items:
+                  properties:
+                    team_id:
+                      type: string
+                      description: Suit and value of a card.
+
+    delete:
+      operationId: pinochle.roundkitty.delete
+      tags:
+        - Rounds
+      summary: Delete all cards from the kitty.
+      description: Delete all cards from the kitty.
+      parameters:
+        - name: round_id
+          in: path
+          description: Id of the round to update
+          type: string
+          required: True
+      responses:
+        200:
+          description: Successfully deleted all cards from the kitty.
 
   /team:
     get:
