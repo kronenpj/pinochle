@@ -192,6 +192,13 @@ class RoundTeam(db.Model):
         nullable=False,
         index=True,
     )
+    hand_id = db.Column(
+        GUID,
+        default=lambda: uuid.uuid4(),  # pragma pylint: disable=unnecessary-lambda
+        primary_key=False,
+        nullable=False,
+        index=False,
+    )
     timestamp = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
@@ -200,6 +207,7 @@ class RoundTeam(db.Model):
         output = "<RoundTeam: "
         output += "Round %r, " % self.round_id
         output += "Team %r, " % self.team_id
+        output += "Hand %r, " % self.hand_id
         output += ">"
         return output
 
@@ -216,6 +224,7 @@ class RoundTeamSchema(ma.ModelSchema):
     round_id = fields.Str()
     # team_id = fields.UUID()
     team_id = fields.Str()
+    hand_id = fields.Str()
     timestamp = fields.DateTime()
 
 
@@ -231,7 +240,6 @@ class Team(db.Model):
     )
     name = db.Column(db.String)
     score = db.Column(db.Integer, default=0)
-    cards = db.Column(db.String)
     timestamp = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
@@ -240,7 +248,6 @@ class Team(db.Model):
         output = "<Team %r, " % self.team_id
         output += "Name %r, " % self.name
         output += "Score %r, " % self.score
-        output += "Cards %r, " % self.cards
         output += ">"
         return output
 
@@ -257,7 +264,6 @@ class TeamSchema(ma.ModelSchema):
     team_id = fields.Str()
     name = fields.Str()
     score = fields.Int()
-    cards = fields.Str()
     timestamp = fields.DateTime()
 
 
@@ -359,9 +365,9 @@ class Hand(db.Model):
     _id = db.Column(
         db.Integer, primary_key=True, nullable=False, index=True, unique=True,
     )
-    hand_id = db.Column(
-        GUID, db.ForeignKey("player.hand_id"), index=True, nullable=False
-    )
+    # This is also a foreign key, but to two tables: player.hand_id and
+    # roundteam.hand_id.
+    hand_id = db.Column(GUID, index=True, nullable=False) 
     card = db.Column(db.String, nullable=False)
 
     def __repr__(self):
