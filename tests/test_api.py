@@ -13,7 +13,6 @@ import regex
 from pinochle import game, player, round, config, team
 
 
-TEMP_DB_PATH = "/tmp/pinochle_test.db"
 UUID_REGEX_TEXT = r"^([a-f\d]{8}(-[a-f\d]{4}){3}-[a-f\d]{12}?)$"
 UUID_REGEX = regex.compile(UUID_REGEX_TEXT)
 
@@ -27,23 +26,16 @@ n_kitty = 4
 @pytest.fixture(scope="module")
 def testapp():
     with mock.patch(
-        "pinochle.config.sqlite_url", f"sqlite:///{TEMP_DB_PATH}"
+        "pinochle.config.sqlite_url", f"sqlite://" # In-memory
     ), mock.patch.dict(
         "pinochle.server.connex_app.app.config",
-        {"SQLALCHEMY_DATABASE_URI": f"sqlite:///{TEMP_DB_PATH}"},
+        {"SQLALCHEMY_DATABASE_URI": f"sqlite://"},
     ):
         app = config.connex_app.app
 
         config.db.create_all()
 
         yield app
-
-        try:
-            # print(f"Deleting {TEMP_DB_PATH} (after).")
-            os.unlink(f"{TEMP_DB_PATH}")
-        except FileNotFoundError:
-            # print(f"{TEMP_DB_PATH} doesn't exist.")
-            pass  # It's ok if the file doesn't exist...
 
 
 def test_create_game(testapp):
