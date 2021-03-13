@@ -6,14 +6,7 @@ import sqlalchemy
 from flask import abort, make_response
 
 from pinochle.config import db
-from pinochle.models import (
-    Game,
-    GameRound,
-    GameRoundSchema,
-    GameSchema,
-    Round,
-    RoundSchema,
-)
+from pinochle.models import Game, GameRound, GameRoundSchema, Round
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member
@@ -146,7 +139,7 @@ def update(game_id, round_id):
     abort(404, f"Round {round_id} not found for Id: {game_id}")
 
 
-def delete(game_id):
+def delete(game_id, round_id):
     """
     This function deletes a round from the round structure
 
@@ -154,7 +147,9 @@ def delete(game_id):
     :return:            200 on successful delete, 404 if not found
     """
     # Get the round requested
-    a_round = GameRound.query.filter(GameRound.game_id == game_id).one_or_none()
+    a_round = GameRound.query.filter(
+        GameRound.game_id == game_id, GameRound.round_id == round_id
+    ).one_or_none()
 
     # Did we find a round?
     if a_round is not None:

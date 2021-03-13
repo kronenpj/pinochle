@@ -76,7 +76,7 @@ def test_game_create(testapp):
 def test_game_delete(testapp):
     """
     GIVEN a Flask application configured for testing
-    WHEN the '/api/game' page is requested (POST)
+    WHEN the '/api/game' page is requested (DELETE)
     THEN check that the response is a UUID
     """
     # print(f"{config.sqlite_url=}")
@@ -151,7 +151,7 @@ def test_game_read_all(testapp):
 def test_game_read_one(testapp):
     """
     GIVEN a Flask application configured for testing
-    WHEN the '/api/game' page is requested (GET)
+    WHEN the '/api/game/{game_id}' page is requested (GET)
     THEN check that the response is a UUID and contains the expected information
     """
     # print(f"{config.sqlite_url=}")

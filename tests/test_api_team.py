@@ -8,7 +8,7 @@ from unittest import mock
 
 import pytest
 import regex
-from pinochle import config, player, team
+from pinochle import config, player, team, teamplayers
 
 # pylint: disable=wrong-import-order
 from werkzeug import exceptions
@@ -141,3 +141,52 @@ def test_team_add_player(testapp):
         assert team_id == db_response.get("team_id")
         assert db_response.get("score") == 0
         assert team_name == db_response.get("name")
+
+
+def test_team_delete(testapp):
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/team/{team_id}' page is requested (DELETE)
+    THEN check that the response is successful
+    """
+    # print(f"{config.sqlite_url=}")
+    app = testapp
+
+    # Create a new player
+    db_response, status = player.create({"name": PLAYER_NAMES[0]})
+    assert status == 201
+    assert db_response is not None
+    player_id = db_response.get("player_id")
+
+    # Create a new team
+    db_response, status = team.create({"name": TEAM_NAMES[0]})
+    assert status == 201
+    assert db_response is not None
+    team_id = db_response.get("team_id")
+
+    # Create a new teamplayer
+    db_response, status = teamplayers.create(team_id, {"player_id": player_id})
+    assert status == 201
+    assert db_response is not None
+
+    # Verify the database agrees.
+    db_response = team.read_all()
+    assert db_response is not None
+    team_id_list = []
+    for response in db_response:
+        team_id_list.append(response["team_id"])
+    assert team_id in team_id_list
+
+    with app.test_client() as test_client:
+        # Attempt to access the delete round api
+        response = test_client.delete(f"/api/team/{team_id}")
+        assert response.status == "200 OK"
+
+        # Attempt to retrieve the now-deleted round id
+        response = test_client.get(f"/api/team/{team_id}")
+        # assert response.status == "404 NOT FOUND"
+        assert response.status == "200 OK"
+
+    # Verify the database agrees.
+    with pytest.raises(exceptions.NotFound):
+        db_response = team.read_one(team_id)
