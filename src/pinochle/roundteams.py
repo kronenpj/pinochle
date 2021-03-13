@@ -96,7 +96,7 @@ def read(round_id, team_id):
         return data
 
     # Otherwise, nope, didn't find any rounds
-    abort(404, f"No cards found for {round_id=}/{team_id=}")
+    abort(404, f"No cards found for {round_id}/{team_id}")
 
 
 def addcard(round_id, team_id, card):
@@ -135,7 +135,7 @@ def addcard(round_id, team_id, card):
         return data, 201
 
     # Otherwise, something happened.
-    abort(404, f"Couldn't add {card=} to collection for {round_id=}/{team_id=}")
+    abort(404, f"Couldn't add {card} to collection for {round_id}/{team_id}")
 
 
 def deletecard(round_id, team_id, card):
@@ -171,7 +171,7 @@ def deletecard(round_id, team_id, card):
         return 200
 
     # Otherwise, something happened.
-    abort(404, f"Couldn't delete {card=} from collection for {round_id=}/{team_id=}")
+    abort(404, f"Couldn't delete {card} from collection for {round_id}/{team_id}")
 
 
 def create(round_id, teams):
