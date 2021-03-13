@@ -65,18 +65,15 @@ def create(player):
     based on the passed in player data
 
     :param player:  player to create in player structure
-    :return:        201 on success, 406 on player exists
+    :return:        201 on success, 409 on player exists, 400 on other error
     """
-    # name = player.get("name")
-    # existing_player = Player.query.filter(Player.name == name).one_or_none()
-    existing_player = None
+    name = player.get("player")
 
-    # Can we insert this player?
-    if existing_player is None:
-
+    try:
         # Create a player instance using the schema and the passed in player
         schema = PlayerSchema()
         new_player = schema.load(player, session=db.session).data
+        new_player.name = name
 
         # Add the player to the database
         db.session.add(new_player)
@@ -86,9 +83,10 @@ def create(player):
         data = schema.dump(new_player).data
 
         return data, 201
+    except sqlalchemy.exc.DataError:
+        abort(409, f"Player {name} exists already")
 
-    # Otherwise, nope, player exists already
-    abort(409, f"Player {existing_player} exists already")
+    abort(400, f"Player {name} could not be added to the database.")
 
 
 def update(player_id, player):

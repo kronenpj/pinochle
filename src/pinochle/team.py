@@ -68,16 +68,13 @@ def create(team):
     :param team:  team to create in team structure
     :return:        201 on success, 406 on team exists
     """
-    # name = team.get("name")
-    # existing_team = Team.query.filter(Team.name == name).one_or_none()
-    existing_team = None
+    name = team.get("team")
 
-    # Can we insert this team?
-    if existing_team is None:
-
+    try:
         # Create a team instance using the schema and the passed in team
         schema = TeamSchema()
         new_team = schema.load(team, session=db.session).data
+        new_team.name = name
 
         # Add the team to the database
         db.session.add(new_team)
@@ -87,9 +84,10 @@ def create(team):
         data = schema.dump(new_team).data
 
         return data, 201
+    except sqlalchemy.exc.DataError:
+        abort(409, f"Team {name} exists already")
 
-    # Otherwise, nope, team exists already
-    abort(409, f"Team {existing_team} exists already")
+    abort(400, f"Team {name} could not be added to the database.")
 
 
 def update(team_id, team):

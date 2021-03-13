@@ -6,15 +6,14 @@ from flask_sqlalchemy import SQLAlchemy
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
+# Build the Sqlite URL for SqlAlchemy
+sqlite_url = "sqlite:////" + os.path.join(basedir, "pinochle.db")
+
 # Create the connexion application instance
 connex_app = connexion.App(__name__, specification_dir=basedir)
 
 # Get the underlying Flask app instance
 app = connex_app.app
-
-# Build the Sqlite ULR for SqlAlchemy
-# sqlite_url = "sqlite:////" + os.path.join(basedir, "pinochle.db")
-sqlite_url = "sqlite:////" + os.path.join(basedir, "pinochle.db")
 
 # Configure the SqlAlchemy part of the app instance
 app.config["SQLALCHEMY_ECHO"] = False

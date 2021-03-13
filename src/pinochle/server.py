@@ -4,7 +4,7 @@
 import os
 
 import connexion
-from flask import render_template
+from flask import Flask, render_template
 
 # Local modules
 from pinochle import config
@@ -30,6 +30,7 @@ def home2():
     """
     return render_template("home2.html")
 
+
 # Create a URL route in our application for "/"
 @connex_app.route("/home3.html")
 def home3():
@@ -39,6 +40,7 @@ def home3():
     :return:        the rendered template 'home.html'
     """
     return render_template("home3.html")
+
 
 # Create a URL route in our application for "/"
 @connex_app.route("/")

@@ -56,6 +56,7 @@ typing = [
 pytest = "^6.2.2"
 bumpversion = "^0.6.0"
 eralchemy = "^1.2.10"
+pytest-flask = "^1.2.0"
 
 [tool.black]
 line-length = 88

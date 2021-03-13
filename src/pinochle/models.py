@@ -367,7 +367,7 @@ class Hand(db.Model):
     )
     # This is also a foreign key, but to two tables: player.hand_id and
     # roundteam.hand_id.
-    hand_id = db.Column(GUID, index=True, nullable=False) 
+    hand_id = db.Column(GUID, index=True, nullable=False)
     card = db.Column(db.String, nullable=False)
 
     def __repr__(self):
@@ -387,3 +387,4 @@ class HandSchema(ma.ModelSchema):
 
     hand_id = fields.Str()
     card = fields.Str()
+
