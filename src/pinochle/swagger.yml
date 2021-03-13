@@ -143,7 +143,7 @@ paths:
 
   /game/{game_id}/round:
     post:
-      operationId: pinochle.round.create
+      operationId: pinochle.round_.create
       tags:
         - Games
       summary: Create a round associated with a game
@@ -207,7 +207,7 @@ paths:
                 description: Creation/Update timestamp of the round record
 
     put:
-      operationId: pinochle.round.update
+      operationId: pinochle.round_.update
       tags:
         - Games
       summary: Update a round associated with a game
@@ -250,7 +250,7 @@ paths:
                 description: Creation/Update timestamp of the round record
 
     delete:
-      operationId: pinochle.round.delete
+      operationId: pinochle.round_.delete
       tags:
         - Games
       summary: Delete a round associated with a game
@@ -272,7 +272,7 @@ paths:
 
   /round:
     get:
-      operationId: pinochle.round.read_all
+      operationId: pinochle.round_.read_all
       tags:
         - Rounds
       summary: Read the entire set of rounds, sorted by timestamp

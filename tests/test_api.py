@@ -8,7 +8,7 @@ from unittest import mock
 
 import pytest
 import regex
-from pinochle import game, player, round, config, team
+from pinochle import game, player, round_, config, team
 
 
 UUID_REGEX_TEXT = r"^([a-f\d]{8}(-[a-f\d]{4}){3}-[a-f\d]{12}?)$"
@@ -93,7 +93,7 @@ def test_create_round(testapp):
         assert UUID_REGEX.match(round_id)
 
     # Verify the database agrees.
-    db_response = round.read_one(round_id)
+    db_response = round_.read_one(round_id)
     assert db_response is not None
     assert round_id == db_response.get("round_id")
     assert db_response.get("trump") == "NONE"
