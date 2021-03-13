@@ -8,17 +8,19 @@ from unittest import mock
 
 import pytest
 import regex
-from pinochle import config, team
+from pinochle import config, player, team
+
+# pylint: disable=wrong-import-order
 from werkzeug import exceptions
 
 UUID_REGEX_TEXT = r"^([a-f\d]{8}(-[a-f\d]{4}){3}-[a-f\d]{12}?)$"
 UUID_REGEX = regex.compile(UUID_REGEX_TEXT)
 
-team_names = ["Us", "Them"]
-player_names = ["Thing1", "Thing2", "Red", "Blue"]
-n_teams = len(team_names)
-n_players = len(player_names)
-n_kitty = 4
+TEAM_NAMES = ["Us", "Them"]
+PLAYER_NAMES = ["Thing1", "Thing2", "Red", "Blue"]
+N_TEAMS = len(TEAM_NAMES)
+N_PLAYERS = len(PLAYER_NAMES)
+N_KITTY = 4
 
 
 # Pylint doesn't pick up on this fixture.
@@ -37,10 +39,10 @@ def testapp():
     """
     # print("Entering testapp...")
     with mock.patch(
-        "pinochle.config.sqlite_url", f"sqlite://"  # In-memory
+        "pinochle.config.sqlite_url", "sqlite://"  # In-memory
     ), mock.patch.dict(
         "pinochle.server.connex_app.app.config",
-        {"SQLALCHEMY_DATABASE_URI": f"sqlite://"},
+        {"SQLALCHEMY_DATABASE_URI": "sqlite://"},
     ):
         app = config.connex_app.app
 

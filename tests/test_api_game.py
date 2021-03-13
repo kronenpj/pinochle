@@ -9,16 +9,12 @@ from unittest import mock
 import pytest
 import regex
 from pinochle import config, game
+
+# pylint: disable=wrong-import-order
 from werkzeug import exceptions
 
 UUID_REGEX_TEXT = r"^([a-f\d]{8}(-[a-f\d]{4}){3}-[a-f\d]{12}?)$"
 UUID_REGEX = regex.compile(UUID_REGEX_TEXT)
-
-team_names = ["Us", "Them"]
-player_names = ["Thing1", "Thing2", "Red", "Blue"]
-n_teams = len(team_names)
-n_players = len(player_names)
-n_kitty = 4
 
 
 # Pylint doesn't pick up on this fixture.
@@ -37,10 +33,10 @@ def testapp():
     """
     # print("Entering testapp...")
     with mock.patch(
-        "pinochle.config.sqlite_url", f"sqlite://"  # In-memory
+        "pinochle.config.sqlite_url", "sqlite://"  # In-memory
     ), mock.patch.dict(
         "pinochle.server.connex_app.app.config",
-        {"SQLALCHEMY_DATABASE_URI": f"sqlite://"},
+        {"SQLALCHEMY_DATABASE_URI": "sqlite://"},
     ):
         app = config.connex_app.app
 
@@ -102,11 +98,8 @@ def test_game_delete(testapp):
         assert response.status == "404 NOT FOUND"
 
     # Verify the database agrees.
-    try:
+    with pytest.raises(exceptions.NotFound):
         db_response = game.read_one(game_id)
-    except exceptions.NotFound:
-        pass
-    assert "Did not throw expected exception." is int
 
 
 def test_game_read_all(testapp):
@@ -124,7 +117,7 @@ def test_game_read_all(testapp):
     app = testapp
 
     game_ids = []
-    for _ in range(create_games):
+    for __ in range(create_games):
         # Create two new games
         db_response, status = game.create()
         assert status == 201
