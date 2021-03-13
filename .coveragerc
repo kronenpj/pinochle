@@ -2,7 +2,16 @@
 branch = True
 source = src
 
+[report]
+omit = 
+   **/game_old/**
+   **/log_decorator.py
+   **/custom_log.py
+   **/__version__.py
+   **/__main__.py
+   
+
 [paths]
 source =
    src
-   #.tox/**/site-packages
+   .tox/**/site-packages
