@@ -4,8 +4,6 @@ Tests for the various game classes.
 License: GPLv3
 """
 import json
-import os
-import sys
 from unittest import mock
 
 import pytest
@@ -23,10 +21,12 @@ n_players = len(player_names)
 n_kitty = 4
 
 
+# Pylint doesn't pick up on this fixture.
+# pylint: disable=redefined-outer-name
 @pytest.fixture(scope="module")
 def testapp():
     with mock.patch(
-        "pinochle.config.sqlite_url", f"sqlite://" # In-memory
+        "pinochle.config.sqlite_url", f"sqlite://"  # In-memory
     ), mock.patch.dict(
         "pinochle.server.connex_app.app.config",
         {"SQLALCHEMY_DATABASE_URI": f"sqlite://"},
