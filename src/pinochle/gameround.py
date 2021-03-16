@@ -42,13 +42,9 @@ def read_one(game_id, round_id):
     :return:            round matching id
     """
     # Build the initial query
-    a_round = (
-        GameRound.query.filter(
-            GameRound.game_id == game_id, GameRound.round_id == round_id
-        )
-        # .outerjoin(Hand)
-        .one_or_none()
-    )
+    a_round = GameRound.query.filter(
+        GameRound.game_id == game_id, GameRound.round_id == round_id
+    ).one_or_none()
 
     # Did we find a round?
     if a_round is not None:

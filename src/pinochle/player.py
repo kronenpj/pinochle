@@ -42,11 +42,7 @@ def read_one(player_id):
     :return:            player matching id
     """
     # Build the initial query
-    player = (
-        Player.query.filter(Player.player_id == player_id)
-        # .outerjoin(Hand)
-        .one_or_none()
-    )
+    player = Player.query.filter(Player.player_id == player_id).one_or_none()
 
     # Did we find a player?
     if player is not None:

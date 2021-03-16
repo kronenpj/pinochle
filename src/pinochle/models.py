@@ -1,9 +1,6 @@
 import uuid
 from datetime import datetime
 
-import connexion
-from flask_marshmallow import Marshmallow
-from flask_sqlalchemy import SQLAlchemy
 from marshmallow import fields
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.types import CHAR, TypeDecorator
@@ -141,6 +138,13 @@ class Round(db.Model):
         unique=True,
     )
     round_seq = db.Column(db.Integer, default=0)
+    hand_id = db.Column(
+        GUID,
+        default=lambda: uuid.uuid4(),  # pragma pylint: disable=unnecessary-lambda
+        primary_key=False,
+        nullable=True,
+        index=False,
+    )
     bid = db.Column(db.Integer, default=20, nullable=False)
     bid_winner = db.Column(GUID, db.ForeignKey("player.player_id"))
     trump = db.Column(db.String, default="NONE")
@@ -169,6 +173,8 @@ class RoundSchema(ma.ModelSchema):
     # round_id = fields.UUID()
     round_id = fields.Str()
     round_seq = fields.Int()
+    # hand_id = fields.UUID()
+    hand_id = fields.Str()
     bid = fields.Int()
     # bid_winner = fields.UUID()
     bid_winner = fields.Str()
@@ -196,7 +202,7 @@ class RoundTeam(db.Model):
         GUID,
         default=lambda: uuid.uuid4(),  # pragma pylint: disable=unnecessary-lambda
         primary_key=False,
-        nullable=False,
+        nullable=True,
         index=False,
     )
     timestamp = db.Column(
@@ -365,8 +371,10 @@ class Hand(db.Model):
     _id = db.Column(
         db.Integer, primary_key=True, nullable=False, index=True, unique=True,
     )
-    # This is also a foreign key, but to two tables: player.hand_id and
-    # roundteam.hand_id.
+    # This is also a foreign key, but to more than one table:
+    # - player.hand_id
+    # - round.hand_id
+    # - roundteam.hand_id
     hand_id = db.Column(GUID, index=True, nullable=False)
     card = db.Column(db.String, nullable=False)
 
@@ -382,7 +390,7 @@ class HandSchema(ma.ModelSchema):
         super().__init__(strict=True, **kwargs)
 
     class Meta:
-        model = Round
+        model = Hand
         sqla_session = db.session
 
     hand_id = fields.Str()

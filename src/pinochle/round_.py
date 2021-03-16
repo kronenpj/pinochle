@@ -6,7 +6,6 @@ round data
 import sqlalchemy
 from flask import abort, make_response
 
-from pinochle import gameround
 from pinochle.config import db
 from pinochle.models import Game, GameRound, GameRoundSchema, Round, RoundSchema
 
@@ -51,7 +50,6 @@ def read_one(round_id):
 
     # Did we find a round?
     if round is not None:
-
         # Serialize the data for the response
         round_schema = RoundSchema()
         data = round_schema.dump(a_round).data
@@ -149,7 +147,7 @@ def delete(game_id, round_id):
         GameRound.game_id == game_id, GameRound.round_id == round_id
     ).one_or_none()
 
-    success=False
+    success = False
 
     # Did we find a game-round?
     if g_round is not None:

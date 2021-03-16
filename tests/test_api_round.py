@@ -8,7 +8,7 @@ from unittest import mock
 
 import pytest
 import regex
-from pinochle import config, game, round_, gameround
+from pinochle import config, game, gameround, round_
 
 # pylint: disable=wrong-import-order
 from werkzeug import exceptions

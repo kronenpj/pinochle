@@ -10,9 +10,6 @@ import pytest
 import regex
 from pinochle import config, player
 
-# pylint: disable=wrong-import-order
-from werkzeug import exceptions
-
 UUID_REGEX_TEXT = r"^([a-f\d]{8}(-[a-f\d]{4}){3}-[a-f\d]{12}?)$"
 UUID_REGEX = regex.compile(UUID_REGEX_TEXT)
 

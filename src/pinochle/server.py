@@ -3,8 +3,7 @@
 # 3rd party moudles
 import os
 
-import connexion
-from flask import Flask, render_template
+from flask import render_template
 
 # Local modules
 from pinochle import config

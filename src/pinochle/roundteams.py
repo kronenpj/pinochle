@@ -41,11 +41,7 @@ def read_one(round_id):
     :return:            round matching id
     """
     # Build the initial query
-    a_round = (
-        RoundTeam.query.filter(RoundTeam.round_id == round_id)
-        # .outerjoin(Hand)
-        .all()
-    )
+    a_round = RoundTeam.query.filter(RoundTeam.round_id == round_id).all()
 
     # Did we find a round?
     if a_round is not None:
@@ -71,19 +67,11 @@ def read(round_id, team_id):
     :return:           list of cards collected by that team for the round.
     """
     # Build the query
-    team_hand_id = (
-        RoundTeam.query.filter(
-            RoundTeam.round_id == round_id, RoundTeam.team_id == team_id
-        )
-        # .outerjoin(Hand)
-        .one()
-    )
+    team_hand_id = RoundTeam.query.filter(
+        RoundTeam.round_id == round_id, RoundTeam.team_id == team_id
+    ).one()
 
-    team_cards = (
-        Hand.query.filter(Hand.hand_id == team_hand_id)
-        # .outerjoin(Hand)
-        .all()
-    )
+    team_cards = Hand.query.filter(Hand.hand_id == team_hand_id).all()
 
     # Did we find any cards?
     if team_cards is not None:
@@ -111,13 +99,9 @@ def addcard(round_id, team_id, card):
     """
     if card is not None:
         # Build the query to extract the hand_id
-        hand_id = (
-            RoundTeam.query.filter(
-                RoundTeam.round_id == round_id, RoundTeam.team_id == team_id
-            )
-            # .outerjoin(Hand)
-            .all()
-        )
+        hand_id = RoundTeam.query.filter(
+            RoundTeam.round_id == round_id, RoundTeam.team_id == team_id
+        ).all()
 
         # Create a hand instance using the schema and the passed in card
         schema = HandSchema()
@@ -130,6 +114,8 @@ def addcard(round_id, team_id, card):
         db.session.commit()
 
         # Serialize and return the newly created card in the response
+        # TODO: Stop lying. Actually retreive the data from the database instead of
+        # recycling the data that may or may not have been inserted into the database.
         data = schema.dump(new_card).data
 
         return data, 201
@@ -150,13 +136,9 @@ def deletecard(round_id, team_id, card):
     """
     if card is not None:
         # Build the query to extract the hand_id
-        hand_id = (
-            RoundTeam.query.filter(
-                RoundTeam.round_id == round_id, RoundTeam.team_id == team_id
-            )
-            # .outerjoin(Hand)
-            .all()
-        )
+        hand_id = RoundTeam.query.filter(
+            RoundTeam.round_id == round_id, RoundTeam.team_id == team_id
+        ).all()
 
         # Create a hand instance using the schema and the passed in card
         schema = HandSchema()

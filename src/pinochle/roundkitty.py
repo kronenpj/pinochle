@@ -1,12 +1,10 @@
 """
-This is the roundkitty module and supports all the REST actions roundkitty data
+This is the roundkitty module which supports the REST actions relating to roundkitty data
 """
 
-import sqlalchemy
-from flask import abort, make_response
-
+from pinochle import hand
 from pinochle.config import db
-from pinochle.models import Round, RoundTeam, RoundTeamSchema, Team
+from pinochle.models import Hand, Round, RoundSchema
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member
@@ -14,147 +12,54 @@ from pinochle.models import Round, RoundTeam, RoundTeamSchema, Team
 
 def read(round_id):
     """
-    This function responds to a request for /api/round/{round_id}
-    with one matching round from round
+    This function responds to a request for /api/round/{round_id}/kitty
+    with the deck of cards in the kitty for the specified round
 
-    :param game_id:   Id of round to find
-    :return:            round matching id
+    :param round_id:    Id of round to find
+    :return:            list of cards in the kitty or None
     """
     # Build the initial query
-    a_round = (
-        RoundTeam.query.filter(RoundTeam.round_id == round_id)
-        # .outerjoin(Hand)
-        .all()
-    )
+    a_round = Round.query.filter(Round.round_id == round_id).one_or_none()
 
     # Did we find a round?
     if a_round is not None:
+        # Retrieve the hand_id from the returned data.
+        round_schema = RoundSchema()
+        temp_hand_data = round_schema.dump(a_round).data
+        hand_id = temp_hand_data["hand_id"]
+
+        cards = Hand.query.filter(Hand.hand_id == hand_id).all()
+
         # Serialize the data for the response
-        data = {"round_id": round_id}
+        data = dict()
         temp = list()
-        for _, team in enumerate(a_round):
-            temp.append(team.team_id)
-        data["team_ids"] = temp
+        for _, card in enumerate(cards):
+            temp.append(card.card)
+        data["cards"] = temp
         return data
 
     # Otherwise, nope, didn't find any rounds
-    abort(404, f"No rounds found ID {round_id}")
+    return None
 
 
-def delete(game_id):
+def delete(round_id):
     """
-    This function deletes a round from the round structure
+    This function deletes the kitty cards for the round from the hand table
 
-    :param game_id:   Id of the round to delete
-    :return:            200 on successful delete, 404 if not found
+    :param round_id:   Id of the round to delete
+    :return:           None
     """
     # Get the round requested
-    a_round = RoundTeam.query.filter(RoundTeam.game_id == game_id).one_or_none()
+    if round_id is not None:
+        # Retrieve the hand_id from the returned data.
+        round_schema = RoundSchema()
+        a_round = Round.query.filter(Round.round_id == round_id).one_or_none()
+        temp_hand_data = round_schema.dump(a_round).data
+        hand_id = temp_hand_data["hand_id"]
 
-    # Did we find a round?
-    if a_round is not None:
-        db.session.delete(a_round)
+        hand.deleteallcards(hand_id)
+
+        a_round.hand_id = None
+        # merge the new object into the old and commit it to the db
+        db.session.merge(a_round)
         db.session.commit()
-        return make_response(f"round {game_id} deleted", 200)
-
-    # Otherwise, nope, didn't find that round
-    abort(404, f"round not found for Id: {game_id}")
-
-
-## Manage the team's collected cards
-def read(round_id):
-    """
-    This function responds to a get request for /api/round/{round_id}/{team_id}
-    and returns the team's collected cards.
-
-    :param round_id:   Id of round to find
-    :param round_id:   Id of team to find
-    :return:            List of cards collected by the team.
-    """
-    # Build the initial query
-    # a_round = (
-    #     RoundTeam.query.filter(RoundTeam.round_id == round_id)
-    #     # .outerjoin(Hand)
-    #     .all()
-    # )
-
-    # Did we find a round?
-    # if a_round is not None:
-    #     # Serialize the data for the response
-    #     data = {"round_id": round_id}
-    #     temp = list()
-    #     for _, team in enumerate(a_round):
-    #         temp.append(team.team_id)
-    #     data["team_ids"] = temp
-    #     return data
-    return {"cards": [None]}
-
-    # Otherwise, nope, didn't find any rounds
-    abort(404, f"No rounds or team found for IDs {round_id}/{team_id}")
-
-
-def addcard(round_id, team_id, card):
-    """
-    This function responds to a put request for /api/round/{round_id}/{team_id}
-    and returns the team's collected cards.
-
-    :param round_id:   Id of round to find
-    :param team_id:    Id of team to find
-    :return:        201 on success, 406 on team exists
-    """
-    # name = team.get("name")
-    # existing_team = Team.query.filter(Team.name == name).one_or_none()
-    # existing_team = None
-
-    # Can we insert this team?
-    # if existing_team is None:
-
-    #     # Create a team instance using the schema and the passed in team
-    #     schema = TeamSchema()
-    #     new_team = schema.load(team, session=db.session).data
-
-    #     # Add the team to the database
-    #     db.session.add(new_team)
-    #     db.session.commit()
-
-    #     # Serialize and return the newly created team in the response
-    #     data = schema.dump(new_team).data
-
-    #     return data, 201
-
-    # Otherwise, nope, team exists already
-    # abort(409, f"Team {existing_team} exists already")
-
-
-def deletecard(round_id, team_id, card):
-    """
-    This function responds to a delete request for /api/round/{round_id}/{team_id}
-    and deletes the specified card from the team's collected cards.
-
-    :param round_id:   Id of round to find
-    :param team_id:    Id of team to find
-    :param card:       Name of card to delete (suit_value)
-    :return:        201 on success, 406 on team exists
-    """
-    # name = team.get("name")
-    # existing_team = Team.query.filter(Team.name == name).one_or_none()
-    # existing_team = None
-
-    # Can we insert this team?
-    # if existing_team is None:
-
-    #     # Create a team instance using the schema and the passed in team
-    #     schema = TeamSchema()
-    #     new_team = schema.load(team, session=db.session).data
-
-    #     # Add the team to the database
-    #     db.session.add(new_team)
-    #     db.session.commit()
-
-    #     # Serialize and return the newly created team in the response
-    #     data = schema.dump(new_team).data
-
-    #     return data, 201
-
-    # Otherwise, nope, team exists already
-    # abort(409, f"Team {existing_team} exists already")
