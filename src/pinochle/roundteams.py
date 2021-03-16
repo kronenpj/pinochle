@@ -6,7 +6,10 @@ import sqlalchemy
 from flask import abort, make_response
 
 from pinochle.config import db
-from pinochle.models import Hand, HandSchema, Round, RoundTeam, RoundTeamSchema, Team
+from pinochle.models.hand import Hand, HandSchema
+from pinochle.models.round_ import Round
+from pinochle.models.roundteam import RoundTeam, RoundTeamSchema
+from pinochle.models.team import Team
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member

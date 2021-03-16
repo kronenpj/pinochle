@@ -4,7 +4,8 @@ This is the roundkitty module which supports the REST actions relating to roundk
 
 from pinochle import hand
 from pinochle.config import db
-from pinochle.models import Hand, Round, RoundSchema
+from pinochle.models.hand import Hand
+from pinochle.models.round_ import Round, RoundSchema
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member

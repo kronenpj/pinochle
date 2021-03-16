@@ -1,15 +1,13 @@
 """
-Tests for the various game classes.
+Tests for the various round/kitty classes.
 
 License: GPLv3
 """
 import json
-from unittest import mock
 
-import pytest
 import regex
-from pinochle import config, game, hand, round_, roundkitty
-from pinochle.models import Round
+from pinochle import game, hand, round_, roundkitty
+from pinochle.models.round_ import Round
 
 UUID_REGEX_TEXT = r"^([a-f\d]{8}(-[a-f\d]{4}){3}-[a-f\d]{12}?)$"
 UUID_REGEX = regex.compile(UUID_REGEX_TEXT)
@@ -17,43 +15,13 @@ UUID_REGEX = regex.compile(UUID_REGEX_TEXT)
 CARD_LIST = ["club_9", "diamond_ace", "heart_jack", "spade_10"]
 
 
-# Pylint doesn't pick up on this fixture.
-# pylint: disable=redefined-outer-name
-@pytest.fixture(scope="module")
-def testapp():
-    """
-    Fixture to create an in-memory database and make it available only for the set of
-    tests in this file. The database is not recreated between tests so tests can
-    interfere with each other. Changing the fixture's scope to "package" or "session"
-    makes no difference in the persistence of the database between tests in this file.
-    A scope of "class" behaves the same way as "function".
-
-    :yield: The application being tested with the temporary database.
-    :rtype: FlaskApp
-    """
-    # print("Entering testapp...")
-    with mock.patch(
-        "pinochle.config.sqlite_url", "sqlite://"  # In-memory
-    ), mock.patch.dict(
-        "pinochle.server.connex_app.app.config",
-        {"SQLALCHEMY_DATABASE_URI": "sqlite://"},
-    ):
-        app = config.connex_app.app
-
-        config.db.create_all()
-
-        # print("Testapp, yielding app")
-        yield app
-
-
-def test_roundkitty_read(testapp):
+def test_roundkitty_read(app):
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/round/{round_id}/kitty' page is requested (GET)
     THEN check that the response contains the expected information
     """
-    # print(f"{config.sqlite_url=}")
-    app = testapp
+    # print(f"{app.config['SQLALCHEMY_DATABASE_URI']=}")
 
     # Create a new game
     db_response, status = game.create()
@@ -96,14 +64,13 @@ def test_roundkitty_read(testapp):
     assert db_response.get("cards") == CARD_LIST
 
 
-def test_roundkitty_delete(testapp):
+def test_roundkitty_delete(app):
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/round/{round_id}/kitty' page is requested (DELETE)
     THEN check that the response is successful
     """
-    # print(f"{config.sqlite_url=}")
-    app = testapp
+    # print(f"{app.config['SQLALCHEMY_DATABASE_URI']=}")
 
     # Create a new game
     db_response, status = game.create()

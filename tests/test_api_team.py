@@ -1,14 +1,13 @@
 """
-Tests for the various game classes.
+Tests for the various team classes.
 
 License: GPLv3
 """
 import json
-from unittest import mock
 
 import pytest
 import regex
-from pinochle import config, player, team, teamplayers
+from pinochle import player, team, teamplayers
 
 # pylint: disable=wrong-import-order
 from werkzeug import exceptions
@@ -23,43 +22,13 @@ N_PLAYERS = len(PLAYER_NAMES)
 N_KITTY = 4
 
 
-# Pylint doesn't pick up on this fixture.
-# pylint: disable=redefined-outer-name
-@pytest.fixture(scope="module")
-def testapp():
-    """
-    Fixture to create an in-memory database and make it available only for the set of
-    tests in this file. The database is not recreated between tests so tests can
-    interfere with each other. Changing the fixture's scope to "package" or "session"
-    makes no difference in the persistence of the database between tests in this file.
-    A scope of "class" behaves the same way as "function".
-
-    :yield: The application being tested with the temporary database.
-    :rtype: FlaskApp
-    """
-    # print("Entering testapp...")
-    with mock.patch(
-        "pinochle.config.sqlite_url", "sqlite://"  # In-memory
-    ), mock.patch.dict(
-        "pinochle.server.connex_app.app.config",
-        {"SQLALCHEMY_DATABASE_URI": "sqlite://"},
-    ):
-        app = config.connex_app.app
-
-        config.db.create_all()
-
-        # print("Testapp, yielding app")
-        yield app
-
-
-def test_team_create(testapp):
+def test_team_create(app):
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/team' page is requested (POST)
     THEN check that the response is a UUID and contains the expected information
     """
-    # print(f"{config.sqlite_url=}")
-    app = testapp
+    # print(f"{app.config['SQLALCHEMY_DATABASE_URI']=}")
 
     with app.test_client() as test_client:
         # Create a new player
@@ -90,14 +59,13 @@ def test_team_create(testapp):
         assert team_name == db_response.get("name")
 
 
-def test_team_add_player(testapp):
+def test_team_add_player(app):
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/team' page is requested (POST)
     THEN check that the response is a UUID and contains the expected information
     """
-    # print(f"{config.sqlite_url=}")
-    app = testapp
+    # print(f"{app.config['SQLALCHEMY_DATABASE_URI']=}")
 
     # Create a new team and player
     player_name = "Thing2"
@@ -143,14 +111,13 @@ def test_team_add_player(testapp):
         assert team_name == db_response.get("name")
 
 
-def test_team_delete(testapp):
+def test_team_delete(app):
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/team/{team_id}' page is requested (DELETE)
     THEN check that the response is successful
     """
-    # print(f"{config.sqlite_url=}")
-    app = testapp
+    # print(f"{app.config['SQLALCHEMY_DATABASE_URI']=}")
 
     # Create a new player
     db_response, status = player.create({"name": PLAYER_NAMES[0]})

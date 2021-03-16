@@ -5,7 +5,7 @@ This is the hand module and supports common database queries for cards in a hand
 import sqlalchemy
 
 from pinochle.config import db
-from pinochle.models import Hand, HandSchema
+from pinochle.models.hand import Hand, HandSchema
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member

@@ -1,14 +1,14 @@
 """
-Tests for the various game classes.
+Tests for the various round classes.
 
 License: GPLv3
 """
 import json
-from unittest import mock
 
 import pytest
 import regex
-from pinochle import config, game, gameround, round_
+from pinochle import game, gameround, round_
+from pinochle.config import db
 
 # pylint: disable=wrong-import-order
 from werkzeug import exceptions
@@ -23,43 +23,13 @@ N_PLAYERS = len(PLAYER_NAMES)
 N_KITTY = 4
 
 
-# Pylint doesn't pick up on this fixture.
-# pylint: disable=redefined-outer-name
-@pytest.fixture(scope="module")
-def testapp():
-    """
-    Fixture to create an in-memory database and make it available only for the set of
-    tests in this file. The database is not recreated between tests so tests can
-    interfere with each other. Changing the fixture's scope to "package" or "session"
-    makes no difference in the persistence of the database between tests in this file.
-    A scope of "class" behaves the same way as "function".
-
-    :yield: The application being tested with the temporary database.
-    :rtype: FlaskApp
-    """
-    # print("Entering testapp...")
-    with mock.patch(
-        "pinochle.config.sqlite_url", "sqlite://"  # In-memory
-    ), mock.patch.dict(
-        "pinochle.server.connex_app.app.config",
-        {"SQLALCHEMY_DATABASE_URI": "sqlite://"},
-    ):
-        app = config.connex_app.app
-
-        config.db.create_all()
-
-        # print("Testapp, yielding app")
-        yield app
-
-
-def test_round_create(testapp):
+def test_round_create(app):
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/round' page is requested (POST)
     THEN check that the response is a UUID and contains the expected information
     """
-    # print(f"{config.sqlite_url=}")
-    app = testapp
+    # print(f"{app.config['SQLALCHEMY_DATABASE_URI']=}")
 
     # Create a new game
     db_response, status = game.create()
@@ -89,14 +59,13 @@ def test_round_create(testapp):
     assert db_response.get("bid") == 20
 
 
-def test_game_round_delete(testapp):
+def test_game_round_delete(app):
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/game/{game_id}/{round_id}' page is requested (DELETE)
     THEN check that the response is successful
     """
-    # print(f"{config.sqlite_url=}")
-    app = testapp
+    # print(f"{app.config['SQLALCHEMY_DATABASE_URI']=}")
 
     # Create a new game
     db_response, status = game.create()
@@ -133,19 +102,18 @@ def test_game_round_delete(testapp):
         db_response = gameround.read_one(game_id, round_id)
 
 
-def test_round_read_all(testapp):
+def test_round_read_all(app):
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/round' page is requested (GET)
     THEN check that the response is a list of UUID and contains the expected information
     """
-    # print(f"{config.sqlite_url=}")
+    # print(f"{app.config['SQLALCHEMY_DATABASE_URI']=}")
     create_games = 2
 
     # Clear out ALL previous test data.
-    config.db.drop_all()
-    config.db.create_all()
-    app = testapp
+    db.drop_all()
+    db.create_all()
 
     game_ids = []
     round_ids = []
@@ -189,14 +157,13 @@ def test_round_read_all(testapp):
         assert item["round_id"] in round_ids
 
 
-def test_round_read_one(testapp):
+def test_round_read_one(app):
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/round/{round_id}' page is requested (GET)
     THEN check that the response is a UUID and contains the expected information
     """
-    # print(f"{config.sqlite_url=}")
-    app = testapp
+    # print(f"{app.config['SQLALCHEMY_DATABASE_URI']=}")
 
     # Create a new game
     db_response, status = game.create()
