@@ -6,9 +6,9 @@ round data
 import sqlalchemy
 from flask import abort, make_response
 
-from pinochle.config import db
+from pinochle import gameround
+from pinochle.models.core import db
 from pinochle.models.game import Game
-from pinochle.models.gameround import GameRound, GameRoundSchema
 from pinochle.models.round_ import Round, RoundSchema
 
 # Suppress invalid no-member messages from pylint.
@@ -28,6 +28,9 @@ def read_all():
     except sqlalchemy.exc.NoForeignKeysError:
         # Otherwise, nope, didn't find any players
         abort(404, "No Rounds defined in database")
+    if len(rounds) == 0:
+        # Otherwise, nope, didn't find any players
+        abort(404, "No Rounds defined in database")
 
     # Serialize the data for the response
     round_schema = RoundSchema(many=True)
@@ -44,14 +47,10 @@ def read_one(round_id):
     :return:            round matching id
     """
     # Build the initial query
-    a_round = (
-        Round.query.filter(Round.round_id == round_id)
-        # .outerjoin(Round)
-        .one_or_none()
-    )
+    a_round = Round.query.filter(Round.round_id == round_id).one_or_none()
 
     # Did we find a round?
-    if round is not None:
+    if a_round is not None:
         # Serialize the data for the response
         round_schema = RoundSchema()
         data = round_schema.dump(a_round).data
@@ -85,16 +84,10 @@ def create(game_id):
         # Serialize and return the newly created round in the response
         data = schema.dump(new_round).data
 
+        round_id = data["round_id"]
+
         # Also insert a record into the game_round table
-        gr_schema = GameRoundSchema()
-        gr_update = gr_schema.load(data, session=db.session).data
-
-        # Set the id to the round we want to update
-        gr_update.game_id = game_id
-
-        # merge the new object into the old and commit it to the db
-        db.session.merge(gr_update)
-        db.session.commit()
+        gameround.create(game_id=game_id, round_id={"round_id": round_id})
 
         return data, 201
 
@@ -144,26 +137,18 @@ def delete(game_id, round_id):
     """
     # Get the round requested
     a_round = Round.query.filter(Round.round_id == round_id).one_or_none()
-    # Get the round requested
-    g_round = GameRound.query.filter(
-        GameRound.game_id == game_id, GameRound.round_id == round_id
-    ).one_or_none()
-
-    success = False
+    g_round = gameround.read_one(game_id=game_id, round_id=round_id)
 
     # Did we find a game-round?
     if g_round is not None:
-        db.session.delete(g_round)
-        db.session.commit()
-        success = True
+        gameround.delete(game_id=game_id, round_id=round_id)
 
     # Did we find a round?
     if a_round is not None:
-        db.session.delete(a_round)
-        db.session.commit()
-        success = True
-
-    if success:
+        db_session = db.session()
+        local_object = db_session.merge(a_round)
+        db_session.delete(local_object)
+        db_session.commit()
         return make_response(f"Round {round_id} deleted", 200)
 
     # Otherwise, nope, didn't find that round

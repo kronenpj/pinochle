@@ -1,3 +1,6 @@
+# Not sure if I need / want this imported by default
+# from .core import db
+
 from .GUID import GUID
 from .game import Game, GameSchema
 from .gameround import GameRound, GameRoundSchema

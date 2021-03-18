@@ -5,7 +5,7 @@ This is the teamplayer module and supports all the REST actions teamplayer data
 import sqlalchemy
 from flask import abort, make_response
 
-from pinochle.config import db
+from pinochle.models.core import db
 from pinochle.models.player import Player
 from pinochle.models.team import Team
 from pinochle.models.teamplayers import TeamPlayers, TeamPlayersSchema
@@ -50,7 +50,7 @@ def read_one(team_id):
     )
 
     # Did we find a team?
-    if team is not None:
+    if team is not None and team != []:
         # Serialize the data for the response
         data = {"team_id": team[0].team_id}
         temp = list()
@@ -151,8 +151,10 @@ def delete(team_id):
 
     # Did we find a team?
     if team is not None:
-        db.session.delete(team)
-        db.session.commit()
+        db_session = db.session()
+        local_object = db_session.merge(team)
+        db_session.delete(local_object)
+        db_session.commit()
         return make_response(f"Team {team_id} deleted", 200)
 
     # Otherwise, nope, didn't find that team

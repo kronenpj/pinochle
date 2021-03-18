@@ -3,10 +3,9 @@ This is the game module and supports all the REST actions for the
 game data
 """
 
-import sqlalchemy
 from flask import abort, make_response
 
-from pinochle.config import db
+from pinochle.models.core import db
 from pinochle.models.game import Game, GameSchema
 
 # Suppress invalid no-member messages from pylint.
@@ -20,12 +19,8 @@ def read_all():
 
     :return:        json string of list of games
     """
-    try:
-        # Create the list of game from our data
-        games = Game.query.order_by(Game.timestamp).all()
-    except sqlalchemy.exc.NoForeignKeysError:
-        # Otherwise, nope, didn't find any players
-        abort(404, "No Games defined in database")
+    # Create the list of game from our data
+    games = Game.query.order_by(Game.timestamp).all()
 
     # Serialize the data for the response
     game_schema = GameSchema(many=True)

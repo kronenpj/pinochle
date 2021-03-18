@@ -4,22 +4,18 @@ Tests for the various team classes.
 License: GPLv3
 """
 import json
+import uuid
+from random import choice
 
 import pytest
-import regex
-from pinochle import player, team, teamplayers
+from pinochle import team
 
 # pylint: disable=wrong-import-order
 from werkzeug import exceptions
 
-UUID_REGEX_TEXT = r"^([a-f\d]{8}(-[a-f\d]{4}){3}-[a-f\d]{12}?)$"
-UUID_REGEX = regex.compile(UUID_REGEX_TEXT)
+import test_utils
 
-TEAM_NAMES = ["Us", "Them"]
-PLAYER_NAMES = ["Thing1", "Thing2", "Red", "Blue"]
-N_TEAMS = len(TEAM_NAMES)
-N_PLAYERS = len(PLAYER_NAMES)
-N_KITTY = 4
+# from pinochle.models.utils import dump_db
 
 
 def test_team_create(app):
@@ -28,13 +24,11 @@ def test_team_create(app):
     WHEN the '/api/team' page is requested (POST)
     THEN check that the response is a UUID and contains the expected information
     """
-    # print(f"{app.config['SQLALCHEMY_DATABASE_URI']=}")
-
     with app.test_client() as test_client:
-        # Create a new player
-        team_name = "Team1"
+        # Create a new team
+        team_name = choice(test_utils.TEAM_NAMES)
 
-        # Attempt to access the create player api
+        # Attempt to access the create team api
         post_data = {
             "team": team_name,
         }
@@ -48,7 +42,7 @@ def test_team_create(app):
         response_data = json.loads(response_str)
         team_id = response_data.get("team_id")
         assert team_id != ""
-        assert UUID_REGEX.match(team_id)
+        assert test_utils.UUID_REGEX.match(team_id)
 
         # Verify the database agrees.
         db_response = team.read_one(team_id)
@@ -65,26 +59,17 @@ def test_team_add_player(app):
     WHEN the '/api/team' page is requested (POST)
     THEN check that the response is a UUID and contains the expected information
     """
-    # print(f"{app.config['SQLALCHEMY_DATABASE_URI']=}")
-
     # Create a new team and player
-    player_name = "Thing2"
-    team_name = "Team2"
+    player_name = choice(test_utils.PLAYER_NAMES)
+    team_name = choice(test_utils.TEAM_NAMES)
 
     # Create a new player
-    db_response, status = player.create({"player": player_name})
-    assert status == 201
-    assert db_response is not None
-    player_id = db_response.get("player_id")
+    player_id = test_utils.create_player(player_name)
 
     # Create a new team
-    db_response, status = team.create({"team": team_name})
-    assert status == 201
-    assert db_response is not None
-    team_id = db_response.get("team_id")
+    team_id = test_utils.create_team(team_name)
 
     with app.test_client() as test_client:
-
         # Attempt to access the create player api
         post_data = {
             "player_id": player_id,
@@ -101,7 +86,7 @@ def test_team_add_player(app):
         response_data = json.loads(response_str)
         team_id = response_data.get("team_id")
         assert team_id != ""
-        assert UUID_REGEX.match(team_id)
+        assert test_utils.UUID_REGEX.match(team_id)
 
         # Verify the database agrees.
         db_response = team.read_one(team_id)
@@ -117,24 +102,14 @@ def test_team_delete(app):
     WHEN the '/api/team/{team_id}' page is requested (DELETE)
     THEN check that the response is successful
     """
-    # print(f"{app.config['SQLALCHEMY_DATABASE_URI']=}")
-
     # Create a new player
-    db_response, status = player.create({"name": PLAYER_NAMES[0]})
-    assert status == 201
-    assert db_response is not None
-    player_id = db_response.get("player_id")
+    player_id = test_utils.create_player(choice(test_utils.PLAYER_NAMES))
 
     # Create a new team
-    db_response, status = team.create({"name": TEAM_NAMES[0]})
-    assert status == 201
-    assert db_response is not None
-    team_id = db_response.get("team_id")
+    team_id = test_utils.create_team(choice(test_utils.TEAM_NAMES))
 
     # Create a new teamplayer
-    db_response, status = teamplayers.create(team_id, {"player_id": player_id})
-    assert status == 201
-    assert db_response is not None
+    test_utils.create_teamplayer(team_id, player_id)
 
     # Verify the database agrees.
     db_response = team.read_all()
@@ -151,9 +126,64 @@ def test_team_delete(app):
 
         # Attempt to retrieve the now-deleted round id
         response = test_client.get(f"/api/team/{team_id}")
-        # assert response.status == "404 NOT FOUND"
-        assert response.status == "200 OK"
+        assert response.status == "404 NOT FOUND"
 
     # Verify the database agrees.
     with pytest.raises(exceptions.NotFound):
-        db_response = team.read_one(team_id)
+        team.read_one(team_id)
+
+
+def test_team_add_player_missing(app):
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/team' page is requested (POST)
+    THEN check that the response is a UUID and contains the expected information
+    """
+    # Create a new player
+    player_id = str(uuid.uuid4())
+
+    # Create a new team
+    team_id = str(uuid.uuid4())
+
+    with app.test_client() as test_client:
+        # Attempt to access the create player api
+        post_data = {"player_id": player_id}
+        response = test_client.post(
+            f"/api/team/{team_id}",
+            data=json.dumps(post_data),
+            content_type="application/json",
+        )
+        assert response.status == "409 CONFLICT"
+        assert response.get_data(as_text=True) is not None
+        # This is a JSON formatted STRING
+        response_str = response.get_data(as_text=True)
+        response_data = json.loads(response_str)
+        team_id = response_data.get("team_id")
+        assert team_id is None
+
+        # Verify the database agrees.
+        with pytest.raises(exceptions.NotFound):
+            team.read_one(team_id)
+
+
+def test_team_delete_missing(app):
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/team/{team_id}' page is requested (DELETE)
+    THEN check that the response is successful
+    """
+    # Create a new team
+    team_id = str(uuid.uuid4())
+
+    with app.test_client() as test_client:
+        # Attempt to access the delete round api
+        response = test_client.delete(f"/api/team/{team_id}")
+        assert response.status == "404 NOT FOUND"
+
+        # Attempt to retrieve the now-deleted round id
+        response = test_client.get(f"/api/team/{team_id}")
+        assert response.status == "404 NOT FOUND"
+
+    # Verify the database agrees.
+    with pytest.raises(exceptions.NotFound):
+        team.read_one(team_id)

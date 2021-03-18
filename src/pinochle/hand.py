@@ -3,8 +3,9 @@ This is the hand module and supports common database queries for cards in a hand
 """
 
 import sqlalchemy
+from flask import abort, make_response
 
-from pinochle.config import db
+from pinochle.models.core import db
 from pinochle.models.hand import Hand, HandSchema
 
 # Suppress invalid no-member messages from pylint.
@@ -43,21 +44,22 @@ def read_one(hand_id):
     a_hand = Hand.query.filter(Hand.hand_id == hand_id).all()
 
     # Did we find a hand?
-    if a_hand is not None:
+    if hand_id is not None and a_hand is not None:
         # Serialize the data for the response
         temp = list()
         for _, card in enumerate(a_hand):
             temp.append(card.card)
-        data = {"hand_id": hand_id, "cards": temp}
-        return data
+        if len(temp) > 0:
+            data = {"hand_id": hand_id, "cards": temp}
+            return data
 
-    # Otherwise, nope, didn't find any rounds
+    # Otherwise, nope, didn't find any rounds with cards.
     return None
 
 
 def addcard(hand_id, card):
     """
-    This function responds to internal (non-API) requests database access
+    This function responds to API requests database access
     by adding the specified card to the given hand_id.
 
     :param hand_id:    Id of the hand to receive the new card
@@ -74,16 +76,15 @@ def addcard(hand_id, card):
         # Add the round to the database
         db.session.add(new_card)
         db.session.commit()
+        return make_response(f"Card {card} added to player's hand", 201)
 
-        # Serialize and return the newly created card in the response
-    # TODO: Stop lying. Actually retreive the data from the database instead of
-    # recycling the data that may or may not have been inserted into the database.
-    # data = schema.dump(new_card).data
+    # Otherwise, nope, didn't find that player
+    abort(404, f"Could not add card to for: {hand_id}/{card}")
 
 
 def deletecard(hand_id, card):
     """
-    This function responds to internal (non-API) requests database access
+    This function responds to API requests database access
     by deleting the specified card from the given hand_id.
 
     :param hand_id:    Id of the hand to receive the new card
@@ -92,20 +93,25 @@ def deletecard(hand_id, card):
     """
     if hand_id is not None and card is not None:
         # Create a hand instance using the schema and the passed in card
-        schema = HandSchema()
-        a_card = schema.load(
-            {"hand_id": hand_id, "card": card}, session=db.session
-        ).data
+        a_card = Hand.query.filter(
+            Hand.hand_id == hand_id, Hand.card == card
+        ).one_or_none()
 
         if a_card is not None:
             # Delete the card from the database
-            db.session.delete(a_card)
-            db.session.commit()
+            db_session = db.session()
+            local_object = db_session.merge(a_card)
+            db_session.delete(local_object)
+            db_session.commit()
+            return make_response(f"Player's card {card} deleted", 200)
+
+    # Otherwise, nope, didn't find that player
+    abort(404, f"Hand/card not found for: {hand_id}/{card}")
 
 
 def deleteallcards(hand_id):
     """
-    This function responds to internal (non-API) requests database access
+    This function responds to API requests database access
     by deleting all the card from the given hand_id.
 
     :param hand_id:    Id of the hand to receive the new card
@@ -115,8 +121,14 @@ def deleteallcards(hand_id):
     if hand_id is not None:
         a_card = Hand.query.filter(Hand.hand_id == hand_id).all()
 
+        db_session = db.session()
         if a_card is not None:
             for item in a_card:
                 # Delete the cards from the database
-                db.session.delete(item)
-            db.session.commit()
+                local_object = db_session.merge(item)
+                db_session.delete(local_object)
+            db_session.commit()
+            return make_response(f"All cards deleted", 200)
+
+    # Otherwise, nope, didn't find that player
+    abort(404, f"Error occurred deleting cards for: {hand_id}")

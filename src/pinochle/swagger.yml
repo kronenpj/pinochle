@@ -305,7 +305,7 @@ paths:
 
   /round/{round_id}:
     get:
-      operationId: pinochle.roundteams.read_one
+      operationId: pinochle.round_.read_one
       tags:
         - Rounds
       summary: Read teams associated with a round
@@ -463,15 +463,36 @@ paths:
           in: body
           required: True
           schema:
-            type: string
+            type: object
             properties:
-              card:
+              content:
                 type: string
                 description: Suit and value of the card to add.
       responses:
         200:
           description: Successfully added card to collection.
+    delete:
+      operationId: pinochle.roundteams.delete
+      tags:
+        - Rounds
+      summary: Delete a team from the round.
+      description: Delete a team from the round.
+      parameters:
+        - name: round_id
+          in: path
+          description: Id of the round to update
+          type: string
+          required: True
+        - name: team_id
+          in: path
+          description: Id of the team to update
+          type: string
+          required: True
+      responses:
+        200:
+          description: Successfully deleted the team from the round.
 
+  /round/{round_id}/{team_id}/{card}:
     delete:
       operationId: pinochle.roundteams.deletecard
       tags:
@@ -490,13 +511,10 @@ paths:
           type: string
           required: True
         - name: card
-          in: body
-          schema:
-            type: string
-            properties:
-              card:
-                type: string
-                description: Suit and value of the card to delete.
+          in: path
+          required: True
+          type: string
+          description: Suit and value of the card to delete.
       responses:
         200:
           description: Successfully deleted a card from the collection.
@@ -773,6 +791,33 @@ paths:
                 description: Creation/Update timestamp of the game record
 
   /player/{player_id}:
+    get:
+      operationId: pinochle.player.read_one
+      tags:
+        - Players
+      summary: Read the specified player's information
+      description: Read the specified player's information
+      parameters:
+        - name: player_id
+          in: path
+          description: Id of player to be queried
+          type: string
+          required: True
+      responses:
+        200:
+          description: Successfully read player operation
+          schema:
+            type: string
+            properties:
+              player_id:
+                type: string
+                description: Id of the player
+              player_name:
+                type: string
+                description: Name of the player on the player
+              timestamp:
+                type: string
+                description: Create/Update timestamp of the player
     delete:
       operationId: pinochle.player.delete
       tags:
@@ -788,3 +833,50 @@ paths:
       responses:
         200:
           description: Successfully removed player from team
+
+  /player/{player_id}/hand:
+    put:
+      operationId: pinochle.player.addcard
+      tags:
+        - Players
+      summary: Add a card to a player's hand
+      description: Add a card to a player's hand
+      parameters:
+        - name: player_id
+          in: path
+          description: Id of round
+          type: string
+          required: True
+        - name: card
+          in: body
+          required: True
+          schema:
+            type: object
+            properties:
+              content:
+                type: string
+                description: Suit and value of the card to add.
+      responses:
+        200:
+          description: Successfully added card to player's hand
+  /player/{player_id}/hand/{card}:
+    delete:
+      operationId: pinochle.player.deletecard
+      tags:
+        - Players
+      summary: Remove a card from a player's hand
+      description: Remove a card from a player's hand
+      parameters:
+        - name: player_id
+          in: path
+          description: Id of player
+          type: string
+          required: True
+        - name: card
+          in: path
+          description: Card to remove from the player's hand
+          type: string
+          required: True
+      responses:
+        200:
+          description: Successfully removed card from player's hand

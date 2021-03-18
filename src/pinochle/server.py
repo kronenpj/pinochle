@@ -1,26 +1,13 @@
 #!/usr/bin/env python3
 
-# 3rd party moudles
-import os
+from flask import render_template # pragma: no cover
 
-from flask import render_template
+from pinochle import app_factory # pragma: no cover
 
-# Local modules
-from pinochle import config
-
-# Get the application instance
-connex_app = config.connex_app
-
-# Read the swagger.yml file to configure the endpoints
-connex_app.add_api("swagger.yml")
-
-# Delete database file if it exists currently
-if not os.path.exists(config.sqlite_url):
-    # Create the database
-    config.db.create_all()
+application = app_factory.create_app() # pragma: no cover
 
 # Create a URL route in our application for "/"
-@connex_app.route("/home2.html")
+@application.route("/home2.html") # pragma: no cover
 def home2():
     """
     This function just responds to the browser URL
@@ -31,7 +18,7 @@ def home2():
 
 
 # Create a URL route in our application for "/"
-@connex_app.route("/")
+@application.route("/") # pragma: no cover
 def home():
     """
     This function just responds to the browser URL
@@ -41,6 +28,8 @@ def home():
     return render_template("home.html")
 
 
-# If we're running in stand alone mode, run the application
 if __name__ == "__main__":
-    connex_app.run(host="0.0.0.0", port=5000, debug=True)
+    # If we're running in stand alone mode, run the application
+    application.run(
+        host="0.0.0.0", port=5000, use_reloader=True, use_debugger=True, threaded=True
+    )

@@ -3,7 +3,7 @@ This is the roundkitty module which supports the REST actions relating to roundk
 """
 
 from pinochle import hand
-from pinochle.config import db
+from pinochle.models.core import db
 from pinochle.models.hand import Hand
 from pinochle.models.round_ import Round, RoundSchema
 
@@ -56,7 +56,10 @@ def delete(round_id):
         round_schema = RoundSchema()
         a_round = Round.query.filter(Round.round_id == round_id).one_or_none()
         temp_hand_data = round_schema.dump(a_round).data
+        if len(temp_hand_data) == 0:
+            return
         hand_id = temp_hand_data["hand_id"]
+        
 
         hand.deleteallcards(hand_id)
 

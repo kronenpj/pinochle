@@ -6,7 +6,9 @@ player data
 import sqlalchemy
 from flask import abort, make_response
 
-from pinochle.config import db
+from pinochle import hand
+from pinochle.models.core import db
+from pinochle.models.hand import HandSchema
 from pinochle.models.player import Player, PlayerSchema
 
 # Suppress invalid no-member messages from pylint.
@@ -85,6 +87,53 @@ def create(player):
     abort(400, f"Player {name} could not be added to the database.")
 
 
+def addcard(player_id, card):
+    """
+    This function responds to internal (non-API) requests database access
+    by adding the specified card to the given hand_id.
+
+    :param hand_id:    Id of the hand to receive the new card
+    :param card:       String of the card to add to the collection.
+    :return:           None.
+    """
+    # Build the initial query
+    player = Player.query.filter(Player.player_id == player_id).one_or_none()
+
+    # Did we find a player?
+    if player is None:
+        abort(404, "Player is invalid.")
+
+    hand_id = str(player.hand_id)
+
+    # Card is a dict.
+    s_card = card["card"]
+
+    return hand.addcard(hand_id, s_card)
+
+
+def deletecard(player_id, card):
+    """
+    This function responds to internal (non-API) requests database access
+    by deleting the specified card from the given hand_id.
+
+    :param hand_id:    Id of the hand to receive the new card
+    :param card:       String of the card to add to the collection.
+    :return:           None.
+    """
+    # Build the initial query
+    player = Player.query.filter(Player.player_id == player_id).one_or_none()
+
+    # Did we find a player?
+    if player is None:
+        return
+
+    hand_id = str(player.hand_id)
+
+    if player.hand_id is not None and card is not None:
+        # Delete the card from the selected hand in the database.
+        return hand.deletecard(hand_id, card)
+
+
 def update(player_id, player):
     """
     This function updates an existing player in the player structure
@@ -131,8 +180,10 @@ def delete(player_id):
 
     # Did we find a player?
     if player is not None:
-        db.session.delete(player)
-        db.session.commit()
+        db_session = db.session()
+        local_object = db_session.merge(player)
+        db_session.delete(local_object)
+        db_session.commit()
         return make_response(f"Player {player_id} deleted", 200)
 
     # Otherwise, nope, didn't find that player

@@ -5,7 +5,7 @@ This is the roundplayer module and supports all the REST actions roundplayer dat
 import sqlalchemy
 from flask import abort, make_response
 
-from pinochle.config import db
+from pinochle.models.core import db
 from pinochle.models.game import Game
 from pinochle.models.gameround import GameRound, GameRoundSchema
 from pinochle.models.round_ import Round
@@ -53,6 +53,7 @@ def read_one(game_id, round_id):
         # Serialize the data for the response
         game_schema = GameRoundSchema()
         data = game_schema.dump(a_round).data
+        # print(f"{a_round=} {data=}")
         return data
 
     # Otherwise, nope, didn't find any rounds
@@ -73,7 +74,7 @@ def create(game_id, round_id):
 
     existing_game = Game.query.filter(Game.game_id == game_id).one_or_none()
     existing_round = Round.query.filter(Round.round_id == r_id).one_or_none()
-    player_on_round = GameRound.query.filter(
+    game_round = GameRound.query.filter(
         GameRound.game_id == game_id, GameRound.round_id == r_id
     ).one_or_none()
 
@@ -81,8 +82,8 @@ def create(game_id, round_id):
     if existing_game is None:
         abort(409, f"round {game_id} doesn't already exist.")
     if existing_round is None:
-        abort(409, f"Player {r_id} doesn't already exist.")
-    if player_on_round is not None:
+        abort(409, f"Round {r_id} doesn't already exist.")
+    if game_round is not None:
         abort(409, f"Round {r_id} is already associated with Game {game_id}.")
 
     # Create a round instance using the schema and the passed in round
@@ -151,8 +152,10 @@ def delete(game_id, round_id):
 
     # Did we find a round?
     if a_round is not None:
-        db.session.delete(a_round)
-        db.session.commit()
+        db_session = db.session()
+        local_object = db_session.merge(a_round)
+        db_session.delete(local_object)
+        db_session.commit()
         return make_response(f"round {game_id} deleted", 200)
 
     # Otherwise, nope, didn't find that round

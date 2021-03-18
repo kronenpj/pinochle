@@ -6,7 +6,8 @@ people data
 import sqlalchemy
 from flask import abort, make_response
 
-from pinochle.config import db
+from pinochle import teamplayers
+from pinochle.models.core import db
 from pinochle.models.team import Team, TeamSchema
 
 # Suppress invalid no-member messages from pylint.
@@ -136,8 +137,11 @@ def delete(team_id):
 
     # Did we find a team?
     if team is not None:
-        db.session.delete(team)
-        db.session.commit()
+        teamplayers.delete(team_id)
+        db_session = db.session()
+        local_object = db_session.merge(team)
+        db_session.delete(local_object)
+        db_session.commit()
         return make_response(f"Team {team_id} deleted", 200)
 
     # Otherwise, nope, didn't find that team

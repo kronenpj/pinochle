@@ -3,4 +3,7 @@
 #exec gunicorn --bind 0.0.0.0:5000 webapp.wsgi:app
 #exec gunicorn --bind 0.0.0.0:5000 pinochle.server:connex_app
 
-poetry run gunicorn --bind 0.0.0.0:5000 pinochle.server:connex_app
+#poetry run gunicorn --bind 0.0.0.0:5000 pinochle.server:connex_app
+#poetry run gunicorn --bind 0.0.0.0:5000 pinochle.app_factory:create_app
+
+poetry run gunicorn --bind 0.0.0.0:5000 "pinochle.app_factory:create_app()"

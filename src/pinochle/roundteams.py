@@ -5,11 +5,14 @@ This is the roundplayer module and supports all the REST actions roundplayer dat
 import sqlalchemy
 from flask import abort, make_response
 
-from pinochle.config import db
+from pinochle.models.core import db
 from pinochle.models.hand import Hand, HandSchema
 from pinochle.models.round_ import Round
 from pinochle.models.roundteam import RoundTeam, RoundTeamSchema
 from pinochle.models.team import Team
+
+# pylint: disable=unused-import
+# from pinochle.models.utils import dump_db
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member
@@ -23,15 +26,15 @@ def read_all():
     :return:        json string of list of game rounds
     """
     try:
-        # Create the list of game-rounds from our data
-        games = RoundTeam.query.order_by(RoundTeam.timestamp).all()
+        # Create the list of round-teams from our data
+        round_teams = RoundTeam.query.order_by(RoundTeam.timestamp).all()
     except sqlalchemy.exc.NoForeignKeysError:
         # Otherwise, nope, didn't find any game rounds
         abort(404, "No Rounds defined in database for any game")
 
     # Serialize the data for the response
-    game_schema = RoundTeamSchema(many=True)
-    data = game_schema.dump(games).data
+    rt_schema = RoundTeamSchema(many=True)
+    data = rt_schema.dump(round_teams).data
     return data
 
 
@@ -70,27 +73,32 @@ def read(round_id, team_id):
     :return:           list of cards collected by that team for the round.
     """
     # Build the query
-    team_hand_id = RoundTeam.query.filter(
-        RoundTeam.round_id == round_id, RoundTeam.team_id == team_id
-    ).one()
+    try:
+        team_hand_id = RoundTeam.query.filter(
+            RoundTeam.round_id == round_id, RoundTeam.team_id == team_id
+        ).one()
+        hand_id = str(team_hand_id.hand_id)
 
-    team_cards = Hand.query.filter(Hand.hand_id == team_hand_id).all()
+        # Retrieve the list of cards the team has collected.
+        team_cards = Hand.query.filter(Hand.hand_id == hand_id).all()
 
-    # Did we find any cards?
-    if team_cards is not None:
-        # Serialize the data for the response
-        data = {"round_id": round_id, "team_id": team_id}
-        temp = list()
-        for _, team_cards in enumerate(team_cards):
-            temp.append(team_cards)
-        data["team_cards"] = temp
-        return data
+        # Did we find any cards?
+        if team_cards is not None:
+            # Serialize the data for the response
+            data = {"round_id": round_id, "team_id": team_id}
+            temp = list()
+            for _, team_cards in enumerate(team_cards):
+                temp.append(team_cards)
+            data["team_cards"] = temp
+            return data
+    except sqlalchemy.orm.exc.NoResultFound:
+        pass
 
-    # Otherwise, nope, didn't find any rounds
+    # Otherwise, nope, didn't find any cards for this round/team
     abort(404, f"No cards found for {round_id}/{team_id}")
 
 
-def addcard(round_id, team_id, card):
+def addcard(round_id: str, team_id: str, card: dict):
     """
     This function responds to a PUT for /api/round/{round_id}/{team_id}
     by adding the specified card to the team's collection.
@@ -100,28 +108,31 @@ def addcard(round_id, team_id, card):
     :param card:       String of the card to add to the collection.
     :return:           None.
     """
-    if card is not None:
+    if round_id is not None and team_id is not None and card is not None:
         # Build the query to extract the hand_id
-        hand_id = RoundTeam.query.filter(
-            RoundTeam.round_id == round_id, RoundTeam.team_id == team_id
-        ).all()
+        rt_data = RoundTeam.query.filter(
+            RoundTeam.round_id == round_id,
+            RoundTeam.team_id == team_id,
+            RoundTeam.hand_id is not None,
+        ).one_or_none()
 
-        # Create a hand instance using the schema and the passed in card
-        schema = HandSchema()
-        new_card = schema.load(
-            {"hand_id": hand_id, "card": card}, session=db.session
-        ).data
+        if rt_data is not None:
+            hand_id = str(rt_data.hand_id)
 
-        # Add the round to the database
-        db.session.add(new_card)
-        db.session.commit()
+            # Create a hand instance using the schema and the passed in card
+            schema = HandSchema()
+            new_card = schema.load(
+                {"hand_id": hand_id, "card": card["card"]}, session=db.session
+            ).data
 
-        # Serialize and return the newly created card in the response
-        # TODO: Stop lying. Actually retreive the data from the database instead of
-        # recycling the data that may or may not have been inserted into the database.
-        data = schema.dump(new_card).data
+            # Add the round to the database
+            db.session.add(new_card)
+            db.session.commit()
 
-        return data, 201
+            # Serialize and return the newly created card in the response
+            data = schema.dump(new_card).data
+
+            return data, 201
 
     # Otherwise, something happened.
     abort(404, f"Couldn't add {card} to collection for {round_id}/{team_id}")
@@ -137,23 +148,30 @@ def deletecard(round_id, team_id, card):
     :param card:       String of the card to add to the collection.
     :return:           None.
     """
-    if card is not None:
+    if round_id is not None and team_id is not None and card is not None:
         # Build the query to extract the hand_id
-        hand_id = RoundTeam.query.filter(
-            RoundTeam.round_id == round_id, RoundTeam.team_id == team_id
-        ).all()
+        rt_data = RoundTeam.query.filter(
+            RoundTeam.round_id == round_id,
+            RoundTeam.team_id == team_id,
+            RoundTeam.hand_id is not None,
+        ).one_or_none()
 
-        # Create a hand instance using the schema and the passed in card
-        schema = HandSchema()
-        new_card = schema.load(
-            {"hand_id": hand_id, "card": card}, session=db.session
-        ).data
+        if rt_data is not None:
+            # Extract the properly formatted UUID.
+            hand_id = str(rt_data.hand_id)
 
-        # Add the round to the database
-        db.session.delete(new_card)
-        db.session.commit()
+            # Locate the entry in Hand that corresponds to the hand_id and card
+            rt_data = Hand.query.filter(
+                Hand.hand_id == hand_id, Hand.card == card
+            ).one_or_none()
 
-        return 200
+            # Delete the card from the database
+            db_session = db.session()
+            local_object = db_session.merge(rt_data)
+            db_session.delete(local_object)
+            db_session.commit()
+
+            return 200
 
     # Otherwise, something happened.
     abort(404, f"Couldn't delete {card} from collection for {round_id}/{team_id}")
@@ -172,9 +190,8 @@ def create(round_id, teams):
     for t_id in teams:
 
         existing_round = Round.query.filter(Round.round_id == round_id).one_or_none()
-        # This needs to deal with multiple t_ids.
         existing_team = Team.query.filter(Team.team_id == t_id).one_or_none()
-        player_on_round = RoundTeam.query.filter(
+        team_on_round = RoundTeam.query.filter(
             RoundTeam.round_id == round_id, RoundTeam.team_id == t_id
         ).one_or_none()
 
@@ -183,7 +200,7 @@ def create(round_id, teams):
             abort(409, f"Round {round_id} doesn't already exist.")
         if existing_team is None:
             abort(409, f"Team {t_id} doesn't already exist.")
-        if player_on_round is not None:
+        if team_on_round is not None:
             abort(409, f"Team {t_id} is already associated with Round {round_id}.")
 
         # Create a round instance using the schema and the passed in round
@@ -240,7 +257,7 @@ def update(game_id, round_id):
     abort(404, f"Round {round_id} not found for Id: {game_id}")
 
 
-def delete(game_id):
+def delete(round_id, team_id):
     """
     This function deletes a round from the round structure
 
@@ -248,13 +265,17 @@ def delete(game_id):
     :return:            200 on successful delete, 404 if not found
     """
     # Get the round requested
-    a_round = RoundTeam.query.filter(RoundTeam.game_id == game_id).one_or_none()
+    a_round = RoundTeam.query.filter(
+        RoundTeam.round_id == round_id, RoundTeam.team_id == team_id
+    ).one_or_none()
 
     # Did we find a round?
     if a_round is not None:
-        db.session.delete(a_round)
-        db.session.commit()
-        return make_response(f"round {game_id} deleted", 200)
+        db_session = db.session()
+        local_object = db_session.merge(a_round)
+        db_session.delete(local_object)
+        db_session.commit()
+        return make_response(f"team {team_id} deleted from round {round_id}", 200)
 
     # Otherwise, nope, didn't find that round
-    abort(404, f"round not found for Id: {game_id}")
+    abort(404, f"Team {team_id} not found for round: {round_id}")

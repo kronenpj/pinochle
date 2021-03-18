@@ -2,8 +2,9 @@ import uuid
 from datetime import datetime
 
 from marshmallow import fields
-from pinochle.config import db, ma
 from pinochle.models.GUID import GUID
+
+from .core import db, ma
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member

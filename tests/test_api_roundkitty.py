@@ -4,15 +4,18 @@ Tests for the various round/kitty classes.
 License: GPLv3
 """
 import json
+import uuid
 
-import regex
-from pinochle import game, hand, round_, roundkitty
+import pytest
+from pinochle import hand, round_, roundkitty
 from pinochle.models.round_ import Round
 
-UUID_REGEX_TEXT = r"^([a-f\d]{8}(-[a-f\d]{4}){3}-[a-f\d]{12}?)$"
-UUID_REGEX = regex.compile(UUID_REGEX_TEXT)
+# pylint: disable=wrong-import-order
+from werkzeug import exceptions
 
-CARD_LIST = ["club_9", "diamond_ace", "heart_jack", "spade_10"]
+import test_utils
+
+# from pinochle.models.utils import dump_db
 
 
 def test_roundkitty_read(app):
@@ -21,27 +24,18 @@ def test_roundkitty_read(app):
     WHEN the '/api/round/{round_id}/kitty' page is requested (GET)
     THEN check that the response contains the expected information
     """
-    # print(f"{app.config['SQLALCHEMY_DATABASE_URI']=}")
-
     # Create a new game
-    db_response, status = game.create()
-    assert status == 201
-    assert db_response is not None
-    game_id = db_response.get("game_id")
-    assert UUID_REGEX.match(game_id)
+    game_id = test_utils.create_game()
 
     # Create a new round
-    db_response, status = round_.create(game_id)
-    assert status == 201
-    assert db_response is not None
-    round_id = db_response.get("round_id")
-    assert UUID_REGEX.match(round_id)
+    round_id = test_utils.create_round(game_id)
+    assert test_utils.UUID_REGEX.match(round_id)
 
     # Retrieve the generated hand_id (as a UUID object).
     hand_id = Round.query.filter(Round.round_id == round_id).all()[0].hand_id
 
     # Populate Hand with cards.
-    for card in CARD_LIST:
+    for card in test_utils.CARD_LIST:
         hand.addcard(str(hand_id), card)
 
     with app.test_client() as test_client:
@@ -55,13 +49,13 @@ def test_roundkitty_read(app):
         cards = response_data.get("cards")
         assert cards is not None
         assert cards != ""
-        assert cards == CARD_LIST
+        assert cards == test_utils.CARD_LIST
 
     # Verify the database agrees.
     db_response = hand.read_one(hand_id)
     assert db_response is not None
     assert hand_id == db_response.get("hand_id")
-    assert db_response.get("cards") == CARD_LIST
+    assert db_response.get("cards") == test_utils.CARD_LIST
 
 
 def test_roundkitty_delete(app):
@@ -70,35 +64,31 @@ def test_roundkitty_delete(app):
     WHEN the '/api/round/{round_id}/kitty' page is requested (DELETE)
     THEN check that the response is successful
     """
-    # print(f"{app.config['SQLALCHEMY_DATABASE_URI']=}")
-
     # Create a new game
-    db_response, status = game.create()
-    assert status == 201
-    assert db_response is not None
-    game_id = db_response.get("game_id")
-    assert UUID_REGEX.match(game_id)
+    game_id = test_utils.create_game()
+    assert test_utils.UUID_REGEX.match(game_id)
 
     # Create a new round
-    db_response, status = round_.create(game_id)
-    assert status == 201
-    assert db_response is not None
-    round_id = db_response.get("round_id")
-    assert UUID_REGEX.match(round_id)
+    round_id = test_utils.create_round(game_id)
+    assert test_utils.UUID_REGEX.match(round_id)
 
     # Retrieve the generated hand_id (as a UUID object).
-    hand_id = Round.query.filter(Round.round_id == round_id).all()[0].hand_id
-    hand_id = str(hand_id)
+    hand_uuid = Round.query.filter(Round.round_id == round_id).all()
+
+    hand_id = ""
+    assert hand_uuid is not None
+    assert hand_uuid != []
+    hand_id = str(hand_uuid[0].hand_id)
 
     # Populate Hand with cards.
-    for card in CARD_LIST:
+    for card in test_utils.CARD_LIST:
         hand.addcard(hand_id, card)
 
     # Verify the database agrees.
     db_response = hand.read_one(hand_id)
     assert db_response is not None
     assert hand_id == db_response.get("hand_id")
-    assert db_response.get("cards") == CARD_LIST
+    assert db_response.get("cards") == test_utils.CARD_LIST
 
     with app.test_client() as test_client:
         # Attempt to access the delete round api
@@ -121,3 +111,64 @@ def test_roundkitty_delete(app):
     assert db_response == {"cards": []}
     db_response = round_.read_one(round_id)
     assert db_response.get("hand_id") is None
+
+
+def test_roundkitty_read_missing(app):
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/round/{round_id}/kitty' page is requested (GET)
+    THEN check that the response contains the expected information
+    """
+    # Create a new round
+    round_id = str(uuid.uuid4())
+
+    # Retrieve the generated hand_id (as a UUID object).
+    hand_id = str(uuid.uuid4())
+
+    with app.test_client() as test_client:
+        # Attempt to access the get round api
+        response = test_client.get(f"/api/round/{round_id}/kitty")
+        assert response.status == "204 NO CONTENT"
+        assert response.get_data(as_text=True) is not None
+        # This is a JSON formatted STRING
+        assert response.get_data(as_text=True) == ""
+
+    # Verify the database agrees.
+    db_response = hand.read_one(hand_id)
+    assert db_response is None
+
+
+def test_roundkitty_delete_missing(app):
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/round/{round_id}/kitty' page is requested (DELETE)
+    THEN check that the response is successful
+    """
+    # Create a new round
+    round_id = str(uuid.uuid4())
+
+    # Retrieve the generated hand_id (as a UUID object).
+    hand_id = str(uuid.uuid4())
+
+    # Verify the database agrees.
+    db_response = hand.read_one(hand_id)
+    assert db_response is None
+
+    with app.test_client() as test_client:
+        # Attempt to access the delete round api
+        response = test_client.delete(f"/api/round/{round_id}/kitty")
+        assert response.status == "204 NO CONTENT"
+
+        # Attempt to retrieve the now-deleted round id
+        response = test_client.get(f"/api/round/{round_id}/kitty")
+        assert response.status == "204 NO CONTENT"
+
+        assert response.data is not None
+        response_str = response.get_data(as_text=True)
+        assert response_str == ""
+
+    # Verify the database agrees.
+    db_response = roundkitty.read(round_id)
+    assert db_response is None
+    with pytest.raises(exceptions.NotFound):
+        round_.read_one(round_id)
