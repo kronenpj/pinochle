@@ -16,12 +16,12 @@ from pinochle.models.core import db
 @pytest.fixture(scope="package")
 def app():
     """
-    Fixture to create an in-memory database and make it available only for the set of
-import flask
-    tests that call for this fixture. The database is re-created according to the scope.
+        Fixture to create an in-memory database and make it available only for the set of
+    import flask
+        tests that call for this fixture. The database is re-created according to the scope.
 
-    :yield: The application being tested with the temporary database.
-    :rtype: FlaskApp
+        :yield: The application being tested with the temporary database.
+        :rtype: FlaskApp
     """
     # print("Entering conftest.app...")
     app = app_factory.create_app()

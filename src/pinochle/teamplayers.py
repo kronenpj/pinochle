@@ -30,7 +30,7 @@ def read_all():
 
     # Serialize the data for the response
     team_schema = TeamPlayersSchema(many=True)
-    data = team_schema.dump(teams).data
+    data = team_schema.dump(teams)
     return data
 
 
@@ -93,14 +93,14 @@ def create(team_id, player_id):
     schema = TeamPlayersSchema()
     new_teamplayer = schema.load(
         {"team_id": team_id, "player_id": p_id}, session=db.session
-    ).data
+    )
 
     # Add the team to the database
     db.session.add(new_teamplayer)
     db.session.commit()
 
     # Serialize and return the newly created team in the response
-    data = schema.dump(new_teamplayer).data
+    data = schema.dump(new_teamplayer)
 
     return data, 201
 
@@ -121,7 +121,7 @@ def update(team_id, team):
 
         # turn the passed in team into a db object
         schema = TeamPlayersSchema()
-        db_update = schema.load(team, session=db.session).data
+        db_update = schema.load(team, session=db.session)
 
         # Set the id to the team we want to update
         db_update.team_id = update_team.team_id
@@ -131,7 +131,7 @@ def update(team_id, team):
         db.session.commit()
 
         # return updated team in the response
-        data = schema.dump(update_team).data
+        data = schema.dump(update_team)
 
         return data, 200
 

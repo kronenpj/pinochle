@@ -236,3 +236,69 @@ def test_round_read_one_missing(app):
     # Verify the database agrees.
     with pytest.raises(exceptions.NotFound):
         round_.read_one(round_id)
+
+
+def test_game_round_delete_missing2(app):
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/game/{game_id}/{round_id}' page is requested (DELETE)
+    THEN check that the response is successful
+    """
+    # Create a new game
+    game_id = str(uuid.uuid4())
+
+    # Create a new round
+    round_id = str(uuid.uuid4())
+
+    # Verify the database agrees.
+    with pytest.raises(exceptions.NotFound):
+        gameround.delete(game_id, round_id)
+
+
+def test_game_round_create_invalid(app):
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/game/{game_id}/{round_id}' page is requested (DELETE)
+    THEN check that the response is successful
+    """
+    # Create a new game
+    game_id = str(uuid.uuid4())
+
+    with pytest.raises(exceptions.Conflict):
+        gameround.create(game_id, {"round_id": game_id})
+
+    game_id = test_utils.create_game()
+
+    # Create a new round
+    round_id = str(uuid.uuid4())
+
+    with pytest.raises(exceptions.Conflict):
+        gameround.create(game_id, {"round_id": round_id})
+
+    round_id = test_utils.create_round(game_id)
+
+    with pytest.raises(exceptions.Conflict):
+        gameround.create(game_id, {"round_id": round_id})
+
+    # # Verify the database agrees.
+    # with pytest.raises(exceptions.NotFound):
+    #     round_.read_one(round_id)
+
+    # with pytest.raises(exceptions.NotFound):
+    #     gameround.read_one(game_id, round_id)
+
+    # with app.test_client() as test_client:
+    #     # Attempt to access the delete round api
+    #     response = test_client.delete(f"/api/game/{game_id}/{round_id}")
+    #     assert response.status == "404 NOT FOUND"
+
+    #     # Attempt to retrieve the now-deleted round id
+    #     response = test_client.get(f"/api/game/{game_id}/{round_id}")
+    #     assert "404 NOT FOUND" in response.status
+
+    # # Verify the database agrees.
+    # with pytest.raises(exceptions.NotFound):
+    #     round_.read_one(round_id)
+
+    # with pytest.raises(exceptions.NotFound):
+    #     gameround.read_one(game_id, round_id)

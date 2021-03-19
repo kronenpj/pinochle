@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from marshmallow import fields
 from pinochle.models.GUID import GUID
 
 from .core import db, ma
@@ -37,17 +36,10 @@ class GameRound(db.Model):
         return output
 
 
-class GameRoundSchema(ma.ModelSchema):
-    def __init__(self, **kwargs):
-        super().__init__(strict=True, **kwargs)
-
+class GameRoundSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = GameRound
         sqla_session = db.session
-
-    _id = fields.Int()
-    # game_id = fields.UUID()
-    game_id = fields.Str()
-    # round_id = fields.UUID()
-    round_id = fields.Str()
-    timestamp = fields.DateTime()
+        include_fk = True
+        include_relationships = True
+        load_instance = True

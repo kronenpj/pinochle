@@ -28,7 +28,7 @@ def read_all():
 
     # Serialize the data for the response
     hand_schema = HandSchema(many=True)
-    data = hand_schema.dump(hands).data
+    data = hand_schema.dump(hands)
     return data
 
 
@@ -69,9 +69,7 @@ def addcard(hand_id, card):
     if hand_id is not None and card is not None:
         # Create a hand instance using the schema and the passed in card
         schema = HandSchema()
-        new_card = schema.load(
-            {"hand_id": hand_id, "card": card}, session=db.session
-        ).data
+        new_card = schema.load({"hand_id": hand_id, "card": card}, session=db.session)
 
         # Add the round to the database
         db.session.add(new_card)
@@ -128,7 +126,7 @@ def deleteallcards(hand_id):
                 local_object = db_session.merge(item)
                 db_session.delete(local_object)
             db_session.commit()
-            return make_response(f"All cards deleted", 200)
+            return make_response("All cards deleted", 200)
 
     # Otherwise, nope, didn't find that player
     abort(404, f"Error occurred deleting cards for: {hand_id}")

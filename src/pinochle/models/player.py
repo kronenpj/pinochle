@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime
 
-from marshmallow import fields
 from pinochle.models.GUID import GUID
 
 from .core import db, ma
@@ -43,18 +42,10 @@ class Player(db.Model):
         return output
 
 
-class PlayerSchema(ma.ModelSchema):
-    def __init__(self, **kwargs):
-        super().__init__(strict=True, **kwargs)
-
+class PlayerSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Player
         sqla_session = db.session
-
-    name = fields.Str()
-    # player_id = fields.UUID()
-    player_id = fields.Str()
-    # hand_id = fields.UUID()
-    hand_id = fields.Str()
-    score = fields.Int()
-    timestamp = fields.DateTime()
+        include_fk = True
+        include_relationships = True
+        load_instance = True

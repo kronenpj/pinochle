@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime
 
-from marshmallow import fields
 from pinochle.models.GUID import GUID
 
 from .core import db, ma
@@ -34,16 +33,10 @@ class Team(db.Model):
         return output
 
 
-class TeamSchema(ma.ModelSchema):
-    def __init__(self, **kwargs):
-        super().__init__(strict=True, **kwargs)
-
+class TeamSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Team
         sqla_session = db.session
-
-    # team_id = fields.UUID()
-    team_id = fields.Str()
-    name = fields.Str()
-    score = fields.Int()
-    timestamp = fields.DateTime()
+        include_fk = True
+        include_relationships = True
+        load_instance = True

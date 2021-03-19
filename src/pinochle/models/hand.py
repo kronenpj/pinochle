@@ -1,4 +1,3 @@
-from marshmallow import fields
 from pinochle.models.GUID import GUID
 
 from .core import db, ma
@@ -26,13 +25,10 @@ class Hand(db.Model):
         return output
 
 
-class HandSchema(ma.ModelSchema):
-    def __init__(self, **kwargs):
-        super().__init__(strict=True, **kwargs)
-
+class HandSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Hand
         sqla_session = db.session
-
-    hand_id = fields.Str()
-    card = fields.Str()
+        include_fk = True
+        include_relationships = True
+        load_instance = True

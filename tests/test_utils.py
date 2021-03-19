@@ -33,7 +33,7 @@ def create_game() -> str:
     db_response, status = game.create()
     assert status == 201
     assert db_response is not None
-    game_id = db_response.get("game_id")
+    game_id = str(db_response.get("game_id"))
     assert UUID_REGEX.match(game_id)
 
     return game_id

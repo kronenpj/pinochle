@@ -5,3 +5,5 @@ if [ -z "$VIRTUAL_ENV" ]; then
 fi
 
 coverage run -m pytest -m 'not hypothesis' "$@"
+
+coverage xml

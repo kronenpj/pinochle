@@ -53,10 +53,42 @@ def test_team_create(app):
         assert team_name == db_response.get("name")
 
 
+def test_team_read_one(app):
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/team/{team_id}' page is requested (GET)
+    THEN check that the response is a UUID and contains the expected information
+    """
+    # Create a new team
+    team_name = choice(test_utils.TEAM_NAMES)
+
+    # Create a new team
+    team_id = test_utils.create_team(team_name)
+
+    with app.test_client() as test_client:
+        # Attempt to access the create player api
+        response = test_client.get(f"/api/team/{team_id}")
+        assert response.status == "200 OK"
+        assert response.get_data(as_text=True) is not None
+        # This is a JSON formatted STRING
+        response_str = response.get_data(as_text=True)
+        response_data = json.loads(response_str)
+        team_id = response_data.get("team_id")
+        assert team_id != ""
+        assert test_utils.UUID_REGEX.match(team_id)
+
+        # Verify the database agrees.
+        db_response = team.read_one(team_id)
+        assert db_response is not None
+        assert team_id == db_response.get("team_id")
+        assert db_response.get("score") == 0
+        assert team_name == db_response.get("name")
+
+
 def test_team_add_player(app):
     """
     GIVEN a Flask application configured for testing
-    WHEN the '/api/team' page is requested (POST)
+    WHEN the '/api/team/{team_id}' page is requested (POST)
     THEN check that the response is a UUID and contains the expected information
     """
     # Create a new team and player

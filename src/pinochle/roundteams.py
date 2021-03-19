@@ -34,7 +34,7 @@ def read_all():
 
     # Serialize the data for the response
     rt_schema = RoundTeamSchema(many=True)
-    data = rt_schema.dump(round_teams).data
+    data = rt_schema.dump(round_teams)
     return data
 
 
@@ -123,14 +123,14 @@ def addcard(round_id: str, team_id: str, card: dict):
             schema = HandSchema()
             new_card = schema.load(
                 {"hand_id": hand_id, "card": card["card"]}, session=db.session
-            ).data
+            )
 
             # Add the round to the database
             db.session.add(new_card)
             db.session.commit()
 
             # Serialize and return the newly created card in the response
-            data = schema.dump(new_card).data
+            data = schema.dump(new_card)
 
             return data, 201
 
@@ -207,7 +207,7 @@ def create(round_id, teams):
         schema = RoundTeamSchema()
         new_roundteam = schema.load(
             {"round_id": round_id, "team_id": t_id}, session=db.session
-        ).data
+        )
 
         # Add the round to the database
         db.session.add(new_roundteam)
@@ -215,7 +215,7 @@ def create(round_id, teams):
     db.session.commit()
 
     # Serialize and return the newly created round in the response
-    data = schema.dump(new_roundteam).data
+    data = schema.dump(new_roundteam)
     # NOTE: This only returns the last team supplied, not the entire list.
 
     return data, 201
@@ -239,7 +239,7 @@ def update(game_id, round_id):
 
         # turn the passed in round into a db object
         schema = RoundTeamSchema()
-        db_update = schema.load(round_id, session=db.session).data
+        db_update = schema.load(round_id, session=db.session)
 
         # Set the id to the round we want to update
         db_update.game_id = update_round.game_id
@@ -249,7 +249,7 @@ def update(game_id, round_id):
         db.session.commit()
 
         # return updated round in the response
-        data = schema.dump(update_round).data
+        data = schema.dump(update_round)
 
         return data, 200
 

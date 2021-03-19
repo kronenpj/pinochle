@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from marshmallow import fields
 from pinochle.models.GUID import GUID
 
 from .core import db, ma
@@ -37,16 +36,10 @@ class TeamPlayers(db.Model):
         return output
 
 
-class TeamPlayersSchema(ma.ModelSchema):
-    def __init__(self, **kwargs):
-        super().__init__(strict=True, **kwargs)
-
+class TeamPlayersSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = TeamPlayers
         sqla_session = db.session
-
-    # team_id = fields.UUID()
-    team_id = fields.Str()
-    # player_id = fields.UUID()
-    player_id = fields.Str()
-    timestamp = fields.DateTime()
+        include_fk = True
+        include_relationships = True
+        load_instance = True

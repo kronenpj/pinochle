@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime
 
-from marshmallow import fields
 from pinochle.models.GUID import GUID
 
 from .core import db, ma
@@ -46,17 +45,10 @@ class RoundTeam(db.Model):
         return output
 
 
-class RoundTeamSchema(ma.ModelSchema):
-    def __init__(self, **kwargs):
-        super().__init__(strict=True, **kwargs)
-
+class RoundTeamSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = RoundTeam
         sqla_session = db.session
-
-    # round_id = fields.UUID()
-    round_id = fields.Str()
-    # team_id = fields.UUID()
-    team_id = fields.Str()
-    hand_id = fields.Str()
-    timestamp = fields.DateTime()
+        include_fk = True
+        include_relationships = True
+        load_instance = True

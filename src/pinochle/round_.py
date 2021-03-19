@@ -34,7 +34,7 @@ def read_all():
 
     # Serialize the data for the response
     round_schema = RoundSchema(many=True)
-    data = round_schema.dump(rounds).data
+    data = round_schema.dump(rounds)
     return data
 
 
@@ -53,7 +53,7 @@ def read_one(round_id):
     if a_round is not None:
         # Serialize the data for the response
         round_schema = RoundSchema()
-        data = round_schema.dump(a_round).data
+        data = round_schema.dump(a_round)
         return data
 
     # Otherwise, nope, didn't find that round
@@ -75,21 +75,21 @@ def create(game_id):
     if existing_game is not None:
         # Create a round instance using the schema and the passed in round
         schema = RoundSchema()
-        new_round = schema.load({}, session=db.session).data
+        new_round = schema.load({}, session=db.session)
 
         # Add the round to the database
         db.session.add(new_round)
         db.session.commit()
 
         # Serialize and return the newly created round in the response
-        data = schema.dump(new_round).data
+        data = schema.dump(new_round)
 
         round_id = data["round_id"]
 
         # Also insert a record into the game_round table
-        gameround.create(game_id=game_id, round_id={"round_id": round_id})
+        return gameround.create(game_id=game_id, round_id={"round_id": round_id})
 
-        return data, 201
+    abort(400, f"Counld not create new round for game {game_id}.")
 
 
 def update(round_id, a_round):
@@ -108,7 +108,7 @@ def update(round_id, a_round):
 
         # turn the passed in round into a db object
         schema = RoundSchema()
-        db_update = schema.load(a_round, session=db.session).data
+        db_update = schema.load(a_round, session=db.session)
 
         # Set the id to the round we want to update
         db_update.round_id = update_round.round_id
@@ -118,7 +118,7 @@ def update(round_id, a_round):
         db.session.commit()
 
         # return updated round in the response
-        data = schema.dump(update_round).data
+        data = schema.dump(update_round)
 
         return data, 200
 

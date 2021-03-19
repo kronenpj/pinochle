@@ -32,7 +32,8 @@ def test_game_create(app):
         response_str = response.get_data(as_text=True)
         assert response_str is not None
         response_data = json.loads(response_str)
-        game_id = response_data.get("game_id")
+
+        game_id = response_data["game_id"]
         assert game_id != ""
         assert test_utils.UUID_REGEX.match(game_id)
 

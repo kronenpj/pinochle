@@ -215,7 +215,7 @@ def test_roundteam_readall_empty(app):
         roundteams.read(round_id=round_id, team_id=team_id)
 
     with app.test_client() as test_client:
-    # Attempt to access the readall roundteam api
+        # Attempt to access the readall roundteam api
         test_client.get(f"/api/round/{round_id}/{team_id}")
 
     # Verify the database agrees.

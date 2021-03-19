@@ -2,6 +2,7 @@
 This is the game module and supports all the REST actions for the
 game data
 """
+import json
 
 from flask import abort, make_response
 
@@ -24,7 +25,7 @@ def read_all():
 
     # Serialize the data for the response
     game_schema = GameSchema(many=True)
-    data = game_schema.dump(games).data
+    data = game_schema.dump(games)
     return data
 
 
@@ -41,10 +42,9 @@ def read_one(game_id):
 
     # Did we find a game?
     if game is not None:
-
         # Serialize the data for the response
         game_schema = GameSchema()
-        data = game_schema.dump(game).data
+        data = game_schema.dump(game)
         return data
 
     # Otherwise, nope, didn't find that game
@@ -59,15 +59,15 @@ def create():
     """
 
     # Create a game instance using the schema and the passed in game
-    schema = GameSchema()
-    new_game = schema.load({}, session=db.session).data
+    schema: GameSchema = GameSchema()
+    new_game = schema.load({}, session=db.session)
 
     # Add the game to the database
     db.session.add(new_game)
     db.session.commit()
 
     # Serialize and return the newly created game in the response
-    data = schema.dump(new_game).data
+    data = schema.dump(new_game)
 
     return data, 201
 
@@ -87,8 +87,8 @@ def update(game_id, game):
     if update_game is not None:
 
         # turn the passed in game into a db object
-        schema = GameSchema()
-        db_update = schema.load(game, session=db.session).data
+        schema = GameSchema(many=True)
+        db_update = schema.load(game, session=db.session)
 
         # Set the id to the game we want to update
         db_update.game_id = update_game.game_id
@@ -98,7 +98,7 @@ def update(game_id, game):
         db.session.commit()
 
         # return updated game in the response
-        data = schema.dump(update_game).data
+        data = schema.dump(update_game)
 
         return data, 200
 

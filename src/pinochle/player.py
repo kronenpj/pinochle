@@ -8,7 +8,6 @@ from flask import abort, make_response
 
 from pinochle import hand
 from pinochle.models.core import db
-from pinochle.models.hand import HandSchema
 from pinochle.models.player import Player, PlayerSchema
 
 # Suppress invalid no-member messages from pylint.
@@ -31,7 +30,7 @@ def read_all():
 
     # Serialize the data for the response
     player_schema = PlayerSchema(many=True)
-    data = player_schema.dump(players).data
+    data = player_schema.dump(players)
     return data
 
 
@@ -50,14 +49,14 @@ def read_one(player_id):
     if player is not None:
         # Serialize the data for the response
         player_schema = PlayerSchema()
-        data = player_schema.dump(player).data
+        data = player_schema.dump(player)
         return data
 
     # Otherwise, nope, didn't find that player
     abort(404, f"Player not found for Id: {player_id}")
 
 
-def create(player):
+def create(player: dict):
     """
     This function creates a new player in the player structure
     based on the passed in player data
@@ -65,20 +64,19 @@ def create(player):
     :param player:  player to create in player structure
     :return:        201 on success, 409 on player exists, 400 on other error
     """
-    name = player.get("player")
+    name = player["player"]
 
     try:
         # Create a player instance using the schema and the passed in player
         schema = PlayerSchema()
-        new_player = schema.load(player, session=db.session).data
-        new_player.name = name
+        new_player = schema.load({"name": name}, session=db.session)
 
         # Add the player to the database
         db.session.add(new_player)
         db.session.commit()
 
         # Serialize and return the newly created player in the response
-        data = schema.dump(new_player).data
+        data = schema.dump(new_player)
 
         return data, 201
     except sqlalchemy.exc.DataError:
@@ -150,7 +148,7 @@ def update(player_id, player):
 
         # turn the passed in player into a db object
         schema = PlayerSchema()
-        db_update = schema.load(player, session=db.session).data
+        db_update = schema.load(player, session=db.session)
 
         # Set the id to the player we want to update
         db_update.player_id = update_player.player_id
@@ -160,7 +158,7 @@ def update(player_id, player):
         db.session.commit()
 
         # return updated player in the response
-        data = schema.dump(update_player).data
+        data = schema.dump(update_player)
 
         return data, 200
 

@@ -30,7 +30,7 @@ def read_all():
 
     # Serialize the data for the response
     team_schema = TeamSchema(many=True)
-    data = team_schema.dump(teams).data
+    data = team_schema.dump(teams)
     return data
 
 
@@ -54,7 +54,7 @@ def read_one(team_id):
 
         # Serialize the data for the response
         team_schema = TeamSchema()
-        data = team_schema.dump(team).data
+        data = team_schema.dump(team)
         return data
 
     # Otherwise, nope, didn't find that team
@@ -74,7 +74,7 @@ def create(team):
     try:
         # Create a team instance using the schema and the passed in team
         schema = TeamSchema()
-        new_team = schema.load(team, session=db.session).data
+        new_team = schema.load({"name": name}, session=db.session)
         new_team.name = name
 
         # Add the team to the database
@@ -82,7 +82,7 @@ def create(team):
         db.session.commit()
 
         # Serialize and return the newly created team in the response
-        data = schema.dump(new_team).data
+        data = schema.dump(new_team)
 
         return data, 201
     except sqlalchemy.exc.DataError:
@@ -107,7 +107,7 @@ def update(team_id, team):
 
         # turn the passed in team into a db object
         schema = TeamSchema()
-        db_update = schema.load(team, session=db.session).data
+        db_update = schema.load(team, session=db.session)
 
         # Set the id to the team we want to update
         db_update.team_id = update_team.team_id
@@ -117,7 +117,7 @@ def update(team_id, team):
         db.session.commit()
 
         # return updated team in the response
-        data = schema.dump(update_team).data
+        data = schema.dump(update_team)
 
         return data, 200
 

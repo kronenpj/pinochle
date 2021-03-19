@@ -26,7 +26,7 @@ def read(round_id):
     if a_round is not None:
         # Retrieve the hand_id from the returned data.
         round_schema = RoundSchema()
-        temp_hand_data = round_schema.dump(a_round).data
+        temp_hand_data = round_schema.dump(a_round)
         hand_id = temp_hand_data["hand_id"]
 
         cards = Hand.query.filter(Hand.hand_id == hand_id).all()
@@ -55,11 +55,10 @@ def delete(round_id):
         # Retrieve the hand_id from the returned data.
         round_schema = RoundSchema()
         a_round = Round.query.filter(Round.round_id == round_id).one_or_none()
-        temp_hand_data = round_schema.dump(a_round).data
+        temp_hand_data = round_schema.dump(a_round)
         if len(temp_hand_data) == 0:
             return
         hand_id = temp_hand_data["hand_id"]
-        
 
         hand.deleteallcards(hand_id)
 

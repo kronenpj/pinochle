@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime
 
-from marshmallow import fields
 from pinochle.models.GUID import GUID
 
 from .core import db, ma
@@ -31,14 +30,10 @@ class Game(db.Model):
         return output
 
 
-class GameSchema(ma.ModelSchema):
-    def __init__(self, **kwargs):
-        super().__init__(strict=True, **kwargs)
-
+class GameSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Game
         sqla_session = db.session
-
-    # game_id = fields.UUID()
-    game_id = fields.Str()
-    timestamp = fields.DateTime()
+        include_fk = True
+        include_relationships = True
+        load_instance = True

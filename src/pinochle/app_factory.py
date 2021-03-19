@@ -42,7 +42,9 @@ def create_app(register_blueprints=True):
             db=app.config["DB_NAME"],
         )
     else:
-        print(f"NOTE: You are using a SQLite database: sqlite:///{app.config['DB_NAME']}")
+        print(
+            f"NOTE: You are using a SQLite database: sqlite:///{app.config['DB_NAME']}"
+        )
         print("Using a SQLite database in production is not recommended.")
         print(f"Add 'instance/application.cfg.py' to {basedir} to override defaults.")
         app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///{db}".format(

@@ -30,7 +30,7 @@ def read_all():
 
     # Serialize the data for the response
     game_schema = GameRoundSchema(many=True)
-    data = game_schema.dump(games).data
+    data = game_schema.dump(games)
     return data
 
 
@@ -52,8 +52,7 @@ def read_one(game_id, round_id):
     if a_round is not None:
         # Serialize the data for the response
         game_schema = GameRoundSchema()
-        data = game_schema.dump(a_round).data
-        # print(f"{a_round=} {data=}")
+        data = game_schema.dump(a_round)
         return data
 
     # Otherwise, nope, didn't find any rounds
@@ -90,14 +89,14 @@ def create(game_id, round_id):
     schema = GameRoundSchema()
     new_gameround = schema.load(
         {"game_id": game_id, "round_id": r_id}, session=db.session
-    ).data
+    )
 
     # Add the round to the database
     db.session.add(new_gameround)
     db.session.commit()
 
     # Serialize and return the newly created round in the response
-    data = schema.dump(new_gameround).data
+    data = schema.dump(new_gameround)
 
     return data, 201
 
@@ -120,7 +119,7 @@ def update(game_id, round_id):
 
         # turn the passed in round into a db object
         schema = GameRoundSchema()
-        db_update = schema.load(round_id, session=db.session).data
+        db_update = schema.load(round_id, session=db.session)
 
         # Set the id to the round we want to update
         db_update.game_id = update_round.game_id
@@ -130,7 +129,7 @@ def update(game_id, round_id):
         db.session.commit()
 
         # return updated round in the response
-        data = schema.dump(update_round).data
+        data = schema.dump(update_round)
 
         return data, 200
 

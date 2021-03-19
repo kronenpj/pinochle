@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime
 
-from marshmallow import fields
 from pinochle.models.GUID import GUID
 
 from .core import db, ma
@@ -45,21 +44,10 @@ class Round(db.Model):
         return output
 
 
-class RoundSchema(ma.ModelSchema):
-    def __init__(self, **kwargs):
-        super().__init__(strict=True, **kwargs)
-
+class RoundSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Round
         sqla_session = db.session
-
-    # round_id = fields.UUID()
-    round_id = fields.Str()
-    round_seq = fields.Int()
-    # hand_id = fields.UUID()
-    hand_id = fields.Str()
-    bid = fields.Int()
-    # bid_winner = fields.UUID()
-    bid_winner = fields.Str()
-    trump = fields.Str()
-    timestamp = fields.DateTime()
+        include_fk = True
+        include_relationships = True
+        load_instance = True

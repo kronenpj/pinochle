@@ -155,7 +155,6 @@ def test_players_read_all(app):
         response_data = json.loads(response_str)
         assert len(test_utils.PLAYER_NAMES) == len(response_data)
 
-        # print(f"{response_data=}")
         for response_item in response_data:
             player_uuid = response_item.get("player_id")
             assert player_uuid is not None
@@ -309,7 +308,6 @@ def test_players_read_all_empty(app):
         response_data = json.loads(response_str)
         assert len(response_data) == 0
 
-        # print(f"{response_data=}")
         for response_item in response_data:
             player_uuid = response_item.get("player_id")
             assert player_uuid is None
