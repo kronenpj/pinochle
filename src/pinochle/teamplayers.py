@@ -52,7 +52,7 @@ def read_one(team_id: str):
         for _, one_team in enumerate(team):
             temp.append(one_team.player_id)
         data["player_ids"] = temp
-        return data
+        return data, 200
 
     # Otherwise, nope, didn't find that team
     abort(404, f"Team not found for Id: {team_id}")

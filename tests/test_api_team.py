@@ -59,11 +59,18 @@ def test_team_read_one(app):
     WHEN the '/api/team/{team_id}' page is requested (GET)
     THEN check that the response is a UUID and contains the expected information
     """
-    # Create a new team
+    # Create a new team and player
+    player_name = choice(test_utils.PLAYER_NAMES)
     team_name = choice(test_utils.TEAM_NAMES)
+
+    # Create a new player
+    player_id = test_utils.create_player(player_name)
 
     # Create a new team
     team_id = test_utils.create_team(team_name)
+
+    # Join the player to the team.
+    test_utils.create_teamplayer(team_id=team_id, player_id=player_id)
 
     with app.test_client() as test_client:
         # Attempt to access the create player api
