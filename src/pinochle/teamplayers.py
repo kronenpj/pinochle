@@ -2,7 +2,6 @@
 This is the teamplayer module and supports all the REST actions teamplayer data
 """
 
-import sqlalchemy
 from flask import abort, make_response
 
 from pinochle.models.core import db
@@ -21,12 +20,8 @@ def read_all():
 
     :return:        json string of list of teams
     """
-    try:
-        # Create the list of team from our data
-        teams = TeamPlayers.query.order_by(TeamPlayers.team_id).all()
-    except sqlalchemy.exc.NoForeignKeysError:
-        # Otherwise, nope, didn't find any players
-        abort(404, "No TeamPlayers defined in database")
+    # Create the list of team from our data
+    teams = TeamPlayers.query.order_by(TeamPlayers.team_id).all()
 
     # Serialize the data for the response
     team_schema = TeamPlayersSchema(many=True)
@@ -34,8 +29,12 @@ def read_all():
     return data
 
 
-def read_one(team_id):
+def read_one(team_id: str):
     """
+    NOTE: This function says it responds to the same API request
+    as team.read_one. Depending on the needs of the implementation
+    this may be removed or enhanced.
+
     This function responds to a request for /api/team/{team_id}
     with one matching team from team
 
@@ -43,11 +42,7 @@ def read_one(team_id):
     :return:            team matching id
     """
     # Build the initial query
-    team = (
-        TeamPlayers.query.filter(TeamPlayers.team_id == team_id)
-        # .outerjoin(Hand)
-        .all()
-    )
+    team = TeamPlayers.query.filter(TeamPlayers.team_id == team_id).all()
 
     # Did we find a team?
     if team is not None and team != []:
@@ -63,7 +58,7 @@ def read_one(team_id):
     abort(404, f"Team not found for Id: {team_id}")
 
 
-def create(team_id, player_id):
+def create(team_id: str, player_id: dict):
     """
     This function creates a new team in the team structure
     based on the passed in team data
@@ -105,12 +100,12 @@ def create(team_id, player_id):
     return data, 201
 
 
-def update(team_id, team):
+def update(team_id: str, team: dict):
     """
     This function updates an existing team in the team structure
 
     :param team_id:     Id of the team to update
-    :param player_id:   Player to add
+    :param team:        Player to add
     :return:            updated team structure
     """
     # Get the team requested from the db into session
@@ -118,7 +113,6 @@ def update(team_id, team):
 
     # Did we find an existing team?
     if update_team is not None:
-
         # turn the passed in team into a db object
         schema = TeamPlayersSchema()
         db_update = schema.load(team, session=db.session)
@@ -139,7 +133,7 @@ def update(team_id, team):
     abort(404, f"Team not found for Id: {team_id}")
 
 
-def delete(team_id):
+def delete(team_id: str):
     """
     This function deletes a team from the team structure
 

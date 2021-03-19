@@ -2,7 +2,6 @@
 This is the hand module and supports common database queries for cards in a hand.
 """
 
-import sqlalchemy
 from flask import abort, make_response
 
 from pinochle.models.core import db
@@ -19,12 +18,8 @@ def read_all():
 
     :return:        json string of list of game rounds
     """
-    try:
-        # Create the list of game-rounds from our data
-        hands = Hand.query.all()
-    except sqlalchemy.exc.NoForeignKeysError:  # Don't think this can happen.
-        # Otherwise, nope, didn't find any game rounds
-        return None
+    # Create the list of game-rounds from our data
+    hands = Hand.query.all()
 
     # Serialize the data for the response
     hand_schema = HandSchema(many=True)
@@ -32,7 +27,7 @@ def read_all():
     return data
 
 
-def read_one(hand_id):
+def read_one(hand_id: str):
     """
     This function responds to internal (non-API) requests database access
     for reads of the hand table matching a hand_id
@@ -57,7 +52,7 @@ def read_one(hand_id):
     return None
 
 
-def addcard(hand_id, card):
+def addcard(hand_id: str, card: str):
     """
     This function responds to API requests database access
     by adding the specified card to the given hand_id.
@@ -80,7 +75,7 @@ def addcard(hand_id, card):
     abort(404, f"Could not add card to for: {hand_id}/{card}")
 
 
-def deletecard(hand_id, card):
+def deletecard(hand_id: str, card: str):
     """
     This function responds to API requests database access
     by deleting the specified card from the given hand_id.
@@ -107,7 +102,7 @@ def deletecard(hand_id, card):
     abort(404, f"Hand/card not found for: {hand_id}/{card}")
 
 
-def deleteallcards(hand_id):
+def deleteallcards(hand_id: str):
     """
     This function responds to API requests database access
     by deleting all the card from the given hand_id.

@@ -21,12 +21,8 @@ def read_all():
 
     :return:        json string of list of teams
     """
-    try:
-        # Create the list of team from our data
-        teams = Team.query.order_by(Team.name).all()
-    except sqlalchemy.exc.NoForeignKeysError:
-        # Otherwise, nope, didn't find any players
-        abort(404, "No Teams defined in database")
+    # Create the list of team from our data
+    teams = Team.query.order_by(Team.name).all()
 
     # Serialize the data for the response
     team_schema = TeamSchema(many=True)
@@ -34,7 +30,7 @@ def read_all():
     return data
 
 
-def read_one(team_id):
+def read_one(team_id: str):
     """
     This function responds to a request for /api/team/{team_id}
     with one matching team from team
@@ -61,7 +57,7 @@ def read_one(team_id):
     abort(404, f"Team not found for Id: {team_id}")
 
 
-def create(team):
+def create(team: str):
     """
     This function creates a new team in the team structure
     based on the passed in team data
@@ -91,7 +87,7 @@ def create(team):
     abort(400, f"Team {name} could not be added to the database.")
 
 
-def update(team_id, team):
+def update(team_id: str, team: dict):
     """
     This function updates an existing team in the team structure
 
@@ -125,7 +121,7 @@ def update(team_id, team):
     abort(404, f"Team not found for Id: {team_id}")
 
 
-def delete(team_id):
+def delete(team_id: str):
     """
     This function deletes a team from the team structure
 

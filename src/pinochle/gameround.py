@@ -2,7 +2,6 @@
 This is the roundplayer module and supports all the REST actions roundplayer data
 """
 
-import sqlalchemy
 from flask import abort, make_response
 
 from pinochle.models.core import db
@@ -21,12 +20,8 @@ def read_all():
 
     :return:        json string of list of game rounds
     """
-    try:
-        # Create the list of game-rounds from our data
-        games = GameRound.query.order_by(GameRound.timestamp).all()
-    except sqlalchemy.exc.NoForeignKeysError:
-        # Otherwise, nope, didn't find any game rounds
-        abort(404, "No Rounds defined in database for any game")
+    # Create the list of game-rounds from our data
+    games = GameRound.query.order_by(GameRound.timestamp).all()
 
     # Serialize the data for the response
     game_schema = GameRoundSchema(many=True)
@@ -34,7 +29,7 @@ def read_all():
     return data
 
 
-def read_one(game_id, round_id):
+def read_one(game_id: str, round_id: str):
     """
     This function responds to a request for /api/game/{game_id}/{round_id}
     with one matching round from round
@@ -59,7 +54,7 @@ def read_one(game_id, round_id):
     abort(404, f"No rounds found for game {game_id}")
 
 
-def create(game_id, round_id):
+def create(game_id: str, round_id: dict):
     """
     This function creates a new round in the round structure
     based on the passed in round data
@@ -101,7 +96,7 @@ def create(game_id, round_id):
     return data, 201
 
 
-def update(game_id, round_id):
+def update(game_id: str, round_id: str):
     """
     This function updates an existing round in the round structure
 
@@ -137,7 +132,7 @@ def update(game_id, round_id):
     abort(404, f"Round {round_id} not found for Id: {game_id}")
 
 
-def delete(game_id, round_id):
+def delete(game_id: str, round_id: str):
     """
     This function deletes a round from the round structure
 

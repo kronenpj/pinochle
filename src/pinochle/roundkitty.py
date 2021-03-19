@@ -11,7 +11,7 @@ from pinochle.models.round_ import Round, RoundSchema
 # pylint: disable=no-member
 
 
-def read(round_id):
+def read(round_id: str):
     """
     This function responds to a request for /api/round/{round_id}/kitty
     with the deck of cards in the kitty for the specified round
@@ -43,7 +43,7 @@ def read(round_id):
     return None
 
 
-def delete(round_id):
+def delete(round_id: str):
     """
     This function deletes the kitty cards for the round from the hand table
 

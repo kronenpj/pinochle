@@ -29,7 +29,7 @@ def read_all():
     return data
 
 
-def read_one(game_id):
+def read_one(game_id: str):
     """
     This function responds to a request for /api/game/{game_id}
     with one matching game from game
@@ -72,7 +72,7 @@ def create():
     return data, 201
 
 
-def update(game_id, game):
+def update(game_id: str, game: dict):
     """
     This function updates an existing game in the game structure
 
@@ -106,7 +106,7 @@ def update(game_id, game):
     abort(404, f"Game not found for Id: {game_id}")
 
 
-def delete(game_id):
+def delete(game_id: str):
     """
     This function deletes a game from the game structure
 

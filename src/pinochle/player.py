@@ -21,12 +21,8 @@ def read_all():
 
     :return:        json string of list of players
     """
-    try:
-        # Create the list of player from our data
-        players = Player.query.order_by(Player.name).all()
-    except sqlalchemy.exc.NoForeignKeysError:
-        # Otherwise, nope, didn't find any players
-        abort(404, "No Players defined in database")
+    # Create the list of player from our data
+    players = Player.query.order_by(Player.name).all()
 
     # Serialize the data for the response
     player_schema = PlayerSchema(many=True)
@@ -34,7 +30,7 @@ def read_all():
     return data
 
 
-def read_one(player_id):
+def read_one(player_id: str):
     """
     This function responds to a request for /api/player/{player_id}
     with one matching player from player
@@ -85,9 +81,9 @@ def create(player: dict):
     abort(400, f"Player {name} could not be added to the database.")
 
 
-def addcard(player_id, card):
+def addcard(player_id: str, card: dict):
     """
-    This function responds to internal (non-API) requests database access
+    This function responds to internal (non-API) database access requests
     by adding the specified card to the given hand_id.
 
     :param hand_id:    Id of the hand to receive the new card
@@ -109,9 +105,9 @@ def addcard(player_id, card):
     return hand.addcard(hand_id, s_card)
 
 
-def deletecard(player_id, card):
+def deletecard(player_id: str, card: dict):
     """
-    This function responds to internal (non-API) requests database access
+    This function responds to internal (non-API) database access requests
     by deleting the specified card from the given hand_id.
 
     :param hand_id:    Id of the hand to receive the new card
@@ -132,7 +128,7 @@ def deletecard(player_id, card):
         return hand.deletecard(hand_id, card)
 
 
-def update(player_id, player):
+def update(player_id: str, player: dict):
     """
     This function updates an existing player in the player structure
 
@@ -166,7 +162,7 @@ def update(player_id, player):
     abort(404, f"Player not found for Id: {player_id}")
 
 
-def delete(player_id):
+def delete(player_id: str):
     """
     This function deletes a player from the player structure
 

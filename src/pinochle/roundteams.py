@@ -25,12 +25,8 @@ def read_all():
 
     :return:        json string of list of game rounds
     """
-    try:
-        # Create the list of round-teams from our data
-        round_teams = RoundTeam.query.order_by(RoundTeam.timestamp).all()
-    except sqlalchemy.exc.NoForeignKeysError:
-        # Otherwise, nope, didn't find any game rounds
-        abort(404, "No Rounds defined in database for any game")
+    # Create the list of round-teams from our data
+    round_teams = RoundTeam.query.order_by(RoundTeam.timestamp).all()
 
     # Serialize the data for the response
     rt_schema = RoundTeamSchema(many=True)
@@ -38,8 +34,12 @@ def read_all():
     return data
 
 
-def read_one(round_id):
+def read_one(round_id: str):
     """
+    NOTE: This function says it responds to the same API request
+    as round_.read_one. Depending on the needs of the implementation
+    this may be removed or enhanced.
+
     This function responds to a request for /api/round/{round_id}
     with one matching round from round
 
@@ -55,15 +55,15 @@ def read_one(round_id):
         data = {"round_id": round_id}
         temp = list()
         for _, team in enumerate(a_round):
-            temp.append(team.team_id)
+            temp.append(str(team.team_id))
         data["team_ids"] = temp
-        return data
+        return data, 200
 
     # Otherwise, nope, didn't find any rounds
     abort(404, f"No rounds found ID {round_id}")
 
 
-def read(round_id, team_id):
+def read(round_id: str, team_id: str):
     """
     This function responds to a request for /api/round/{round_id}/{team_id}
     with selected team in that round.
@@ -138,7 +138,7 @@ def addcard(round_id: str, team_id: str, card: dict):
     abort(404, f"Couldn't add {card} to collection for {round_id}/{team_id}")
 
 
-def deletecard(round_id, team_id, card):
+def deletecard(round_id: str, team_id: str, card: str):
     """
     This function responds to a DELETE for /api/round/{round_id}/{team_id}
     by deleting the specified card to the team's collection.
@@ -177,7 +177,7 @@ def deletecard(round_id, team_id, card):
     abort(404, f"Couldn't delete {card} from collection for {round_id}/{team_id}")
 
 
-def create(round_id, teams):
+def create(round_id: str, teams: list):
     """
     This function creates a new round in the round-team structure
     based on the passed in team data
@@ -186,9 +186,11 @@ def create(round_id, teams):
     :param teams:     teams to associate with round
     :return:          201 on success, 406 on round doesn't exist
     """
+    if round_id is None or teams is None:
+        abort(409, "Invalid data provided.")
+
     # Teams should come as a list, loop over the values.
     for t_id in teams:
-
         existing_round = Round.query.filter(Round.round_id == round_id).one_or_none()
         existing_team = Team.query.filter(Team.team_id == t_id).one_or_none()
         team_on_round = RoundTeam.query.filter(
@@ -257,11 +259,12 @@ def update(game_id, round_id):
     abort(404, f"Round {round_id} not found for Id: {game_id}")
 
 
-def delete(round_id, team_id):
+def delete(round_id: str, team_id: str):
     """
     This function deletes a round from the round structure
 
-    :param game_id:   Id of the round to delete
+    :param round_id:    Id of the round to delete
+    :param team_id:     Id of the team to delete
     :return:            200 on successful delete, 404 if not found
     """
     # Get the round requested
