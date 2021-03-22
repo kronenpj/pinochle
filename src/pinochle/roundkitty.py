@@ -3,6 +3,7 @@ This is the roundkitty module which supports the REST actions relating to roundk
 """
 
 from pinochle import hand
+from pinochle.models import utils
 from pinochle.models.core import db
 from pinochle.models.hand import Hand
 from pinochle.models.round_ import Round, RoundSchema
@@ -20,7 +21,7 @@ def read(round_id: str):
     :return:            list of cards in the kitty or None
     """
     # Build the initial query
-    a_round = Round.query.filter(Round.round_id == round_id).one_or_none()
+    a_round = utils.query_round(round_id)
 
     # Did we find a round?
     if a_round is not None:
@@ -29,7 +30,7 @@ def read(round_id: str):
         temp_hand_data = round_schema.dump(a_round)
         hand_id = temp_hand_data["hand_id"]
 
-        cards = Hand.query.filter(Hand.hand_id == hand_id).all()
+        cards = utils.query_hand_list(hand_id)
 
         # Serialize the data for the response
         data = dict()
@@ -50,15 +51,17 @@ def delete(round_id: str):
     :param round_id:   Id of the round to delete
     :return:           None
     """
+    # print(f"{round_id=}")
     # Get the round requested
     if round_id is not None:
         # Retrieve the hand_id from the returned data.
         round_schema = RoundSchema()
-        a_round = Round.query.filter(Round.round_id == round_id).one_or_none()
+        a_round = utils.query_round(round_id)
         temp_hand_data = round_schema.dump(a_round)
         if len(temp_hand_data) == 0:
             return
         hand_id = temp_hand_data["hand_id"]
+        # print(f"{hand_id=}")
 
         hand.deleteallcards(hand_id)
 

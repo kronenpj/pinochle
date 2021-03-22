@@ -5,10 +5,10 @@ round data
 
 from flask import abort, make_response
 
-from pinochle import gameround
+from pinochle import gameround, play_pinochle
+from pinochle.models import utils
 from pinochle.models.core import db
-from pinochle.models.game import Game
-from pinochle.models.round_ import Round, RoundSchema
+from pinochle.models.round_ import RoundSchema
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member
@@ -22,7 +22,7 @@ def read_all():
     :return:        json string of list of rounds
     """
     # Create the list of round from our data
-    rounds = Round.query.order_by(Round.timestamp).all()
+    rounds = utils.query_round_list()
 
     if len(rounds) == 0:
         # Otherwise, nope, didn't find any players
@@ -43,7 +43,7 @@ def read_one(round_id: str):
     :return:            round matching id
     """
     # Build the initial query
-    a_round = Round.query.filter(Round.round_id == round_id).one_or_none()
+    a_round = utils.query_round(round_id)
 
     # Did we find a round?
     if a_round is not None:
@@ -65,7 +65,7 @@ def create(game_id: str):
     :return:         201 on success, 406 on round exists
     """
     # Get the round requested from the db into session
-    existing_game = Game.query.filter(Game.game_id == game_id).one_or_none()
+    existing_game = utils.query_game(game_id)
 
     # Did we find an existing round?
     if existing_game is not None:
@@ -83,6 +83,7 @@ def create(game_id: str):
         round_id = data["round_id"]
 
         # Also insert a record into the game_round table
+        # print(f"game_id={game_id} round_id={round_id}")
         return gameround.create(game_id=game_id, round_id={"round_id": round_id})
 
     abort(400, f"Counld not create new round for game {game_id}.")
@@ -97,7 +98,7 @@ def update(round_id: str, a_round: dict):
     :return:            updated round structure
     """
     # Get the round requested from the db into session
-    update_round = Round.query.filter(Round.round_id == round_id).one_or_none()
+    update_round = utils.query_round(round_id)
 
     # Did we find an existing round?
     if update_round is not None:
@@ -132,7 +133,7 @@ def delete(game_id: str, round_id: str):
     :return:            200 on successful delete, 404 if not found
     """
     # Get the round requested
-    a_round = Round.query.filter(Round.round_id == round_id).one_or_none()
+    a_round = utils.query_round(round_id)
     g_round = gameround.read_one(game_id=game_id, round_id=round_id)
 
     # Did we find a game-round?
@@ -149,3 +150,64 @@ def delete(game_id: str, round_id: str):
 
     # Otherwise, nope, didn't find that round
     abort(404, f"Round not found for Id: {round_id}")
+
+
+def start(round_id: str):
+    """
+    This function starts a game round if all the requirements are satisfied.
+
+    :param game_id:    Id of the game where round belongs
+    :param round_id:   Id of the round to delete
+    :return:           200 on successful delete, 404 if not found,
+                       409 if requirements are not satisfied.
+    """
+    # print(f"\nround_id={round_id}")
+    # Get the round requested
+    a_round: dict = utils.query_round(round_id)
+
+    # Did we find a round?
+    if a_round is None or a_round == {}:
+        abort(404, f"Round {round_id} not found.")
+
+    # Retrieve the information for the round and teams.
+    round_t: list = utils.query_roundteam_list(round_id)
+
+    # Did we find one or more round-team entries?
+    if round_t is None or round_t == {}:
+        abort(409, f"No teams found for round {round_id}.")
+
+    # Retrieve the hand_id for the kitty.
+    kitty = str(a_round.hand_id)
+
+    # Gather a list of teams and associate the team with the correct hand_id.
+    teams = []
+    team_hand_id = {}
+    for _id in round_t:
+        temp_team = str(_id.team_id)
+        teams.append(temp_team)
+        team_hand_id[temp_team] = str(_id.hand_id)
+
+    # Collect the individual players.
+    player_hand_id = {}
+    for team_id in teams:
+        team_temp: dict = utils.query_teamplayer_list(team_id)
+        for team_info in team_temp:
+            player_hand_id[str(team_info.player_id)] = ""
+
+    # Associate the player with that player's hand.
+    for player_id in player_hand_id:
+        player_temp: dict = utils.query_player(player_id=player_id)
+        player_hand_id[player_id] = str(player_temp.hand_id)
+
+    # print(f"kitty={kitty}")
+    # print(f"team_hand_id={team_hand_id}")
+    # print(f"player_hand_id={player_hand_id}\n")
+
+    assert len(list(player_hand_id.keys())) == 4
+    # print(f"player_hand_ids: {list(player_hand_id.keys())}")
+    # Time to deal the cards.
+    play_pinochle.deal_pinochle(
+        player_ids=list(player_hand_id.keys()), kitty_len=4, kitty_id=kitty
+    )
+
+    return make_response(f"Round {round_id} started.", 200)

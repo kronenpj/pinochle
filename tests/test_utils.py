@@ -68,7 +68,7 @@ def create_team(team_name: str) -> str:
     :rtype: str
     """
     # Create a new team
-    db_response, status = team.create({"team": team_name})
+    db_response, status = team.create({"name": team_name})
     assert status == 201
     assert db_response is not None
     team_id = db_response.get("team_id")
@@ -87,7 +87,7 @@ def create_player(player_name: str) -> str:
     :rtype: str
     """
     # Create a new player
-    db_response, status = player.create({"player": player_name})
+    db_response, status = player.create({"name": player_name})
     assert status == 201
     assert db_response is not None
     player_id = db_response.get("player_id")

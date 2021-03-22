@@ -6,6 +6,7 @@ project.
 import os
 
 import connexion
+from flask import abort, redirect, render_template  # pragma: no cover
 
 # pragma: pylint: disable=unused-import
 from . import models
@@ -54,5 +55,30 @@ def create_app(register_blueprints=True):
 
     # This is harmless if the database already exists.
     db.create_all(app=app)
+
+    # Create a URL route in our application for "/*"
+    @app.route("/<script>")  # pragma: no cover
+    def python_scripts(script):
+        """
+        This function just responds to the browser URL
+        localhost:5000/*.py
+        :return:        the requested file or 404.
+        """
+        if ".py" in script or "favicon.ico" in script:
+            return redirect(f"/static/{script}")
+        elif ".html" in script:
+            return render_template(f"{script}")
+        else:
+            return abort(404)
+
+    # Create a URL route in our application for "/"
+    @app.route("/")  # pragma: no cover
+    def index():
+        """
+        This function just responds to the browser URL
+        localhost:5000/
+        :return:        the rendered template 'home.html'
+        """
+        return render_template("index.html")
 
     return app

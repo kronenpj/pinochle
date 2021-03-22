@@ -37,6 +37,7 @@ class Round(db.Model):
     def __repr__(self):
         output = "<Round %r, " % self.round_id
         output += "Seq %r, " % self.round_seq
+        output += "Hand_id %r, " % self.hand_id
         output += "Bid %r, " % self.bid
         output += "Winner %r, " % self.bid_winner
         output += "Trump %r" % self.trump

@@ -4,6 +4,7 @@ This is the roundplayer module and supports all the REST actions roundplayer dat
 
 from flask import abort, make_response
 
+from pinochle.models import utils
 from pinochle.models.core import db
 from pinochle.models.game import Game
 from pinochle.models.gameround import GameRound, GameRoundSchema
@@ -21,12 +22,35 @@ def read_all():
     :return:        json string of list of game rounds
     """
     # Create the list of game-rounds from our data
-    games = GameRound.query.order_by(GameRound.timestamp).all()
+    games = utils.query_gameround_list()
 
     # Serialize the data for the response
     game_schema = GameRoundSchema(many=True)
     data = game_schema.dump(games)
     return data
+
+
+def read_rounds(game_id: str):
+    """
+    This function responds to a request for /api/game/{game_id} (GET)
+    with one matching round from round
+
+    :param game_id:     Id of round to find
+    :return:            round matching id
+    """
+    # Build the initial query
+    a_round_list = utils.query_round_list_for_game(game_id=game_id)
+
+    # Did we find a round?
+    if a_round_list is not None:
+        # print(f"{a_round_list=}")
+        # Serialize the data for the response
+        game_schema = GameRoundSchema()
+        data = game_schema.dump(a_round_list)
+        return data
+
+    # Otherwise, nope, didn't find any rounds
+    abort(404, f"No rounds found for game {game_id}")
 
 
 def read_one(game_id: str, round_id: str):
@@ -39,9 +63,7 @@ def read_one(game_id: str, round_id: str):
     :return:            round matching id
     """
     # Build the initial query
-    a_round = GameRound.query.filter(
-        GameRound.game_id == game_id, GameRound.round_id == round_id
-    ).one_or_none()
+    a_round = utils.query_gameround(game_id=game_id, round_id=round_id)
 
     # Did we find a round?
     if a_round is not None:
@@ -66,11 +88,10 @@ def create(game_id: str, round_id: dict):
     # Player_id comes as a dict, extract the value.
     r_id = round_id["round_id"]
 
-    existing_game = Game.query.filter(Game.game_id == game_id).one_or_none()
-    existing_round = Round.query.filter(Round.round_id == r_id).one_or_none()
-    game_round = GameRound.query.filter(
-        GameRound.game_id == game_id, GameRound.round_id == r_id
-    ).one_or_none()
+    # print(f"game_id={game_id} round_id={r_id}")
+    existing_game = utils.query_game(game_id=game_id)
+    existing_round = utils.query_round(round_id=r_id)
+    game_round = utils.query_gameround(game_id=game_id, round_id=r_id)
 
     # Can we insert this round?
     if existing_game is None:
@@ -105,9 +126,7 @@ def update(game_id: str, round_id: str):
     :return:            updated round structure
     """
     # Get the round requested from the db into session
-    update_round = GameRound.query.filter(
-        GameRound.game_id == game_id, GameRound.round_id == round_id
-    ).one_or_none()
+    update_round = utils.query_gameround(game_id=game_id, round_id=round_id)
 
     # Did we find an existing round?
     if update_round is not None:
@@ -140,9 +159,7 @@ def delete(game_id: str, round_id: str):
     :return:            200 on successful delete, 404 if not found
     """
     # Get the round requested
-    a_round = GameRound.query.filter(
-        GameRound.game_id == game_id, GameRound.round_id == round_id
-    ).one_or_none()
+    a_round = utils.query_gameround(game_id=game_id, round_id=round_id)
 
     # Did we find a round?
     if a_round is not None:

@@ -2,8 +2,11 @@
 This is the hand module and supports common database queries for cards in a hand.
 """
 
+from typing import List
+
 from flask import abort, make_response
 
+from pinochle.models import utils
 from pinochle.models.core import db
 from pinochle.models.hand import Hand, HandSchema
 
@@ -36,7 +39,7 @@ def read_one(hand_id: str):
     :return:            List of cards from specified hand or None
     """
     # Build the initial query
-    a_hand = Hand.query.filter(Hand.hand_id == hand_id).all()
+    a_hand = utils.query_hand_list(hand_id=hand_id)
 
     # Did we find a hand?
     if hand_id is not None and a_hand is not None:
@@ -72,7 +75,31 @@ def addcard(hand_id: str, card: str):
         return make_response(f"Card {card} added to player's hand", 201)
 
     # Otherwise, nope, didn't find that player
-    abort(404, f"Could not add card to for: {hand_id}/{card}")
+    abort(404, f"Could not add card to: {hand_id}/{card}")
+
+
+def addcards(hand_id: str, cards: List[str]):
+    """
+    This function responds to API requests database access
+    by adding the specified card to the given hand_id.
+
+    :param hand_id:    Id of the hand to receive the new card
+    :param card:       String of the card to add to the collection.
+    :return:           None.
+    """
+    if hand_id is not None and cards is not None:
+        # Create a hand instance using the schema and the passed in card
+        schema = HandSchema(many=False)
+        for item in cards:
+            new_card = schema.load({"hand_id": hand_id, "card": item}, session=db.session)
+
+            # Add the round to the database
+            db.session.add(new_card)
+        db.session.commit()
+        return make_response(f"Card {cards} added to player's hand", 201)
+
+    # Otherwise, nope, didn't find that player
+    abort(404, f"Could not add cards to: {hand_id}")
 
 
 def deletecard(hand_id: str, card: str):
@@ -86,9 +113,7 @@ def deletecard(hand_id: str, card: str):
     """
     if hand_id is not None and card is not None:
         # Create a hand instance using the schema and the passed in card
-        a_card = Hand.query.filter(
-            Hand.hand_id == hand_id, Hand.card == card
-        ).one_or_none()
+        a_card = utils.query_hand_card(hand_id=hand_id, card=card)
 
         if a_card is not None:
             # Delete the card from the database
@@ -112,7 +137,7 @@ def deleteallcards(hand_id: str):
     """
     # Create a hand instance using the schema and the passed in card
     if hand_id is not None:
-        a_card = Hand.query.filter(Hand.hand_id == hand_id).all()
+        a_card = utils.query_hand_list(hand_id)
 
         db_session = db.session()
         if a_card is not None:

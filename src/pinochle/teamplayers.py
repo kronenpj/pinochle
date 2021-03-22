@@ -43,11 +43,13 @@ def read_one(team_id: str):
     """
     # Build the initial query
     team = TeamPlayers.query.filter(TeamPlayers.team_id == team_id).all()
+    team_info = Team.query.filter(Team.team_id == team_id).one_or_none()
 
     # Did we find a team?
     if team is not None and team != []:
         # Serialize the data for the response
-        data = {"team_id": team[0].team_id}
+        data = {"team_id": team_id}
+        data["team_name"] = team_info.name
         temp = list()
         for _, one_team in enumerate(team):
             temp.append(one_team.player_id)

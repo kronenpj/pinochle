@@ -5,6 +5,7 @@ This is the roundplayer module and supports all the REST actions roundplayer dat
 import sqlalchemy
 from flask import abort, make_response
 
+from pinochle.models import utils
 from pinochle.models.core import db
 from pinochle.models.hand import Hand, HandSchema
 from pinochle.models.round_ import Round
@@ -36,15 +37,11 @@ def read_all():
 
 def read_one(round_id: str):
     """
-    NOTE: This function says it responds to the same API request
-    as round_.read_one. Depending on the needs of the implementation
-    this may be removed or enhanced.
-
-    This function responds to a request for /api/round/{round_id}
+    This function responds to a request for /api/round/{round_id}/teams
     with one matching round from round
 
-    :param game_id:   Id of round to find
-    :return:            round matching id
+    :param round_id:    Id of round to find
+    :return:            list of team IDs playing in the specified round
     """
     # Build the initial query
     a_round = RoundTeam.query.filter(RoundTeam.round_id == round_id).all()
@@ -74,13 +71,11 @@ def read(round_id: str, team_id: str):
     """
     # Build the query
     try:
-        team_hand_id = RoundTeam.query.filter(
-            RoundTeam.round_id == round_id, RoundTeam.team_id == team_id
-        ).one()
+        team_hand_id = utils.query_roundteam(round_id=round_id, team_id=team_id)
         hand_id = str(team_hand_id.hand_id)
 
         # Retrieve the list of cards the team has collected.
-        team_cards = Hand.query.filter(Hand.hand_id == hand_id).all()
+        team_cards = utils.query_hand_list(hand_id=hand_id)
 
         # Did we find any cards?
         if team_cards is not None:
@@ -92,6 +87,10 @@ def read(round_id: str, team_id: str):
             data["team_cards"] = temp
             return data
     except sqlalchemy.orm.exc.NoResultFound:
+        pass
+    except sqlalchemy.exc.StatementError:
+        pass
+    except AttributeError:  # If hand_id is None
         pass
 
     # Otherwise, nope, didn't find any cards for this round/team
@@ -110,11 +109,7 @@ def addcard(round_id: str, team_id: str, card: dict):
     """
     if round_id is not None and team_id is not None and card is not None:
         # Build the query to extract the hand_id
-        rt_data = RoundTeam.query.filter(
-            RoundTeam.round_id == round_id,
-            RoundTeam.team_id == team_id,
-            RoundTeam.hand_id is not None,
-        ).one_or_none()
+        rt_data = utils.query_roundteam_with_hand(round_id=round_id, team_id=team_id)
 
         if rt_data is not None:
             hand_id = str(rt_data.hand_id)

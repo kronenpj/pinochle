@@ -126,3 +126,16 @@ class TestUtils(TestCase):
         """
         with pytest.raises(InvalidDeckError):
             utils.set_trump(trump="Spades", f_deck=5)
+
+    def test_card_conversions(self):
+        """
+        Tests the conversions between card value/suit pairs and the SVG card names.
+        """
+        temp_deck = deck.PinochleDeck(build=True)
+
+        deck_list = utils.convert_to_svg_names(deck=temp_deck)
+        new_deck = utils.convert_from_svg_names(deck=deck_list)
+
+        assert len(temp_deck) == len(temp_deck)
+        for item in temp_deck:
+            assert item in list(new_deck)

@@ -84,6 +84,44 @@ def test_game_round_delete(app):
         db_response = gameround.read_one(game_id, round_id)
 
 
+
+
+def test_game_round_list(app):
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/game/{game_id}/round' page is requested (GET)
+    THEN check that the response is successful
+    """
+    # Create a new game
+    game_id = str(test_utils.create_game())
+
+    # Create a new round
+    round_id = test_utils.create_round(game_id)
+
+    # Verify the database agrees.
+    db_response = round_.read_one(round_id)
+    assert db_response is not None
+
+    db_response = gameround.read_one(game_id, round_id)
+    assert db_response is not None
+
+    with app.test_client() as test_client:
+        # Attempt to access the get round api
+        response = test_client.get(f"/api/game/{game_id}/round")
+        assert response.status == "200 OK"
+        response_str = response.get_data(as_text=True)
+        response_data = json.loads(response_str)
+        # print(f"response_data={response_data}")
+
+    # Verify the database agrees.
+    db_response = round_.read_one(round_id)
+    # print(f"db_response={db_response}")
+
+    db_response = gameround.read_one(game_id, round_id)
+    # print(f"db_response={db_response}")
+    assert response_data == db_response
+
+
 def test_round_read_all(app):
     """
     GIVEN a Flask application configured for testing
@@ -258,7 +296,7 @@ def test_game_round_delete_missing2(app):
 def test_game_round_create_invalid(app):
     """
     GIVEN a Flask application configured for testing
-    WHEN the '/api/game/{game_id}/{round_id}' page is requested (DELETE)
+    WHEN the '/api/game/{game_id}/{round_id}' page is requested (POST)
     THEN check that the response is successful
     """
     # Create a new game
@@ -279,26 +317,3 @@ def test_game_round_create_invalid(app):
 
     with pytest.raises(exceptions.Conflict):
         gameround.create(game_id, {"round_id": round_id})
-
-    # # Verify the database agrees.
-    # with pytest.raises(exceptions.NotFound):
-    #     round_.read_one(round_id)
-
-    # with pytest.raises(exceptions.NotFound):
-    #     gameround.read_one(game_id, round_id)
-
-    # with app.test_client() as test_client:
-    #     # Attempt to access the delete round api
-    #     response = test_client.delete(f"/api/game/{game_id}/{round_id}")
-    #     assert response.status == "404 NOT FOUND"
-
-    #     # Attempt to retrieve the now-deleted round id
-    #     response = test_client.get(f"/api/game/{game_id}/{round_id}")
-    #     assert "404 NOT FOUND" in response.status
-
-    # # Verify the database agrees.
-    # with pytest.raises(exceptions.NotFound):
-    #     round_.read_one(round_id)
-
-    # with pytest.raises(exceptions.NotFound):
-    #     gameround.read_one(game_id, round_id)

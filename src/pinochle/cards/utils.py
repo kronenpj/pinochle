@@ -32,13 +32,15 @@ def populate_deck():
 
 
 @log_decorator
-def deal_hands(deck: PinochleDeck = None, players=4, kitty_cards=0):
+def deal_hands(
+    deck: PinochleDeck = None, players=4, kitty_cards=0
+) -> (List[PinochleDeck], PinochleDeck):
     if deck is None:
         deck = populate_deck()
 
     # Create empty hands
     hand = [None] * players
-    for index in range(0, players):
+    for index in range(players):
         hand[index] = PinochleDeck(
             gameid=deck.gameid,
             rebuild=deck.rebuild,
@@ -71,9 +73,9 @@ def deal_hands(deck: PinochleDeck = None, players=4, kitty_cards=0):
         kitty += deck.deal(kitty_cards)
         deck.shuffle()
 
-    # Deal remaining cards equally to each player, one at a time and
+    # Deal remaining cards equally to each player, one at a time
     while deck.size > 0:
-        for index in range(0, players):
+        for index in range(players):
             hand[index] += deck.deal()
 
     # Make sure everyone has the same size hand
@@ -216,11 +218,7 @@ def hand_summary(hand: Hand) -> str:  # pragma: no cover
     player_list: List[Player] = []
     for __, e_team in enumerate(hand.teams):
         for __, e_player in enumerate(e_team.players):
-            output += " %8s (%6s)%9s" % (
-                e_player.name,
-                e_team.name,
-                "",
-            )
+            output += " %8s (%6s)%9s" % (e_player.name, e_team.name, "",)
             player_list.append(e_player)
     output += "\n"
     for line in range(player_list[0].hand.size):
@@ -259,3 +257,29 @@ def hand_summary_score(hand: Hand) -> str:  # pragma: no cover
         output += "%12d%12s" % (score_tricks.score(e_player.hand), "")
 
     return output
+
+
+@log_decorator
+def convert_to_svg_names(deck: PinochleDeck) -> List[str]:
+    return_list = []
+    for p_card in deck:
+        (value, suit) = str(p_card).split(" of ")
+        suit = suit.lower()[:-1]  # Trim the trailing 's'
+        value = value.lower()
+        return_list.append(f"{suit}_{value}")
+
+    return return_list
+
+
+@log_decorator
+def convert_from_svg_names(deck: list) -> PinochleDeck:
+    return_deck = PinochleDeck()
+    for p_card in deck:
+        (suit, value) = p_card.split("_")
+        suit.capitalize()
+        suit += "s"  # Re-add the trailing s
+        value.capitalize()
+        temp_card = PinochleCard(value=value, suit=suit)
+        return_deck.add(temp_card)
+
+    return return_deck

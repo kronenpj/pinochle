@@ -2,12 +2,11 @@
 This is the game module and supports all the REST actions for the
 game data
 """
-import json
-
 from flask import abort, make_response
 
+from pinochle.models import utils
 from pinochle.models.core import db
-from pinochle.models.game import Game, GameSchema
+from pinochle.models.game import GameSchema
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member
@@ -21,7 +20,8 @@ def read_all():
     :return:        json string of list of games
     """
     # Create the list of game from our data
-    games = Game.query.order_by(Game.timestamp).all()
+    # games = Game.query.order_by(Game.timestamp).all()
+    games = utils.query_game_list()
 
     # Serialize the data for the response
     game_schema = GameSchema(many=True)
@@ -38,7 +38,7 @@ def read_one(game_id: str):
     :return:            game matching id
     """
     # Build the initial query
-    game = Game.query.filter(Game.game_id == game_id).one_or_none()
+    game = utils.query_game(game_id=game_id)
 
     # Did we find a game?
     if game is not None:
@@ -81,7 +81,7 @@ def update(game_id: str, game: dict):
     :return:            updated game structure
     """
     # Get the game requested from the db into session
-    update_game = Game.query.filter(Game.game_id == game_id).one_or_none()
+    update_game = utils.query_game(game_id=game_id)
 
     # Did we find an existing game?
     if update_game is not None:
@@ -114,7 +114,7 @@ def delete(game_id: str):
     :return:            200 on successful delete, 404 if not found
     """
     # Get the game requested
-    game = Game.query.filter(Game.game_id == game_id).one_or_none()
+    game = utils.query_game(game_id=game_id)
 
     # Did we find a game?
     if game is not None:

@@ -123,9 +123,11 @@ def test_roundteam_delcard(app):
     """
     # Create a new game
     game_id = test_utils.create_game()
+    print(f"game_id={game_id}")
 
     # Create a new round
     round_id = test_utils.create_round(game_id)
+    print(f"round_id={round_id}")
 
     # Create a new teams
     team_ids = []
@@ -162,9 +164,11 @@ def test_roundteam_delete(app):
     """
     # Create a new game
     game_id = test_utils.create_game()
+    print(f"game_id={game_id}")
 
     # Create a new round
     round_id = test_utils.create_round(game_id)
+    print(f"round_id={round_id}")
 
     # Create a new teams
     team_ids = []

@@ -65,7 +65,8 @@ def create(team: str):
     :param team:  team to create in team structure
     :return:        201 on success, 406 on team exists
     """
-    name = team.get("team")
+    # print(f"{team=}")
+    name = team["name"]
 
     try:
         # Create a team instance using the schema and the passed in team

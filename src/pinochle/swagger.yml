@@ -142,6 +142,36 @@ paths:
           description: Successfully deleted a game
 
   /game/{game_id}/round:
+    get:
+      operationId: pinochle.gameround.read_rounds
+      tags:
+        - Games
+      summary: Read one game
+      description: Read one game
+      parameters:
+        - name: game_id
+          in: path
+          description: Id of the game to get
+          type: string
+          required: True
+      responses:
+        200:
+          description: Successfully read game from game data operation
+          schema:
+            type: object
+            properties:
+              game_id:
+                type: string
+                description: Id of the game
+              team_ids:
+                type: array
+                description: List of team references
+                items:
+                  properties:
+                    team_id:
+                      type: string
+                      description: Id of a team in this game
+
     post:
       operationId: pinochle.round_.create
       tags:
@@ -409,6 +439,35 @@ paths:
               timestamp:
                 type: string
                 description: Creation/Update timestamp of the round-team record
+
+  /round/{round_id}/teams:
+    get:
+      operationId: pinochle.roundteams.read_one
+      tags:
+        - Rounds
+      summary: Obtain the team's collected cards
+      description: Obtain the team's collected cards
+      parameters:
+        - name: round_id
+          in: path
+          description: Id of the round to get
+          type: string
+          required: True
+      responses:
+        200:
+          description: Team list
+          schema:
+            type: object
+            properties:
+              cards:
+                type: array
+                description: List of teams
+                items:
+                  properties:
+                    team_id:
+                      type: string
+                      description: Team ID
+
   /round/{round_id}/{team_id}:
     get:
       operationId: pinochle.roundteams.read
@@ -563,6 +622,27 @@ paths:
         200:
           description: Successfully deleted all cards from the kitty.
 
+  /round/{round_id}/start:
+    post:
+      operationId: pinochle.round_.start
+      tags:
+        - Rounds
+      summary: Start the round, deal cards, etc.
+      description: Start the round, deal cards, etc.
+      parameters:
+        - name: round_id
+          in: path
+          description: Id of the round to update
+          type: string
+          required: True
+      responses:
+        200:
+          description: Successfully started the round.
+        404:
+          description: Specified round was not found.
+        409:
+          description: Failed to start the round.
+
   /team:
     get:
       operationId: pinochle.team.read_all
@@ -619,8 +699,8 @@ paths:
       operationId: pinochle.teamplayers.read_one
       tags:
         - Teams
-      summary: Read the entire set of teams, sorted by timestamp
-      description: Read the entire set of teams, sorted by timestamp
+      summary: Read the list of players who are part of the specified team
+      description: Read the list of players who are part of the specified team
       parameters:
         - name: team_id
           in: path
@@ -635,6 +715,9 @@ paths:
               team_id:
                 type: string
                 description: Id of a team
+              team_name:
+                type: string
+                description: Name of a team
               player_ids:
                 type: array
                 items:
@@ -818,6 +901,7 @@ paths:
               timestamp:
                 type: string
                 description: Create/Update timestamp of the player
+
     delete:
       operationId: pinochle.player.delete
       tags:
@@ -835,6 +919,33 @@ paths:
           description: Successfully removed player from team
 
   /player/{player_id}/hand:
+    get:
+      operationId: pinochle.player.read_hand
+      tags:
+        - Players
+      summary: Read the specified player's information
+      description: Read the specified player's information
+      parameters:
+        - name: player_id
+          in: path
+          description: Id of player to be queried
+          type: string
+          required: True
+      responses:
+        200:
+          description: Player's cards
+          schema:
+            type: object
+            properties:
+              cards:
+                type: array
+                description: List of cards
+                items:
+                  properties:
+                    card:
+                      type: string
+                      description: Suit and value of a card.
+
     put:
       operationId: pinochle.player.addcard
       tags:
@@ -859,6 +970,7 @@ paths:
       responses:
         200:
           description: Successfully added card to player's hand
+
   /player/{player_id}/hand/{card}:
     delete:
       operationId: pinochle.player.deletecard

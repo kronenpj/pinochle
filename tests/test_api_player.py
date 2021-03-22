@@ -9,6 +9,7 @@ from random import choice
 
 import pytest
 from pinochle import hand, player
+from pinochle.models import utils
 from pinochle.models.core import db
 from pinochle.models.player import Player
 
@@ -32,7 +33,7 @@ def test_players_create(app):
 
         # Attempt to access the create player api
         post_data = {
-            "player": player_name,
+            "name": player_name,
         }
         response = test_client.post(
             "/api/player", data=json.dumps(post_data), content_type="application/json",
@@ -100,7 +101,7 @@ def test_players_delete_one(app):
     # Create a new player
     for player_name in test_utils.PLAYER_NAMES:
         # Create a new game
-        db_response, status = player.create({"player": player_name})
+        db_response, status = player.create({"name": player_name})
         assert status == 201
         assert db_response is not None
         player_id = db_response.get("player_id")
@@ -138,7 +139,7 @@ def test_players_read_all(app):
     # Create a new player
     for player_name in test_utils.PLAYER_NAMES:
         # Create a new game
-        db_response, status = player.create({"player": player_name})
+        db_response, status = player.create({"name": player_name})
         assert status == 201
         assert db_response is not None
         player_id = db_response.get("player_id")
@@ -171,6 +172,41 @@ def test_players_read_all(app):
             assert player_uuid == db_response.get("player_id")
             assert db_response.get("score") == 0
             assert player_name == db_response.get("name")
+
+
+def test_players_read_hand(app):
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/player/{player_id}/hand' page is requested (GET)
+    THEN check that the response is a list of strs
+    """
+    # Create a new player
+    player_name = choice(test_utils.PLAYER_NAMES)
+    player_id = test_utils.create_player(player_name)
+    assert test_utils.UUID_REGEX.match(player_id)
+    player_data = utils.query_player(player_id=player_id)
+
+    card_qty = 5
+    card_choice = []
+    for _ in range(card_qty):
+        temp_card = choice(test_utils.CARD_LIST)
+        card_choice.append(temp_card)
+        player.addcard(player_id=player_id, card={"card": temp_card})
+
+    with app.test_client() as test_client:
+        # Attempt to access the read player api
+        response = test_client.get(f"/api/player/{player_id}/hand")
+        assert response.status == "200 OK"
+        assert response.get_data(as_text=True) is not None
+        # This is a JSON formatted STRING
+        response_str = response.get_data(as_text=True)
+        response_data = json.loads(response_str)
+        assert len(response_data) == card_qty
+
+        # Verify the database agrees.
+        db_response = hand.read_one(player_data.hand_id)
+        assert db_response is not None
+        assert card_choice == db_response["cards"]
 
 
 def test_players_add_card(app):

@@ -58,6 +58,46 @@ def test_roundkitty_read(app):
     assert db_response.get("cards") == test_utils.CARD_LIST
 
 
+
+def test_roundkitty_read2(app):
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/round/{round_id}/kitty' page is requested (GET)
+    THEN check that the response contains the expected information
+    """
+    # Create a new game
+    game_id = test_utils.create_game()
+
+    # Create a new round
+    round_id = test_utils.create_round(game_id)
+    assert test_utils.UUID_REGEX.match(round_id)
+
+    # Retrieve the generated hand_id (as a UUID object).
+    hand_id = Round.query.filter(Round.round_id == round_id).all()[0].hand_id
+
+    # Populate Hand with cards.
+    hand.addcards(str(hand_id), test_utils.CARD_LIST)
+
+    with app.test_client() as test_client:
+        # Attempt to access the create round api
+        response = test_client.get(f"/api/round/{round_id}/kitty")
+        assert response.status == "200 OK"
+        assert response.get_data(as_text=True) is not None
+        # This is a JSON formatted STRING
+        response_str = response.get_data(as_text=True)
+        response_data = json.loads(response_str)
+        cards = response_data.get("cards")
+        assert cards is not None
+        assert cards != ""
+        assert cards == test_utils.CARD_LIST
+
+    # Verify the database agrees.
+    db_response = hand.read_one(hand_id)
+    assert db_response is not None
+    assert hand_id == db_response.get("hand_id")
+    assert db_response.get("cards") == test_utils.CARD_LIST
+
+
 def test_roundkitty_delete(app):
     """
     GIVEN a Flask application configured for testing
@@ -75,10 +115,10 @@ def test_roundkitty_delete(app):
     # Retrieve the generated hand_id (as a UUID object).
     hand_uuid = Round.query.filter(Round.round_id == round_id).all()
 
-    hand_id = ""
     assert hand_uuid is not None
     assert hand_uuid != []
     hand_id = str(hand_uuid[0].hand_id)
+    print(f"round_id={round_id} hand_id={hand_id}")
 
     # Populate Hand with cards.
     for card in test_utils.CARD_LIST:

@@ -30,7 +30,7 @@ def test_team_create(app):
 
         # Attempt to access the create team api
         post_data = {
-            "team": team_name,
+            "name": team_name,
         }
         response = test_client.post(
             "/api/team", data=json.dumps(post_data), content_type="application/json",
