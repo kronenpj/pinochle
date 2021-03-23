@@ -8,7 +8,6 @@ import uuid
 from random import choice
 
 import pytest
-import sqlalchemy
 from pinochle import gameround, round_, roundteams, teamplayers
 from pinochle.models.core import db
 
@@ -109,21 +108,20 @@ def test_game_round_start_invalid(app):
     THEN check that the response is successful
     """
     # Create a new, invalidround
-    round_id = str(uuid.uuid4)
+    round_id = str(uuid.uuid4())
 
     # Verify the database agrees.
-    with pytest.raises(sqlalchemy.exc.StatementError):
+    with pytest.raises(exceptions.NotFound):
         db_response = round_.read_one(round_id)
         print(f"db_response={db_response}")
     # assert db_response is None
 
     with app.test_client() as test_client:
         # Attempt to access the get round api
-        with pytest.raises(sqlalchemy.exc.StatementError):
-            response = test_client.post(f"/api/round/{round_id}/start")
-            assert response.status == "404 NOT FOUND"
-            response_str = response.get_data(as_text=True)
-            assert f"Round {round_id} not found." in response_str
+        response = test_client.post(f"/api/round/{round_id}/start")
+        assert response.status == "404 NOT FOUND"
+        response_str = response.get_data(as_text=True)
+        assert f"Round {round_id} not found." in response_str
 
 
 def test_round_create(app):
