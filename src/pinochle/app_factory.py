@@ -58,10 +58,10 @@ def create_app(register_blueprints=True):
 
     # Create a URL route in our application for "/*"
     @app.route("/<script>")  # pragma: no cover
-    def python_scripts(script):
+    def python_scripts(script):  # pylint: disable=unused-variable
         """
-        This function just responds to the browser URL
-        localhost:5000/*.py
+        This function responds to the browser URL
+        localhost:5000/*
         :return:        the requested file or 404.
         """
         if ".py" in script or "favicon.ico" in script:
@@ -73,11 +73,11 @@ def create_app(register_blueprints=True):
 
     # Create a URL route in our application for "/"
     @app.route("/")  # pragma: no cover
-    def index():
+    def index():  # pylint: disable=unused-variable
         """
-        This function just responds to the browser URL
+        This function responds to the browser URL
         localhost:5000/
-        :return:        the rendered template 'home.html'
+        :return:        the rendered template 'index.html'
         """
         return render_template("index.html")
 

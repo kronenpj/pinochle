@@ -1,6 +1,7 @@
 FROM docker.io/library/python:3.8-slim
 
 RUN pip install poetry
+RUN apt-get update && apt-get install -y gcc && rm -rf /var/lib/apt/lists/*
 
 ENV SRC_DIR /usr/local/src/pinochle
 
@@ -11,10 +12,16 @@ RUN poetry install --no-dev --no-root
 
 COPY src/pinochle/ ${SRC_DIR}/pinochle/
 COPY src/instance/ ${SRC_DIR}/pinochle/instance/
-COPY run-gunicorn ${SRC_DIR}
-RUN chmod +x ${SRC_DIR}/run-gunicorn
+COPY app.ini ${SRC_DIR}
+RUN sed -Ei -e 's/^SERVER_NAME.*=.*//' -e 's/5000/8000/' \
+      ${SRC_DIR}/pinochle/instance/application.cfg.py && \
+      echo "SERVER_NAME = 'server'" >> ${SRC_DIR}/pinochle/instance/application.cfg.py
+COPY run-wsgi-server ${SRC_DIR}
+RUN chmod +x ${SRC_DIR}/run-wsgi-server
 
 ENV FLASK_APP pinochle
 ENV FLASK_DEBUG=1
 
-CMD ["./run-gunicorn"]
+EXPOSE 8000
+
+CMD ["./run-wsgi-server"]
