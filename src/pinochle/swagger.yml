@@ -333,112 +333,70 @@ paths:
                   type: string
                   description: Create/Update timestamp of the team
 
-  /round/{round_id}:
+  /round/{round_id}/kitty:
     get:
-      operationId: pinochle.round_.read_one
+      operationId: pinochle.roundkitty.read
       tags:
         - Rounds
-      summary: Read teams associated with a round
-      description: Read teams associated with a round
+      summary: Obtain the round's kitty
+      description: Obtain the round's kitty
       parameters:
         - name: round_id
           in: path
-          description: Id of round
+          description: Id of the round to get
           type: string
           required: True
       responses:
         200:
-          description: Successfully read teams for round
+          description: Round's kitty cards
           schema:
             type: object
             properties:
-              round_id:
-                type: string
-                description: Id of the round
-              team_ids:
+              cards:
                 type: array
+                description: List of cards
                 items:
-                  type: string
-                description: Id of the game round associated with
-              timestamp:
-                type: string
-                description: Creation/Update timestamp of the round record
+                  properties:
+                    team_id:
+                      type: string
+                      description: Suit and value of a card.
 
+    delete:
+      operationId: pinochle.roundkitty.delete
+      tags:
+        - Rounds
+      summary: Delete all cards from the kitty.
+      description: Delete all cards from the kitty.
+      parameters:
+        - name: round_id
+          in: path
+          description: Id of the round to update
+          type: string
+          required: True
+      responses:
+        200:
+          description: Successfully deleted all cards from the kitty.
+
+  /round/{round_id}/start:
     post:
-      operationId: pinochle.roundteams.create
+      operationId: pinochle.round_.start
       tags:
         - Rounds
-      summary: Associate a round with teams
-      description: Associate a round with teams
+      summary: Start the round, deal cards, etc.
+      description: Start the round, deal cards, etc.
       parameters:
         - name: round_id
           in: path
-          description: Id of round
+          description: Id of the round to update
           type: string
           required: True
-        - name: teams
-          in: body
-          description: Text content of the teams to associate with the round
-          required: True
-          schema:
-            type: array
-            items:
-              type: string
-            example: ["team_id1", "team_id2", "team_id3"]
       responses:
-        201:
-          description: Successfully created a round-team association
-          schema:
-            properties:
-              round_id:
-                type: string
-                description: Id of the created round
-              team_ids:
-                type: array
-                description: Ids of the game associated with the round
-              timestamp:
-                type: string
-                description: Creation/Update timestamp of the game record
-
-    put:
-      operationId: pinochle.roundteams.update
-      tags:
-        - Rounds
-      summary: Update teams associated with a round
-      description: Update teams associated with a round
-      parameters:
-        - name: round_id
-          in: path
-          description: Id of round
-          type: string
-          required: True
-        - name: teams
-          in: body
-          description: Text content of the teams to update round with
-          required: True
-          schema:
-            type: object
-            properties:
-              content:
-                type: string
-                description: Team IDs to associate with the round
-      responses:
-        201:
-          description: Successfully updated a round-team association
-          schema:
-            properties:
-              round_id:
-                type: string
-                description: Id of the updated round
-              team_ids:
-                type: array
-                properties:
-                  content:
-                    type: string
-                    description: Team IDs to associate with the round
-              timestamp:
-                type: string
-                description: Creation/Update timestamp of the round-team record
+        200:
+          description: Successfully started the round.
+        404:
+          description: Specified round was not found.
+        409:
+          description: Failed to start the round.
 
   /round/{round_id}/teams:
     get:
@@ -578,70 +536,112 @@ paths:
         200:
           description: Successfully deleted a card from the collection.
 
-  /round/{round_id}/kitty:
+  /round/{round_id}:
     get:
-      operationId: pinochle.roundkitty.read
+      operationId: pinochle.round_.read_one
       tags:
         - Rounds
-      summary: Obtain the round's kitty
-      description: Obtain the round's kitty
+      summary: Read teams associated with a round
+      description: Read teams associated with a round
       parameters:
         - name: round_id
           in: path
-          description: Id of the round to get
+          description: Id of round
           type: string
           required: True
       responses:
         200:
-          description: Round's kitty cards
+          description: Successfully read teams for round
           schema:
             type: object
             properties:
-              cards:
+              round_id:
+                type: string
+                description: Id of the round
+              team_ids:
                 type: array
-                description: List of cards
                 items:
-                  properties:
-                    team_id:
-                      type: string
-                      description: Suit and value of a card.
+                  type: string
+                description: Id of the game round associated with
+              timestamp:
+                type: string
+                description: Creation/Update timestamp of the round record
 
-    delete:
-      operationId: pinochle.roundkitty.delete
-      tags:
-        - Rounds
-      summary: Delete all cards from the kitty.
-      description: Delete all cards from the kitty.
-      parameters:
-        - name: round_id
-          in: path
-          description: Id of the round to update
-          type: string
-          required: True
-      responses:
-        200:
-          description: Successfully deleted all cards from the kitty.
-
-  /round/{round_id}/start:
     post:
-      operationId: pinochle.round_.start
+      operationId: pinochle.roundteams.create
       tags:
         - Rounds
-      summary: Start the round, deal cards, etc.
-      description: Start the round, deal cards, etc.
+      summary: Associate a round with teams
+      description: Associate a round with teams
       parameters:
         - name: round_id
           in: path
-          description: Id of the round to update
+          description: Id of round
           type: string
           required: True
+        - name: teams
+          in: body
+          description: Text content of the teams to associate with the round
+          required: True
+          schema:
+            type: array
+            items:
+              type: string
+            example: ["team_id1", "team_id2", "team_id3"]
       responses:
-        200:
-          description: Successfully started the round.
-        404:
-          description: Specified round was not found.
-        409:
-          description: Failed to start the round.
+        201:
+          description: Successfully created a round-team association
+          schema:
+            properties:
+              round_id:
+                type: string
+                description: Id of the created round
+              team_ids:
+                type: array
+                description: Ids of the game associated with the round
+              timestamp:
+                type: string
+                description: Creation/Update timestamp of the game record
+
+    put:
+      operationId: pinochle.roundteams.update
+      tags:
+        - Rounds
+      summary: Update teams associated with a round
+      description: Update teams associated with a round
+      parameters:
+        - name: round_id
+          in: path
+          description: Id of round
+          type: string
+          required: True
+        - name: teams
+          in: body
+          description: Text content of the teams to update round with
+          required: True
+          schema:
+            type: object
+            properties:
+              content:
+                type: string
+                description: Team IDs to associate with the round
+      responses:
+        201:
+          description: Successfully updated a round-team association
+          schema:
+            properties:
+              round_id:
+                type: string
+                description: Id of the updated round
+              team_ids:
+                type: array
+                properties:
+                  content:
+                    type: string
+                    description: Team IDs to associate with the round
+              timestamp:
+                type: string
+                description: Creation/Update timestamp of the round-team record
 
   /team:
     get:

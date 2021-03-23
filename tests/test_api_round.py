@@ -5,9 +5,11 @@ License: GPLv3
 """
 import json
 import uuid
+from random import choice
 
 import pytest
-from pinochle import gameround, round_
+import sqlalchemy
+from pinochle import gameround, round_, roundteams, teamplayers
 from pinochle.models.core import db
 
 # pylint: disable=wrong-import-order
@@ -16,6 +18,112 @@ from werkzeug import exceptions
 import test_utils
 
 # from pinochle.models.utils import dump_db
+
+
+def test_game_round_start(app):
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/round/{round_id}/start' page is requested (POST)
+    THEN check that the response is successful
+    """
+    # Create a new game
+    game_id = str(test_utils.create_game())
+
+    # Create a new round
+    round_id = str(test_utils.create_round(game_id))
+
+    # Verify the database agrees.
+    db_response = round_.read_one(round_id)
+    assert db_response is not None
+
+    db_response = gameround.read_one(game_id, round_id)
+    assert db_response is not None
+
+    # Create players
+    player_ids = []
+    for player_name in test_utils.PLAYER_NAMES:
+        player_id = test_utils.create_player(player_name)
+        assert test_utils.UUID_REGEX.match(player_id)
+        player_ids.append(player_id)
+
+    # Create a new teams
+    team_ids = []
+    for item in range(2):
+        team_id = test_utils.create_team(choice(test_utils.TEAM_NAMES))
+        team_ids.append(team_id)
+        teamplayers.create(team_id=team_id, player_id={"player_id": player_ids[item]})
+        teamplayers.create(
+            team_id=team_id, player_id={"player_id": player_ids[item + 2]}
+        )
+
+    # Create the roundteam association for the teams.
+    roundteams.create(round_id=round_id, teams=team_ids)
+
+    with app.test_client() as test_client:
+        # Attempt to access the get round api
+        response = test_client.post(f"/api/round/{round_id}/start")
+        assert response.status == "200 OK"
+        response_str = response.get_data(as_text=True)
+        assert "started" in response_str
+
+    # Verify the database agrees.
+    db_response = round_.read_one(round_id)
+    # print(f"db_response={db_response}")
+
+    db_response = gameround.read_one(game_id, round_id)
+    # print(f"db_response={db_response}")
+
+
+def test_game_round_start_no_cards(app):
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/round/{round_id}/start' page is requested (POST)
+    THEN check that the response is successful
+    """
+    # Create a new game
+    game_id = str(test_utils.create_game())
+
+    # Create a new round
+    round_id = str(test_utils.create_round(game_id))
+
+    # Verify the database agrees.
+    db_response = round_.read_one(round_id)
+    assert db_response is not None
+
+    db_response = gameround.read_one(game_id, round_id)
+    assert db_response is not None
+
+    with app.test_client() as test_client:
+        # Attempt to access the get round api
+        with pytest.raises(AssertionError):
+            response = test_client.post(f"/api/round/{round_id}/start")
+            assert response.status == "404 NOT FOUND"
+        # response_str = response.get_data(as_text=True)
+        # assert f"Round {round_id} not found." in response_str
+
+
+def test_game_round_start_invalid(app):
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/round/{round_id}/start' page is requested (POST)
+    THEN check that the response is successful
+    """
+    # Create a new, invalidround
+    round_id = str(uuid.uuid4)
+
+    # Verify the database agrees.
+    with pytest.raises(sqlalchemy.exc.StatementError):
+        db_response = round_.read_one(round_id)
+        print(f"db_response={db_response}")
+    # assert db_response is None
+
+    with app.test_client() as test_client:
+        # Attempt to access the get round api
+        with pytest.raises(sqlalchemy.exc.StatementError):
+            response = test_client.post(f"/api/round/{round_id}/start")
+            assert response.status == "404 NOT FOUND"
+            response_str = response.get_data(as_text=True)
+            assert f"Round {round_id} not found." in response_str
 
 
 def test_round_create(app):
@@ -82,8 +190,6 @@ def test_game_round_delete(app):
         db_response = round_.read_one(round_id)
     with pytest.raises(exceptions.NotFound):
         db_response = gameround.read_one(game_id, round_id)
-
-
 
 
 def test_game_round_list(app):
