@@ -26,7 +26,7 @@ def test_game_create(app):
     """
     with app.test_client() as test_client:
         # Attempt to access the create game api
-        response = test_client.post("/api/game")
+        response = test_client.post("/api/game?kitty_size=4")
         assert response.status == "201 CREATED"
         # This is a JSON formatted STRING
         response_str = response.get_data(as_text=True)
@@ -41,6 +41,7 @@ def test_game_create(app):
     db_response = game.read_one(game_id)
     assert db_response is not None
     assert game_id == db_response.get("game_id")
+    assert db_response.get("kitty_size") == 4
 
 
 def test_game_delete(app):
@@ -50,7 +51,7 @@ def test_game_delete(app):
     THEN check that the response is a UUID
     """
     # Create a new game
-    game_id = test_utils.create_game()
+    game_id = test_utils.create_game(0)
 
     with app.test_client() as test_client:
         # Attempt to access the delete game api
@@ -82,7 +83,7 @@ def test_game_read_all(app):
     game_ids = []
     for __ in range(create_games):
         # Create two new games
-        db_response, status = game.create()
+        db_response, status = game.create(4)
         assert status == 201
         assert db_response is not None
         game_id = db_response.get("game_id")
@@ -118,7 +119,7 @@ def test_game_read_one(app):
     THEN check that the response is a UUID and contains the expected information
     """
     # Create a new game
-    db_response, status = game.create()
+    db_response, status = game.create(4)
     assert status == 201
     assert db_response is not None
     game_id = db_response.get("game_id")

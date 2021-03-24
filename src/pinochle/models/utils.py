@@ -43,7 +43,7 @@ def query_game_list() -> List[Dict]:
     :return: [description]
     :rtype: List[Dict]
     """
-    temp = Game.query.order_by(Game.timestamp).all()
+    temp = Game.query.order_by(Game.timestamp.desc()).all()
     return temp
 
 

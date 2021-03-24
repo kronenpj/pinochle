@@ -2,7 +2,6 @@
 Module to provide constants.
 """
 
-DEBUG = 0
 CARD_URL = "/static/playingcards.svg"
 #                0      1        2           3        4       5
 GAME_MODES = ["game", "bid", "bidfinal", "reveal", "meld", "trick"]

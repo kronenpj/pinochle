@@ -30,7 +30,7 @@ def test_roundteam_readall(app):
     db.create_all()
 
     # Create a new game
-    game_id = test_utils.create_game()
+    game_id = test_utils.create_game(4)
 
     # Create a new round
     round_id = test_utils.create_round(game_id)
@@ -73,7 +73,7 @@ def test_roundteam_addcard(app):
     THEN check that the response contains the expected information
     """
     # Create a new game
-    game_id = test_utils.create_game()
+    game_id = test_utils.create_game(4)
 
     # Create a new round
     round_id = test_utils.create_round(game_id)
@@ -122,7 +122,7 @@ def test_roundteam_delcard(app):
     THEN check that the response contains the expected information
     """
     # Create a new game
-    game_id = test_utils.create_game()
+    game_id = test_utils.create_game(4)
     print(f"game_id={game_id}")
 
     # Create a new round
@@ -163,7 +163,7 @@ def test_roundteam_delete(app):
     THEN check that the response contains the expected information
     """
     # Create a new game
-    game_id = test_utils.create_game()
+    game_id = test_utils.create_game(4)
     print(f"game_id={game_id}")
 
     # Create a new round

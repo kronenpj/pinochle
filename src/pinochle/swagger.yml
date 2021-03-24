@@ -47,6 +47,11 @@ paths:
         - Games
       summary: Create a game
       description: Create a new game
+      parameters:
+        - name: kitty_size
+          in: query
+          type: integer
+          description: The number of cards in the kitty
       responses:
         201:
           description: Successfully created game

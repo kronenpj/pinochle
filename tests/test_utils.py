@@ -22,7 +22,7 @@ PLAYER_NAMES = ["Thing1", "Thing2", "Red", "Blue"]
 CARD_LIST = ["club_9", "diamond_ace", "heart_jack", "spade_10"]
 
 
-def create_game() -> str:
+def create_game(kitty_size=0) -> str:
     """
     Create a game in the database.
 
@@ -30,7 +30,7 @@ def create_game() -> str:
     :rtype: str
     """
     # Create a new game
-    db_response, status = game.create()
+    db_response, status = game.create(kitty_size)
     assert status == 201
     assert db_response is not None
     game_id = str(db_response.get("game_id"))

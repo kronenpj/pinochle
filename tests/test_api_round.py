@@ -26,7 +26,7 @@ def test_game_round_start(app):
     THEN check that the response is successful
     """
     # Create a new game
-    game_id = str(test_utils.create_game())
+    game_id = str(test_utils.create_game(4))
 
     # Create a new round
     round_id = str(test_utils.create_round(game_id))
@@ -80,7 +80,7 @@ def test_game_round_start_no_cards(app):
     THEN check that the response is successful
     """
     # Create a new game
-    game_id = str(test_utils.create_game())
+    game_id = str(test_utils.create_game(4))
 
     # Create a new round
     round_id = str(test_utils.create_round(game_id))
@@ -131,7 +131,7 @@ def test_round_create(app):
     THEN check that the response is a UUID and contains the expected information
     """
     # Create a new game
-    game_id = test_utils.create_game()
+    game_id = test_utils.create_game(4)
 
     with app.test_client() as test_client:
         # Attempt to access the create round api
@@ -162,7 +162,7 @@ def test_game_round_delete(app):
     THEN check that the response is successful
     """
     # Create a new game
-    game_id = test_utils.create_game()
+    game_id = test_utils.create_game(4)
 
     # Create a new round
     round_id = test_utils.create_round(game_id)
@@ -197,7 +197,7 @@ def test_game_round_list(app):
     THEN check that the response is successful
     """
     # Create a new game
-    game_id = str(test_utils.create_game())
+    game_id = str(test_utils.create_game(4))
 
     # Create a new round
     round_id = test_utils.create_round(game_id)
@@ -242,7 +242,7 @@ def test_round_read_all(app):
     round_ids = []
     for __ in range(create_games):
         # Create a new game
-        game_id = test_utils.create_game()
+        game_id = test_utils.create_game(4)
         game_ids.append(game_id)
 
         for __ in range(create_games):
@@ -281,7 +281,7 @@ def test_round_read_one(app):
     THEN check that the response is a UUID and contains the expected information
     """
     # Create a new game
-    game_id = test_utils.create_game()
+    game_id = test_utils.create_game(4)
 
     # Create a new round
     round_id = test_utils.create_round(game_id)
@@ -409,7 +409,7 @@ def test_game_round_create_invalid(app):
     with pytest.raises(exceptions.Conflict):
         gameround.create(game_id, {"round_id": game_id})
 
-    game_id = test_utils.create_game()
+    game_id = test_utils.create_game(4)
 
     # Create a new round
     round_id = str(uuid.uuid4())

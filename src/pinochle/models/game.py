@@ -20,12 +20,14 @@ class Game(db.Model):
         index=True,
         unique=True,
     )
+    kitty_size = db.Column(db.Integer, default=0)
     timestamp = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     def __repr__(self):
-        output = "<Game %r" % self.game_id
+        output = "<Game %r " % self.game_id
+        output += "Kitty_size %r, " % self.kitty_size
         output += ">"
         return output
 

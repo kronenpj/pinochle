@@ -51,16 +51,18 @@ def read_one(game_id: str):
     abort(404, f"Game not found for Id: {game_id}")
 
 
-def create():
+def create(kitty_size=0):
     """
     This function creates a new game in the game structure
 
     :return:        201 on success, 406 on game exists
     """
 
+    # print(f"game.create: kitty_size={kitty_size}")
     # Create a game instance using the schema and the passed in game
     schema: GameSchema = GameSchema()
-    new_game = schema.load({}, session=db.session)
+    new_game = schema.load({"kitty_size": kitty_size}, session=db.session)
+    # print(f"game.create: new_game={new_game}")
 
     # Add the game to the database
     db.session.add(new_game)

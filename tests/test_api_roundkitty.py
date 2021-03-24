@@ -25,7 +25,7 @@ def test_roundkitty_read(app):
     THEN check that the response contains the expected information
     """
     # Create a new game
-    game_id = test_utils.create_game()
+    game_id = test_utils.create_game(4)
 
     # Create a new round
     round_id = test_utils.create_round(game_id)
@@ -66,7 +66,7 @@ def test_roundkitty_read2(app):
     THEN check that the response contains the expected information
     """
     # Create a new game
-    game_id = test_utils.create_game()
+    game_id = test_utils.create_game(4)
 
     # Create a new round
     round_id = test_utils.create_round(game_id)
@@ -105,7 +105,7 @@ def test_roundkitty_delete(app):
     THEN check that the response is successful
     """
     # Create a new game
-    game_id = test_utils.create_game()
+    game_id = test_utils.create_game(4)
     assert test_utils.UUID_REGEX.match(game_id)
 
     # Create a new round
