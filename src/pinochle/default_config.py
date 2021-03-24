@@ -22,7 +22,7 @@ could contain this:
 The default points to an in-memory SQLite database for convenience in development
 and testing.
 """
-SERVER_NAME = "localhost:5000"
+# SERVER_NAME = "localhost:5000"
 
 DB_USERNAME = ""
 DB_PASSWORD = ""

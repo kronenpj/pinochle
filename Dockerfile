@@ -12,10 +12,6 @@ RUN poetry install --no-dev --no-root
 
 COPY src/pinochle/ ${SRC_DIR}/pinochle/
 COPY src/instance/ ${SRC_DIR}/pinochle/instance/
-COPY app.ini ${SRC_DIR}
-RUN sed -Ei -e 's/^SERVER_NAME.*=.*//' -e 's/5000/8000/' \
-      ${SRC_DIR}/pinochle/instance/application.cfg.py && \
-      echo "SERVER_NAME = 'server'" >> ${SRC_DIR}/pinochle/instance/application.cfg.py
 COPY run-wsgi-server ${SRC_DIR}
 RUN chmod +x ${SRC_DIR}/run-wsgi-server
 

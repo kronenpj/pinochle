@@ -16,7 +16,6 @@ temp.py
 *graeco_latin*
 dragdrop-refinements-fail.patch
 ### TEMPORARY UNTIL I CAN SEE IF I WANT THESE IN GIT
-tests/
 
 *.bak
 .envrc

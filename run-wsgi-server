@@ -1,5 +1,3 @@
 #!/bin/sh
 
-#poetry run gunicorn --bind 0.0.0.0:5000 "pinochle.wsgi"
-#poetry run waitress-serve --port=5000 --call "pinochle:wsgi"
-poetry run uwsgi --ini app.ini --uid nobody
+poetry run gunicorn --bind 0.0.0.0:9876 "pinochle.wsgi:application"
