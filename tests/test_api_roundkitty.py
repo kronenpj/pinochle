@@ -58,7 +58,6 @@ def test_roundkitty_read(app):
     assert db_response.get("cards") == test_utils.CARD_LIST
 
 
-
 def test_roundkitty_read2(app):
     """
     GIVEN a Flask application configured for testing

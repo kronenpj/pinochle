@@ -294,7 +294,7 @@ def on_complete_rounds(req):
     :type req: [type]
     """
     global ROUND_ID, team_list  # pylint: disable=global-statement, invalid-name
-    team_list = []
+    team_list.clear()
     mylog.error("In on_complete_rounds.")
 
     temp = on_complete_common(req)
@@ -687,8 +687,6 @@ def display_game_options():
     elif TEAM_ID == "":
         mylog.warning("team_dict=%s", team_dict)
         clear_display()
-        # for item in game_dict:
-        #     del canvas.objectDict[item]
         for item in team_dict:
             mylog.warning("team_dict[item]=%s", team_dict[item])
             round_button = SVG.Button(
@@ -708,8 +706,6 @@ def display_game_options():
                 get(f"/player/{item}", on_complete_players)
     elif PLAYER_ID == "":
         clear_display()
-        # for item in team_dict:
-        #     del canvas.objectDict[item]
         for item in player_dict:
             mylog.warning("player_dict[item]=%s", player_dict[item])
             round_button = SVG.Button(
@@ -851,7 +847,7 @@ def choose_game(event=None):
     """
     global GAME_ID, KITTY_SIZE, kitty_deck  # pylint: disable=global-statement
     GAME_ID = event.currentTarget.id
-    KITTY_SIZE = game_dict[GAME_ID]['kitty_size']
+    KITTY_SIZE = game_dict[GAME_ID]["kitty_size"]
     mylog.warning("choose_game: GAME_ID=%s", GAME_ID)
     mylog.warning("choose_game: KITTY_SIZE=%s", KITTY_SIZE)
     kitty_deck = ["card-base" for _ in range(KITTY_SIZE)]

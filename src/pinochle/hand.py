@@ -91,7 +91,9 @@ def addcards(hand_id: str, cards: List[str]):
         # Create a hand instance using the schema and the passed in card
         schema = HandSchema(many=False)
         for item in cards:
-            new_card = schema.load({"hand_id": hand_id, "card": item}, session=db.session)
+            new_card = schema.load(
+                {"hand_id": hand_id, "card": item}, session=db.session
+            )
 
             # Add the round to the database
             db.session.add(new_card)

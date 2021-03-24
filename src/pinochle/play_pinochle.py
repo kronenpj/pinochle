@@ -28,6 +28,7 @@ def deal_pinochle(player_ids: list, kitty_len: int = 0, kitty_id: str = None) ->
         hand_id = str(player_info.hand_id)
         hand.addcards(hand_id=hand_id, cards=convert_to_svg_names(hand_decks[index]))
 
+
 # NOTE- Hands dealt into the database are using generated UUIDs
 # NOT the hand_ids already generated. Need to fix the generation
 # routine to take a hand id as an argument.
