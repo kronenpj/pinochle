@@ -9,21 +9,15 @@ import brySVG.dragcanvas as SVG  # pylint: disable=import-error
 from browser import ajax, document, window
 from brySVG.dragcanvas import TextObject, UseObject  # pylint: disable=import-error
 
-from constants import (
-    CARD_URL,
-    GAME_MODES,
-    OTHER_DECK_CONFIG,
-    PLAYER_DECK_CONFIG,
-)
+from constants import CARD_URL, GAME_MODES, OTHER_DECK_CONFIG, PLAYER_DECK_CONFIG
 
-# TODO: Kitty cards in 'reveal' mode need to be non-flippable for all but the bid winner.
 # TODO: Retrieve current game state from API
 # TODO: Set a cookie for the game & player so that the game mode can be skipped
 #       once chosen by the user.
 GAME_MODE = 0
 
 # Programmatically create a pre-sorted deck to compare to when sorting decks of cards.
-# Importing a statically-defined constant from constants doesn't work for some reason.
+# Importing a statically-defined list from constants doesn't work for some reason.
 DECK_SORTED = []
 for _suit in ["spade", "diamond", "club", "heart"]:
     for _card in ["9", "jack", "queen", "king", "10", "ace"]:
@@ -40,6 +34,7 @@ PLAYERS = 4
 ROUND_ID = ""
 TEAM_ID = ""
 
+# Various state globals
 game_dict = {}
 kitty_deck = []
 player_dict = {}
@@ -47,6 +42,9 @@ players_hand = []
 players_meld_deck = []
 team_dict = {}
 team_list = []
+
+# Track whether this user is the round's bid winner.
+round_bid_winner = False
 
 table_width = 0  # pylint: disable=invalid-name
 table_height = 0  # pylint: disable=invalid-name
@@ -71,7 +69,7 @@ class PlayingCard(UseObject):
         objid=None,
         face_value="back",
         show_face=True,
-        flippable=None,
+        flippable=False,
         movable=True,
     ):
         # Set the initial face to be shown.
@@ -137,33 +135,28 @@ class PlayingCard(UseObject):
         :param event: The event object passed in during callback, defaults to None
         :type event: Event(?), optional
         """
-        obj = self
         new_y = table_height
 
         # The object already has the correct 'Y' value from the move.
         if "touch" in event.type or "click" in event.type:
-            new_y = float(obj.attrs["y"])
+            new_y = float(self.attrs["y"])
             mylog.warning(
-                "PlayingCard.play_handler: Touch event: obj.id=%s new_y=%f",
-                obj.id,
-                new_y,
+                "PlayingCard.play_handler: Touch event: id=%s new_y=%f", self.id, new_y,
             )
 
         # Cope with the fact that the original Y coordinate is given rather than the
         # new one. And that the style element is a string...
         if "mouse" in event.type:
             # TODO: See if there's a better way to do this.
-            transform = obj.style["transform"]
+            transform = self.style["transform"]
             starting_point = transform.find("translate(")
             if starting_point >= 0:
                 y_coord = transform.find("px,", starting_point) + 4
                 y_coord_end = transform.find("px", y_coord)
                 y_move = transform[y_coord:y_coord_end]
-                new_y = float(obj.attrs["y"]) + float(y_move)
+                new_y = float(self.attrs["y"]) + float(y_move)
             mylog.warning(
-                "PlayingCard.play_handler: Mouse event: obj.id=%s new_y=%f",
-                obj.id,
-                new_y,
+                "PlayingCard.play_handler: Mouse event: id=%s new_y=%f", self.id, new_y,
             )
 
         # Determine whether the card is now in a position to be considered thrown.
@@ -172,12 +165,12 @@ class PlayingCard(UseObject):
             return  # Not thrown.
 
         mylog.warning(
-            "PlayingCard.play_handler: Throwing obj.id=%s (obj.face_value=%s) obj.canvas=%s",
-            obj.id,
-            obj.face_value,
-            obj.canvas,
+            "PlayingCard.play_handler: Throwing id=%s (face_value=%s) canvas=%s",
+            self.id,
+            self.face_value,
+            self.canvas,
         )
-        parent_canvas = obj.canvas
+        parent_canvas = self.canvas
         card_tag = GAME_MODES[GAME_MODE]
 
         # Protect the player's deck during meld process.
@@ -186,7 +179,7 @@ class PlayingCard(UseObject):
         # This "should never be called" during GAME_MODEs 0 or 1.
         add_only = False
         if GAME_MODES[GAME_MODE] in ["meld"]:  # Meld
-            if True or "player" in obj.id:
+            if True or "player" in self.id:
                 sending_deck = players_meld_deck  # Deep copy
                 receiving_deck = meld_deck  # Reference
             else:
@@ -225,16 +218,16 @@ class PlayingCard(UseObject):
         ][0]
 
         # Delete the original card's transparent hit target from the UI.
-        parent_canvas.deleteObject(obj.hitTarget)
+        parent_canvas.deleteObject(self.hitTarget)
         # Delete the original card from the UI.
-        parent_canvas.deleteObject(obj)
+        parent_canvas.deleteObject(self)
         # Remove the original card from the player's hand and put it in the
         # discard deck.
-        sending_deck.remove(obj.face_value)
-        receiving_deck[placement] = obj.face_value
+        sending_deck.remove(self.face_value)
+        receiving_deck[placement] = self.face_value
         # Replace the discard face with that of the original, moved card.
-        discard_object.face_value = obj.face_value
-        discard_object.href.baseVal = obj.href.baseVal
+        discard_object.face_value = self.face_value
+        discard_object.href.baseVal = self.href.baseVal
 
         # TODO: Remove this when taking meld back is implemented above.
         discard_object.movable = False
@@ -243,7 +236,7 @@ class PlayingCard(UseObject):
 
         # TODO: Call game API to notify server what card was added to meld or
         # thrown and by which player.
-        obj.face_update_dom()
+        self.face_update_dom()
         update_display()
 
     def card_click_handler(self, event=None):
@@ -258,18 +251,18 @@ class PlayingCard(UseObject):
         global players_hand, players_meld_deck  # pylint: disable=global-statement, invalid-name
         mylog.error("Entering PlayingCard.card_click_handler()")
         if event and "click" in event.type:
-            if (
-                GAME_MODES[GAME_MODE] in ["bid", "bidfinal", "reveal"]
-                and self.flippable
-            ):
+            if GAME_MODES[GAME_MODE] in ["reveal"] and self.flippable:
+                mylog.critical(
+                    "PlayingCard.card_click_handler: flippable=%r", self.flippable
+                )
                 self.show_face = not self.show_face
                 self.flippable = False
-                # TODO: Call game API to notify the other players this particular card was
+                # TODO: Call API to notify the other players this particular card was
                 # flipped over and add it to the player's hand.
                 players_hand.append(self.face_value)
                 players_meld_deck.append(self.face_value)
                 self.face_update_dom()
-            if GAME_MODES[GAME_MODE] == ["meld"]:
+            if GAME_MODES[GAME_MODE] in ["meld"]:
                 self.play_handler(event)
 
 
@@ -456,7 +449,7 @@ def get(url, callback):
     :param callback: Function to be called when the AJAX request is complete.
     :type callback: function
     """
-    req = ajax.ajax()
+    req = ajax.ajax()  # pylint: disable=no-value-for-parameter
     req.bind("complete", callback)
     mylog.warning("Calling GET /api%s", url)
     req.open("GET", "/api" + url, True)
@@ -516,13 +509,17 @@ def populate_canvas(deck, target_canvas, deck_type="player"):
 
     # TODO: Need a "bury" display for bid winner.
     for card_value in deck:
-        flippable = None
+        flippable = False
         movable = True
         show_face = True
         if "player" in deck_type:
             flippable = PLAYER_DECK_CONFIG[GAME_MODE]["flippable"]
             movable = PLAYER_DECK_CONFIG[GAME_MODE]["movable"]
-        elif "kitty" in deck_type or "meld" in deck_type or "trick" in deck_type:
+        elif "kitty" in deck_type:
+            show_face = OTHER_DECK_CONFIG[GAME_MODE]["show_face"]
+            flippable = round_bid_winner
+            movable = OTHER_DECK_CONFIG[GAME_MODE]["movable"]
+        elif "meld" in deck_type or "trick" in deck_type:
             show_face = OTHER_DECK_CONFIG[GAME_MODE]["show_face"]
             flippable = OTHER_DECK_CONFIG[GAME_MODE]["flippable"]
             movable = OTHER_DECK_CONFIG[GAME_MODE]["movable"]
@@ -638,8 +635,7 @@ def place_cards(deck, target_canvas, location="top", deck_type="player"):
     for node in [
         x for (objid, x) in target_canvas.objectDict.items() if deck_type in objid
     ]:
-        # if not isinstance(node, PlayingCard):
-        if not node.setPosition:
+        if not isinstance(node, UseObject):
             continue
 
         mylog.warning(
@@ -850,7 +846,6 @@ def sort_player_cards(event=None):  # pylint: disable=unused-argument
     :param event: The event object passed in during callback, defaults to None
     :type event: Event(?), optional
     """
-    global players_hand, players_meld_deck  # pylint: disable=global-statement, invalid-name
     players_hand.sort(
         key=lambda x: DECK_SORTED.index(x)  # pylint: disable=unnecessary-lambda
     )
@@ -973,7 +968,7 @@ button_sort_player = SVG.Button(
 mylog.critical("Critical... %d", mylog.getEffectiveLevel())
 mylog.error("Error...")
 mylog.warning("Warning...")
-mylog.warning("Info...")
+mylog.info("Info...")
 mylog.debug("Debug...")
 document.getElementById("please_wait").remove()
 clear_display()

@@ -141,6 +141,12 @@ def query_round_list_for_game(game_id: str) -> Dict:
     temp = GameRound.query.filter(
         GameRound.game_id == game_id, GameRound.active_flag is True
     ).one_or_none()
+    if temp is None: # Sqlite stores active_flag as 1 but doesn't compare favorably with True.
+        temp = GameRound.query.filter(
+            GameRound.game_id == game_id, GameRound.active_flag == 1
+        ).one_or_none()
+
+    # print(f"round_list={temp}")
     return temp
 
 
