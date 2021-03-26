@@ -18,7 +18,7 @@ def deal_pinochle(player_ids: list, kitty_len: int = 0, kitty_id: str = None) ->
     :param kitty_id: [description]
     :type kitty_id: str
     """
-    print(f"player_ids={player_ids}")
+    # print(f"player_ids={player_ids}")
     hand_decks, kitty_deck = deal_hands(players=len(player_ids), kitty_cards=kitty_len)
 
     if kitty_len > 0 and kitty_id is not None:
