@@ -9,13 +9,25 @@ import brySVG.dragcanvas as SVG  # pylint: disable=import-error
 from browser import ajax, document, window
 from brySVG.dragcanvas import TextObject, UseObject  # pylint: disable=import-error
 
-from constants import CARD_URL, GAME_MODES, OTHER_DECK_CONFIG, PLAYER_DECK_CONFIG
+from constants import (
+    CARD_URL,
+    GAME_MODES,
+    OTHER_DECK_CONFIG,
+    PLAYER_DECK_CONFIG,
+)
 
 # TODO: Kitty cards in 'reveal' mode need to be non-flippable for all but the bid winner.
 # TODO: Retrieve current game state from API
 # TODO: Set a cookie for the game & player so that the game mode can be skipped
 #       once chosen by the user.
 GAME_MODE = 0
+
+# Programmatically create a pre-sorted deck to compare to when sorting decks of cards.
+# Importing a statically-defined constant from constants doesn't work for some reason.
+DECK_SORTED = []
+for _suit in ["spade", "diamond", "club", "heart"]:
+    for _card in ["9", "jack", "queen", "king", "10", "ace"]:
+        DECK_SORTED.append(f"{_suit}_{_card}")
 
 mylog = logging.getLogger("cardtable")
 mylog.setLevel(logging.WARNING)
@@ -31,7 +43,6 @@ TEAM_ID = ""
 game_dict = {}
 kitty_deck = []
 player_dict = {}
-player_list = []
 players_hand = []
 players_meld_deck = []
 team_dict = {}
@@ -269,7 +280,6 @@ def on_complete_games(req):
     :param req: Request object from callback.
     :type req: [type]
     """
-    global game_dict  # pylint: disable=global-statement, invalid-name
     mylog.error("In on_complete_games.")
 
     temp = on_complete_common(req)
@@ -530,7 +540,7 @@ def populate_canvas(deck, target_canvas, deck_type="player"):
         target_canvas.addObject(piece, fixed=not movable)
         if False and "trick" in deck_type:
             # TODO: This needs to start with the player who won the bid or the last trick.
-            print(f"{counter=} {player_dict[PLAYER_ID]['name']=}")
+            mylog.warning("%s %s", counter, player_dict[PLAYER_ID]["name"])
             text = TextObject(
                 f"{player_dict[PLAYER_ID]['name']}",
                 fontsize=24,
@@ -628,6 +638,10 @@ def place_cards(deck, target_canvas, location="top", deck_type="player"):
     for node in [
         x for (objid, x) in target_canvas.objectDict.items() if deck_type in objid
     ]:
+        # if not isinstance(node, PlayingCard):
+        if not node.setPosition:
+            continue
+
         mylog.warning(
             "place_cards: Processing node %s. (xpos=%f, ypos=%f)", node.id, xpos, ypos
         )
@@ -661,7 +675,7 @@ def display_game_options():
     Conditional ladder for early game data selection. This needs to be done better and
     have new game/team/player capability.
     """
-    global canvas, game_dict, player_list, player_dict, team_list, team_dict  # pylint: disable=global-statement, invalid-name
+    global canvas, game_dict, player_dict, team_list, team_dict  # pylint: disable=global-statement, invalid-name
 
     xpos = 10
     ypos = 0
@@ -673,7 +687,7 @@ def display_game_options():
             game_button = SVG.Button(
                 position=(xpos, ypos),
                 size=(450, 35),
-                text=f"game: {game_dict[item]['timestamp'].replace('T',' ')}",
+                text=f"Game: {game_dict[item]['timestamp'].replace('T',' ')}",
                 onclick=choose_game,
                 fontsize=18,
                 objid=item,
@@ -684,22 +698,6 @@ def display_game_options():
         get(f"/game/{GAME_ID}/round", on_complete_rounds)
     elif team_list == []:
         get(f"/round/{ROUND_ID}/teams", on_complete_teams)
-    elif TEAM_ID == "":
-        mylog.warning("team_dict=%s", team_dict)
-        clear_display()
-        for item in team_dict:
-            mylog.warning("team_dict[item]=%s", team_dict[item])
-            round_button = SVG.Button(
-                position=(xpos, ypos),
-                size=(450, 35),
-                text=f"team: {team_dict[item]['team_name']}",
-                onclick=choose_team,
-                fontsize=18,
-                objid=item,
-            )
-            mylog.warning("team_dict item: item=%s", item)
-            canvas <= round_button  # pylint: disable=pointless-statement
-            ypos += 40
     elif player_dict == {}:
         for team in team_dict:
             for item in team_dict[team]["player_ids"]:
@@ -711,12 +709,12 @@ def display_game_options():
             round_button = SVG.Button(
                 position=(xpos, ypos),
                 size=(450, 35),
-                text=f"player: {player_dict[item]['name']}",
+                text=f"Player: {player_dict[item]['name']}",
                 onclick=choose_player,
                 fontsize=18,
                 objid=player_dict[item]["player_id"],
             )
-            mylog.warning("display_game_options: player_list item: item=%s", item)
+            mylog.warning("display_game_options: player_dict item: item=%s", item)
             canvas <= round_button  # pylint: disable=pointless-statement
             ypos += 40
 
@@ -810,6 +808,8 @@ def clear_display(event=None):  # pylint: disable=unused-argument
     update_display()
 
     # Update buttons
+    if GAME_MODE > 0:  # Only display sort cards button when there are cards.
+        canvas.addObject(button_sort_player)
     canvas.addObject(button_clear)
     canvas.addObject(button_refresh)
     canvas.addObject(button_advance_mode)
@@ -834,7 +834,29 @@ def advance_mode(event=None):  # pylint: disable=unused-argument
         GAME_MODES[(GAME_MODE + 1) % len(GAME_MODES)],
     )
     GAME_MODE = (GAME_MODE + 1) % len(GAME_MODES)
-    button_advance_mode.label.textContent = GAME_MODES[GAME_MODE]
+    # Skip over 'choose game & player' mode when already playing a game.
+    if GAME_MODE == 0:
+        # TODO: Close out current round and...
+        # TODO: Create new round & deal cards...
+        GAME_MODE += 1
+    button_advance_mode.label.textContent = GAME_MODES[GAME_MODE].capitalize()
+    clear_display()
+
+
+def sort_player_cards(event=None):  # pylint: disable=unused-argument
+    """
+    Sort the player's cards.
+
+    :param event: The event object passed in during callback, defaults to None
+    :type event: Event(?), optional
+    """
+    global players_hand, players_meld_deck  # pylint: disable=global-statement, invalid-name
+    players_hand.sort(
+        key=lambda x: DECK_SORTED.index(x)  # pylint: disable=unnecessary-lambda
+    )
+    players_meld_deck.sort(
+        key=lambda x: DECK_SORTED.index(x)  # pylint: disable=unnecessary-lambda
+    )
     clear_display()
 
 
@@ -845,27 +867,12 @@ def choose_game(event=None):
     :param event: The event object passed in during callback, defaults to None
     :type event: [type], optional
     """
-    global GAME_ID, KITTY_SIZE, kitty_deck  # pylint: disable=global-statement
+    global GAME_ID, KITTY_SIZE, kitty_deck  # pylint: disable=global-statement, invalid-name
     GAME_ID = event.currentTarget.id
     KITTY_SIZE = game_dict[GAME_ID]["kitty_size"]
     mylog.warning("choose_game: GAME_ID=%s", GAME_ID)
     mylog.warning("choose_game: KITTY_SIZE=%s", KITTY_SIZE)
     kitty_deck = ["card-base" for _ in range(KITTY_SIZE)]
-    display_game_options()
-
-
-def choose_team(event=None):
-    """
-    Callback for a button press of the choose team button.
-
-    :param event: The event object passed in during callback, defaults to None
-    :type event: [type], optional
-    """
-    global TEAM_ID, player_list, player_dict  # pylint: disable=global-statement, invalid-name
-    player_dict.clear()
-    TEAM_ID = event.currentTarget.id
-    player_list = team_dict[TEAM_ID]["player_ids"]
-    mylog.warning("choose_team: TEAM_ID=%s", TEAM_ID)
     display_game_options()
 
 
@@ -876,9 +883,22 @@ def choose_player(event=None):
     :param event: The event object passed in during callback, defaults to None
     :type event: [type], optional
     """
-    global PLAYER_ID  # pylint: disable=global-statement
+    global PLAYER_ID, TEAM_ID  # pylint: disable=global-statement
+
     PLAYER_ID = event.currentTarget.id
     mylog.warning("choose_player: PLAYER_ID=%s", PLAYER_ID)
+
+    # Set the TEAM_ID variable based on the player id chosen.
+    for _temp in team_dict:
+        mylog.warning("Key: %s Value: %r", _temp, team_dict[_temp]["player_ids"])
+        if PLAYER_ID in team_dict[_temp]["player_ids"]:
+            TEAM_ID = team_dict[_temp]["team_id"]
+    mylog.warning(
+        "In choose_player: TEAM_ID=%s, Team name: %s",
+        TEAM_ID,
+        team_dict[TEAM_ID]["team_name"],
+    )
+
     get(f"/player/{PLAYER_ID}/hand", on_complete_player_cards)
     display_game_options()
 
@@ -914,7 +934,7 @@ meld_deck = ["card-base" for _ in range(HAND_SIZE)]
 button_advance_mode = SVG.Button(
     position=(-70, 0),
     size=(70, 35),
-    text=GAME_MODES[GAME_MODE],
+    text=GAME_MODES[GAME_MODE].capitalize(),
     onclick=advance_mode,
     fontsize=18,
     objid="button_advance_mode",
@@ -938,6 +958,16 @@ button_clear = SVG.Button(
     onclick=clear_display,
     fontsize=18,
     objid="button_clear",
+)
+
+# Button to call sort_player_cards on demand
+button_sort_player = SVG.Button(
+    position=(-70, card_height * 2),
+    size=(70, 35),
+    text="Sort",
+    onclick=sort_player_cards,
+    fontsize=18,
+    objid="button_sort_player",
 )
 
 mylog.critical("Critical... %d", mylog.getEffectiveLevel())

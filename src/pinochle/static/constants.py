@@ -3,6 +3,7 @@ Module to provide constants.
 """
 
 CARD_URL = "/static/playingcards.svg"
+
 #                0      1        2           3        4       5
 GAME_MODES = ["game", "bid", "bidfinal", "reveal", "meld", "trick"]
 PLAYER_DECK_CONFIG = {
@@ -12,6 +13,7 @@ PLAYER_DECK_CONFIG = {
     4: {"flippable": False, "movable": True},  # Meld
     5: {"flippable": False, "movable": True},  # Trick
 }
+
 # TODO: Mode 'reveal' needs to be non-flippable for all but the bid winner.
 OTHER_DECK_CONFIG = {  # Doubles as the mode for the meld pile used in the "bid" mode.
     # Also doubles as the mode for the discard pile used in the "trick" mode.
