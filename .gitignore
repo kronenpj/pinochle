@@ -1,20 +1,29 @@
 ### TEMPORARY UNTIL I CAN SEE IF I WANT THESE IN GIT
-TODO
+*graeco_latin*
 classes_Pinochle.svg
+container-compose.yml
 curl_inserts.sh
+dragdrop-refinements-fail.patch
+geckodriver
+geckodriver-v0.29.0-linux64.tar.gz
 html2-documentation-generated.zip
+nginx/
 openapi3.yml
 packages_Pinochle.svg
-pinochle.db
 pinochle_db.pdf
+pinochle.db
+playing_card_ids.sh
+playing_card_ids.txt
+playing-cards-170641.zip
 pyreverse.sh
 python-client-generated.zip
 python-flask-server-generated.zip
+rsync-to-phenom.sh
+selenium/
 sqlite_clear_contents.sh
 start_database.sh
 temp.py
-*graeco_latin*
-dragdrop-refinements-fail.patch
+TODO
 ### TEMPORARY UNTIL I CAN SEE IF I WANT THESE IN GIT
 
 instance
