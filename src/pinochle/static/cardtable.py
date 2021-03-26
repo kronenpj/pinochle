@@ -27,6 +27,7 @@ mylog = logging.getLogger("cardtable")
 mylog.setLevel(logging.WARNING)
 
 # API "Constants"
+AJAX_URL_ENCODING = "application/x-www-form-urlencoded"
 GAME_ID = ""
 KITTY_SIZE = 0
 PLAYER_ID = ""
@@ -440,52 +441,81 @@ def on_complete_common(req):
         mylog.warning("on_complete_common: req=%s", req)
 
 
-def get(url, callback):
+def get(url: str, callback=None):
     """
     Wrapper for the AJAX GET call.
 
     :param url: The part of the URL that is being requested.
     :type url: str
     :param callback: Function to be called when the AJAX request is complete.
-    :type callback: function
+    :type callback: function, optional
     """
     req = ajax.ajax()  # pylint: disable=no-value-for-parameter
-    req.bind("complete", callback)
+    if callback is not None:
+        req.bind("complete", callback)
     mylog.warning("Calling GET /api%s", url)
     req.open("GET", "/api" + url, True)
     req.set_header("content-type", "application/x-www-form-urlencoded")
     req.send()
 
 
-# def put(url):
-#     req = ajax.ajax()
-#     a = doc['A'].value
-#     b = doc['B'].value
-#     req.bind('complete',on_complete)
-#     req.open('PUT',url,True)
-#     req.set_header('content-type','application/x-www-form-urlencoded')
-#     req.send({"a": a, "b":b})
+def put(data: dict, url: str, callback=None):
+    """
+    Wrapper for the AJAX PUT call.
+
+    :param data: The data to be submitted.
+    :param data: dict
+    :param url: The part of the URL that is being requested.
+    :type url: str
+    :param callback: Function to be called when the AJAX request is complete.
+    :type callback: function, optional
+    """
+    req = ajax.ajax()  # pylint: disable=no-value-for-parameter
+    if callback is not None:
+        req.bind("complete", callback)
+    mylog.warning("Calling PUT /api%s with data: %r", url, data)
+    req.open("PUT", url, True)
+    req.set_header("content-type", AJAX_URL_ENCODING)
+    # req.send({"a": a, "b":b})
+    req.send(data)
 
 
-# def post(url):
-#     req = ajax.ajax()
-#     a = doc['A'].value
-#     b = doc['B'].value
-#     req.bind('complete',on_complete)
-#     req.open('POST',url,True)
-#     req.set_header('content-type','application/x-www-form-urlencoded')
-#     req.send({"a": a, "b":b})
+def post(data: dict, url: str, callback=None):
+    """
+    Wrapper for the AJAX POST call.
+
+    :param data: The data to be submitted.
+    :param data: Any
+    :param url: The part of the URL that is being requested.
+    :type url: str
+    :param callback: Function to be called when the AJAX request is complete.
+    :type callback: function, optional
+    """
+    req = ajax.ajax()  # pylint: disable=no-value-for-parameter
+    if callback is not None:
+        req.bind("complete", callback)
+    mylog.warning("Calling POST /api%s with data: %r", url, data)
+    req.open("POST", url, True)
+    req.set_header("content-type", AJAX_URL_ENCODING)
+    req.send(data)
 
 
-# def delete(url):
-#     req = ajax.ajax()
-#     a = doc['A'].value
-#     b = doc['B'].value
-#     req.bind('complete',on_complete)
-#     # pass the arguments in the query string
-#     req.open('DELETE',url+"?a=%s&b=%s" %(a, b),True)
-#     req.set_header('content-type','application/x-www-form-urlencoded')
-#     req.send()
+def delete(url: str, callback=None):
+    """
+    Wrapper for the AJAX Data call.
+
+    :param url: The part of the URL that is being requested.
+    :type url: str
+    :param callback: Function to be called when the AJAX request is complete.
+    :type callback: function, optional
+    """
+    req = ajax.ajax()  # pylint: disable=no-value-for-parameter
+    if callback is not None:
+        req.bind("complete", callback)
+    # pass the arguments in the query string
+    req.open("DELETE", url)
+    req.set_header("content-type", AJAX_URL_ENCODING)
+    req.send()
 
 
 def populate_canvas(deck, target_canvas, deck_type="player"):
