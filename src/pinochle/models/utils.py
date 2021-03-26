@@ -9,9 +9,8 @@ from .game import Game
 from .gameround import GameRound
 from .hand import Hand
 from .player import Player
-from .round_ import Round, RoundSchema
+from .round_ import Round
 from .roundteam import RoundTeam
-from .team import Team
 from .teamplayers import TeamPlayers
 
 
@@ -38,7 +37,7 @@ def query_game(game_id: str) -> Dict:
 
 def query_game_list() -> List[Dict]:
     """
-    Retrieve information about the specified round.
+    Retrieve list of games in the database.
 
     :return: [description]
     :rtype: List[Dict]
@@ -49,7 +48,7 @@ def query_game_list() -> List[Dict]:
 
 def query_hand_list(hand_id: str) -> List[Dict]:
     """
-    Retrieve information about the specified round.
+    Retrieve list of cards contained in the specified hand.
 
     :param hand_id: [description]
     :type hand_id: str
@@ -62,10 +61,12 @@ def query_hand_list(hand_id: str) -> List[Dict]:
 
 def query_hand_card(hand_id: str, card: str) -> Dict:
     """
-    Retrieve information about the specified round.
+    Query whether the specified hand contains the specified card.
 
     :param hand_id: [description]
     :type hand_id: str
+    :param card: [description]
+    :type card: str
     :return: [description]
     :rtype: Dict
     """
@@ -130,7 +131,7 @@ def query_gameround(game_id: str, round_id: str) -> Dict:
 
 def query_round_list_for_game(game_id: str) -> Dict:
     """
-    Retrieve information about the specified game/round.
+    Retrieve information about the active round for a given game.
 
     :param game_id: [description]
     :type game_id: str
@@ -138,14 +139,14 @@ def query_round_list_for_game(game_id: str) -> Dict:
     :rtype: List[Dict]
     """
     temp = GameRound.query.filter(
-        GameRound.game_id == game_id, GameRound.round_id is not None
+        GameRound.game_id == game_id, GameRound.active_flag is True
     ).one_or_none()
     return temp
 
 
 def query_gameround_list() -> List[Dict]:
     """
-    Retrieve information about the specified game/round.
+    Retrieve information about all game/round.
 
     :return: [description]
     :rtype: List[Dict]
@@ -158,8 +159,6 @@ def query_round_list() -> List[Dict]:
     """
     Retrieve information about all rounds.
 
-    :param round_id: [description]
-    :type round_id: str
     :return: [description]
     :rtype: List[Dict]
     """
@@ -169,10 +168,12 @@ def query_round_list() -> List[Dict]:
 
 def query_roundteam(round_id: str, team_id: str) -> Dict:
     """
-    Retrieve information about all rounds.
+    Retrieve information about a specified round/team pair.
 
     :param round_id: [description]
     :type round_id: str
+    :param team_id: [description]
+    :type team_id: str
     :return: [description]
     :rtype: List[Dict]
     """
@@ -197,10 +198,12 @@ def query_roundteam_list(round_id: str) -> List[Dict]:
 
 def query_roundteam_with_hand(round_id: str, team_id: str) -> Dict:
     """
-    Retrieve information about the specified roundteam.
+    Retrieve information about the specified round/team pair.
 
     :param round_id: [description]
     :type round_id: str
+    :param team_id: [description]
+    :type team_id: str
     :return: [description]
     :rtype: Dict
     """

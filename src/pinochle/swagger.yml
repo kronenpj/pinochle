@@ -403,6 +403,42 @@ paths:
         409:
           description: Failed to start the round.
 
+  /round/{round_id}/score_meld:
+    post:
+      operationId: pinochle.round_.score_hand_meld
+      tags:
+        - Rounds
+      summary: Score a player's meld and record.
+      description: Score a player's meld and record.
+      parameters:
+        - name: round_id
+          in: path
+          description: Id of the round to update.
+          type: string
+          required: True
+        - name: player_id
+          in: query
+          description: Player Id to score and record.
+          type: string
+          required: True
+        - name: cards
+          in: query
+          description: Comma separated cards.
+          type: string
+          required: True
+      responses:
+        200:
+          description: Cards accepted and scored.
+          schema:
+            type: object
+            properties:
+              value:
+                type: integer
+        404:
+          description: Specified round was not found.
+        409:
+          description: Failed to score cards.
+
   /round/{round_id}/teams:
     get:
       operationId: pinochle.roundteams.read_one

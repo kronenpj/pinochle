@@ -23,18 +23,18 @@ def score(deck: PinochleDeck) -> int:
     """
     mylog = custom_log.get_logger()
 
-    score = _nines(deck)
-    score += _marriages(deck)
-    score += _jacks(deck)
-    score += _queens(deck)
-    score += _kings(deck)
-    score += _aces(deck)
-    score += _run(deck)
-    score += _pinochle(deck)
+    value = _nines(deck)
+    value += _marriages(deck)
+    value += _jacks(deck)
+    value += _queens(deck)
+    value += _kings(deck)
+    value += _aces(deck)
+    value += _run(deck)
+    value += _pinochle(deck)
 
-    mylog.info(f"Score total: {score}")
+    mylog.info("Score total: %s", value)
 
-    return score
+    return value
 
 
 def _trump_suit(deck: PinochleDeck) -> Union[str, None]:
@@ -51,7 +51,7 @@ def _trump_suit(deck: PinochleDeck) -> Union[str, None]:
 
     for suit in deck.ranks["suits"]:
         if deck.ranks["suits"][suit] == const.TRUMP_VALUE:
-            mylog.info(f"Determined that {suit} is trump.")
+            mylog.info("Determined that %s is trump.", suit)
             return suit
     return None
 
@@ -68,22 +68,22 @@ def _nines(deck: PinochleDeck) -> int:
     """
     mylog = custom_log.get_logger()
 
-    score = 0
+    value = 0
 
     trump = _trump_suit(deck)
 
     # Nines aren't worth meld points until trump is called.
     if trump is None:
-        return score
+        return value
 
     abbr = card.card_abbrev("9", trump)
     cards = deck.find(abbr)
 
     if len(cards) > 0:
-        score += len(cards)
+        value += len(cards)
 
-    mylog.info(f"Nines score: {score}")
-    return score
+    mylog.info("Nines score: %d", value)
+    return value
 
 
 def _marriages(deck: PinochleDeck) -> int:
@@ -99,7 +99,7 @@ def _marriages(deck: PinochleDeck) -> int:
     """
     mylog = custom_log.get_logger()
 
-    score = 0
+    value = 0
 
     trump = _trump_suit(deck)
 
@@ -110,16 +110,16 @@ def _marriages(deck: PinochleDeck) -> int:
         qcards = deck.find(qsuit)
 
         temp_score = 2 * min(len(kcards), len(qcards))
-        mylog.info(f"{min(len(kcards), len(qcards))} Marriages found!")
+        mylog.info("%d Marriages found!", min(len(kcards), len(qcards)))
 
         # Score marriages as plain until trump is called.
         if trump is not None and suit == trump:
             temp_score = temp_score * 2
 
-        score = score + temp_score
+        value = value + temp_score
 
-    mylog.info(f"Marriages score: {score}")
-    return score
+    mylog.info("Marriages score: %d", value)
+    return value
 
 
 def _jacks(deck: PinochleDeck) -> int:
@@ -134,7 +134,7 @@ def _jacks(deck: PinochleDeck) -> int:
     """
     mylog = custom_log.get_logger()
 
-    score = 0
+    value = 0
 
     array = []
     for suit in const.SUITS:
@@ -146,14 +146,14 @@ def _jacks(deck: PinochleDeck) -> int:
         count = min(count, len(array[index]))
 
     if count == 1:
-        score = score + 4
+        value = value + 4
         mylog.info("Single jacks!")
     elif count == 2:
-        score = score + 40
+        value = value + 40
         mylog.info("Double jacks!!")
 
-    mylog.info(f"Jacks score: {score}")
-    return score
+    mylog.info("Jacks score: %d", value)
+    return value
 
 
 def _queens(deck: PinochleDeck) -> int:
@@ -168,7 +168,7 @@ def _queens(deck: PinochleDeck) -> int:
     """
     mylog = custom_log.get_logger()
 
-    score = 0
+    value = 0
 
     array = []
     for suit in const.SUITS:
@@ -180,14 +180,14 @@ def _queens(deck: PinochleDeck) -> int:
         count = min(count, len(array[index]))
 
     if count == 1:
-        score = score + 6
+        value = value + 6
         mylog.info("Single Queens!")
     elif count == 2:
-        score = score + 60
+        value = value + 60
         mylog.info("Double Queens!!")
 
-    mylog.info(f"Queens score: {score}")
-    return score
+    mylog.info("Queens score: %d", value)
+    return value
 
 
 def _kings(deck: PinochleDeck) -> int:
@@ -202,7 +202,7 @@ def _kings(deck: PinochleDeck) -> int:
     """
     mylog = custom_log.get_logger()
 
-    score = 0
+    value = 0
 
     array = []
     for suit in const.SUITS:
@@ -214,14 +214,14 @@ def _kings(deck: PinochleDeck) -> int:
         count = min(count, len(array[index]))
 
     if count == 1:
-        score = score + 8
+        value = value + 8
         mylog.info("Single Kings!")
     elif count == 2:
-        score = score + 80
+        value = value + 80
         mylog.info("Double Kings!!")
 
-    mylog.info(f"Kings score: {score}")
-    return score
+    mylog.info("Kings score: %d", value)
+    return value
 
 
 def _aces(deck: PinochleDeck) -> int:
@@ -237,7 +237,7 @@ def _aces(deck: PinochleDeck) -> int:
     """
     mylog = custom_log.get_logger()
 
-    score = 0
+    value = 0
 
     array = []
     for suit in const.SUITS:
@@ -249,14 +249,14 @@ def _aces(deck: PinochleDeck) -> int:
         count = min(count, len(array[index]))
 
     if count == 1:
-        score = score + 10
+        value = value + 10
         mylog.info("Single Aces!")
     elif count == 2:
-        score = score + 100
+        value = value + 100
         mylog.info("Double Aces!!")
 
-    mylog.info(f"Aces score: {score}")
-    return score
+    mylog.info("Aces score: %d", value)
+    return value
 
 
 def _run(deck: PinochleDeck) -> int:
@@ -272,14 +272,14 @@ def _run(deck: PinochleDeck) -> int:
     """
     mylog = custom_log.get_logger()
 
-    score = 0
+    value = 0
     values = const.VALUES.copy()
     values.remove("9")
     trump = _trump_suit(deck)
 
     # Can't score a run until trump is called.
     if trump is None:
-        return score
+        return value
 
     array = []
     for face in values:
@@ -290,10 +290,10 @@ def _run(deck: PinochleDeck) -> int:
     for index in range(len(values)):
         count = min(count, len(array[index]))
 
-    score = score + count * 11
+    value = value + count * 11
 
-    mylog.info(f"Run score: {score}")
-    return score
+    mylog.info("Run score: %d", value)
+    return value
 
 
 def _pinochle(deck: PinochleDeck) -> int:
@@ -309,7 +309,7 @@ def _pinochle(deck: PinochleDeck) -> int:
     """
     mylog = custom_log.get_logger()
 
-    score = 0
+    value = 0
 
     qspade = card.card_abbrev("Queen", "Spades")
     jdiamond = card.card_abbrev("Jack", "Diamonds")
@@ -317,11 +317,11 @@ def _pinochle(deck: PinochleDeck) -> int:
     jcards = deck.find(jdiamond)
 
     if min(len(qcards), len(jcards)) == 1:
-        score = 4
+        value = 4
         mylog.info("Single Pinochle!")
     elif min(len(qcards), len(jcards)) == 2:
-        score = 30
+        value = 30
         mylog.info("Double Pinochle!!")
 
-    mylog.info(f"Pinochle score: {score}")
-    return score
+    mylog.info("Pinochle score: %d", value)
+    return value

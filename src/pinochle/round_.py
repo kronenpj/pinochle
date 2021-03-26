@@ -3,9 +3,12 @@ This is the round module and supports all the REST actions for the
 round data
 """
 
+import json
+
 from flask import abort, make_response
 
-from pinochle import gameround, play_pinochle
+from pinochle import gameround, play_pinochle, score_meld, score_tricks
+from pinochle.cards import utils as card_utils
 from pinochle.models import utils
 from pinochle.models.core import db
 from pinochle.models.round_ import RoundSchema
@@ -211,3 +214,47 @@ def start(round_id: str):
     )
 
     return make_response(f"Round {round_id} started.", 200)
+
+
+def score_hand_meld(round_id: str, player_id: str, cards: str):
+    """
+    This function scores a player's meld hand given the list of cards.
+
+    :param round_id:   Id of the round to delete
+    :param player_id:  Id of the player
+    :param cards:      Comma separated list of cards submitted for meld.
+    :return:           200 on successful scoring of cards, 404 if not found,
+                       409 if scoring isn't successful.
+    """
+    # print(f"\nscore_hand_meld: round_id={round_id}")
+    # Get the round requested
+    a_round: dict = utils.query_round(round_id)
+    player: dict = utils.query_player(player_id)
+
+    # Did we find a round?
+    if a_round is None or a_round == {}:
+        abort(404, f"Round {round_id} not found.")
+
+    # Did we find the player?
+    if player is None or player == {}:
+        abort(409, f"No player found for {player_id}.")
+
+    # Associate the player with that player's hand.
+    player_temp: dict = utils.query_player(player_id=player_id)
+    player_hand_id = str(player_temp.hand_id)
+    player_hand = utils.query_hand_list(player_hand_id)
+    player_hand_list = [x.card for x in player_hand]
+    card_list = cards.split(",")
+
+    # print(f"score_hand_meld: player_hand={player_hand_list}")
+    # print(f"score_hand_meld: card_list={card_list}")
+
+    for item in card_list:
+        if item not in player_hand_list:
+            abort(409, f"Card {item} not in player's hand.")
+
+    cardclass_list = card_utils.convert_from_svg_names(card_list)
+    score = score_meld.score(cardclass_list)
+
+    # print(f"score_hand_meld: score={score}")
+    return make_response(json.dumps({"score": score}), 200)
