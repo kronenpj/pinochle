@@ -34,10 +34,11 @@ class Player(db.Model):
     )
 
     def __repr__(self):
-        output = "<Player %r, " % self.player_id
-        output += "Name %r, " % self.name
-        output += "Hand %r, " % self.hand_id
-        output += "Score %r, " % self.score
+        output = "<Player: "
+        output += "player_id=%r, " % self.player_id
+        output += "name=%r, " % self.name
+        output += "hand_id=%r, " % self.hand_id
+        output += "score=%r, " % self.score
         output += ">"
         return output
 

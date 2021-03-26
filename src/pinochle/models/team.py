@@ -26,9 +26,10 @@ class Team(db.Model):
     )
 
     def __repr__(self):
-        output = "<Team %r, " % self.team_id
-        output += "Name %r, " % self.name
-        output += "Score %r, " % self.score
+        output = "<Team: "
+        output += "team_id=%r, " % self.team_id
+        output += "name=%r, " % self.name
+        output += "score=%r, " % self.score
         output += ">"
         return output
 

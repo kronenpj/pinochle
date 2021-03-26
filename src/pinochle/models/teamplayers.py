@@ -30,8 +30,8 @@ class TeamPlayers(db.Model):
 
     def __repr__(self):
         output = "<TeamPlayers: "
-        output += "Team %r, " % self.team_id
-        output += "Player %r, " % self.player_id
+        output += "team_id=%r, " % self.team_id
+        output += "player_id=%r, " % self.player_id
         output += ">"
         return output
 

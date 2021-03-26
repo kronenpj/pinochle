@@ -19,8 +19,9 @@ class Hand(db.Model):
     card = db.Column(db.String, nullable=False)
 
     def __repr__(self):
-        output = "<Hand %r, " % self.hand_id
-        output += "Card %r, " % self.card
+        output = "<Hand: "
+        output += "hand_id=%r, " % self.hand_id
+        output += "card=%r, " % self.card
         output += ">"
         return output
 

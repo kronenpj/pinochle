@@ -26,8 +26,9 @@ class Game(db.Model):
     )
 
     def __repr__(self):
-        output = "<Game %r " % self.game_id
-        output += "Kitty_size %r, " % self.kitty_size
+        output = "<Game: "
+        output += "game_id=%r " % self.game_id
+        output += "kitty_size=%r, " % self.kitty_size
         output += ">"
         return output
 

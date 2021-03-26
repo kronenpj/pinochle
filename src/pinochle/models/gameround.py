@@ -24,14 +24,15 @@ class GameRound(db.Model):
         nullable=False,
         index=True,
     )
+    active_flag = db.Column(db.Boolean, default=True)
     timestamp = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     def __repr__(self):
         output = "<GameRound: "
-        output += "Game %r, " % self.game_id
-        output += "Round %r, " % self.round_id
+        output += "game_id=%r, " % self.game_id
+        output += "round_id=%r, " % self.round_id
         output += ">"
         return output
 

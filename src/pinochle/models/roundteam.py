@@ -38,9 +38,9 @@ class RoundTeam(db.Model):
 
     def __repr__(self):
         output = "<RoundTeam: "
-        output += "Round %r, " % self.round_id
-        output += "Team %r, " % self.team_id
-        output += "Hand %r, " % self.hand_id
+        output += "round_id=%r, " % self.round_id
+        output += "team_id=%r, " % self.team_id
+        output += "hand_id=%r, " % self.hand_id
         output += ">"
         return output
 
