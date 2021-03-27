@@ -126,7 +126,7 @@ def test_round_score_meld_hand(app):
     cards_str = ",".join(temp_cards)
     with app.test_client() as test_client:
         # Attempt to access the get round api
-        response = test_client.post(
+        response = test_client.get(
             f"/api/round/{round_id}/score_meld?player_id={player_id}&cards={cards_str}"
         )
         assert response.status == "200 OK"
@@ -540,7 +540,7 @@ def test_round_score_meld_bad_hand(app):
     cards_str = ",".join(temp_cards)
     with app.test_client() as test_client:
         # Attempt to access the get round api
-        response = test_client.post(
+        response = test_client.get(
             f"/api/round/{round_id}/score_meld?player_id={player_id}&cards={cards_str}"
         )
         assert response.status == "409 CONFLICT"
