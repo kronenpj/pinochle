@@ -51,7 +51,7 @@ def test_players_create(app):
         db_response = player.read_one(player_id)
         assert db_response is not None
         assert player_id == db_response.get("player_id")
-        assert db_response.get("score") == 0
+        assert db_response.get("meld_score") == 0
         assert player_name == db_response.get("name")
 
 
@@ -87,7 +87,7 @@ def test_players_read_one(app):
             db_response = player.read_one(player_id)
             assert db_response is not None
             assert player_id == db_response.get("player_id")
-            assert db_response.get("score") == 0
+            assert db_response.get("meld_score") == 0
             assert player_name == db_response.get("name")
 
 
@@ -170,7 +170,7 @@ def test_players_read_all(app):
             db_response = player.read_one(player_uuid)
             assert db_response is not None
             assert player_uuid == db_response.get("player_id")
-            assert db_response.get("score") == 0
+            assert db_response.get("meld_score") == 0
             assert player_name == db_response.get("name")
 
 

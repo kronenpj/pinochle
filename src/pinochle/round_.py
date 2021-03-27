@@ -256,5 +256,7 @@ def score_hand_meld(round_id: str, player_id: str, cards: str):
     cardclass_list = card_utils.convert_from_svg_names(card_list)
     score = score_meld.score(cardclass_list)
 
+    utils.update_player_meld_score(player_id=player_id, meld_score=score)
+
     # print(f"score_hand_meld: score={score}")
     return make_response(json.dumps({"score": score}), 200)

@@ -28,7 +28,7 @@ class Player(db.Model):
         unique=True,
     )
     name = db.Column(db.String)
-    score = db.Column(db.Integer, default=0)
+    meld_score = db.Column(db.Integer, default=0)
     timestamp = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
@@ -38,7 +38,7 @@ class Player(db.Model):
         output += "player_id=%r, " % self.player_id
         output += "name=%r, " % self.name
         output += "hand_id=%r, " % self.hand_id
-        output += "score=%r, " % self.score
+        output += "meld_score=%r, " % self.meld_score
         output += ">"
         return output
 

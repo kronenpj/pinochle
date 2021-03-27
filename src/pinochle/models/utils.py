@@ -128,7 +128,6 @@ def query_gameround(game_id: str, round_id: str) -> Dict:
     return temp
 
 
-
 def query_round_list_for_game(game_id: str) -> Dict:
     """
     Retrieve information about the active round for a given game.
@@ -141,7 +140,9 @@ def query_round_list_for_game(game_id: str) -> Dict:
     temp = GameRound.query.filter(
         GameRound.game_id == game_id, GameRound.active_flag is True
     ).one_or_none()
-    if temp is None: # Sqlite stores active_flag as 1 but doesn't compare favorably with True.
+
+    # Sqlite stores active_flag as 1 but doesn't compare favorably with True.
+    if temp is None:
         temp = GameRound.query.filter(
             GameRound.game_id == game_id, GameRound.active_flag == 1
         ).one_or_none()
@@ -214,10 +215,10 @@ def query_roundteam_with_hand(round_id: str, team_id: str) -> Dict:
     :rtype: Dict
     """
     temp = RoundTeam.query.filter(
-            RoundTeam.round_id == round_id,
-            RoundTeam.team_id == team_id,
-            RoundTeam.hand_id is not None,
-        ).one_or_none()
+        RoundTeam.round_id == round_id,
+        RoundTeam.team_id == team_id,
+        RoundTeam.hand_id is not None,
+    ).one_or_none()
     return temp
 
 
@@ -232,3 +233,31 @@ def query_teamplayer_list(team_id: str) -> List[Dict]:
     """
     temp = TeamPlayers.query.filter(TeamPlayers.team_id == team_id).all()
     return temp
+
+
+def update_player_meld_score(player_id: str, meld_score: int) -> bool:
+    """
+    Update player's meld score in the database.
+
+    :param player_id: [description]
+    :type player_id: str
+    :param meld_score: [description]
+    :type meld_score: int
+    :return: Update success or failure.
+    :rtype: bool
+    """
+    temp = Player.query.filter(Player.player_id == player_id).one_or_none()
+
+    if temp is None:
+        return False
+
+    db_session = db.session()
+    local_object = db_session.merge(temp)
+    # Set the updated meld score
+    local_object.meld_score = meld_score
+
+    # merge the new object into the old and commit it to the db
+    db_session.merge(local_object)
+    db_session.commit()
+
+    return True

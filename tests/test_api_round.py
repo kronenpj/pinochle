@@ -137,6 +137,11 @@ def test_round_score_meld_hand(app):
         assert isinstance(score, int)
         print(f"score={score}")
 
+    # Verify database agrees.
+    updated_player = utils.query_player(player_id=player_id)
+    print(f"updated_player={updated_player}")
+    assert updated_player.meld_score == score
+
 def test_game_round_start_no_cards(app):
     """
     GIVEN a Flask application configured for testing
