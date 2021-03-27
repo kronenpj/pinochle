@@ -19,6 +19,7 @@ import test_utils
 
 # from pinochle.models.utils import dump_db
 
+
 def test_update_bid_valid(app):
     """
     GIVEN a Flask application configured for testing
@@ -38,7 +39,7 @@ def test_update_bid_valid(app):
         player_ids.append(player_id)
 
     # Populate the bid
-    bid=21
+    bid = 21
     player_id = choice(player_ids)
     with app.test_client() as test_client:
         # Attempt to access the get round api
@@ -56,3 +57,70 @@ def test_update_bid_valid(app):
         assert db_player == player_id
         assert isinstance(db_bid, int)
         print(f"score={db_bid}")
+
+def test_update_bid_low(app):
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/play/{round_id}/submit_bid' page is requested (PUT)
+    THEN check that the response contains the expected information
+    """
+    # Create a new game
+    game_id = test_utils.create_game(kitty_size=0)
+
+    # Create a new round
+    round_id = test_utils.create_round(game_id)
+
+    # Create new players
+    player_ids = []
+    for __ in range(len(test_utils.PLAYER_NAMES)):
+        player_id = test_utils.create_player(choice(test_utils.PLAYER_NAMES))
+        player_ids.append(player_id)
+
+    # Populate the bid
+    bid = -1
+    player_id = choice(player_ids)
+    with app.test_client() as test_client:
+        # Attempt to access the get round api
+        response = test_client.put(
+            f"/api/play/{round_id}/submit_bid?player_id={player_id}&bid={bid}"
+        )
+        assert response.status == "409 CONFLICT"
+        response_str = response.get_data(as_text=True)
+        assert "low" in response_str
+
+        # Verify the database is unchanged
+        temp_round = utils.query_round(round_id)
+        assert temp_round.bid == 20
+        assert temp_round.bid_winner is None
+        print(f"score={temp_round.bid}")
+
+
+def test_update_bid_invalid_player(app):
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/play/{round_id}/submit_bid' page is requested (PUT)
+    THEN check that the response contains the expected information
+    """
+    # Create a new game
+    game_id = test_utils.create_game(kitty_size=0)
+
+    # Create a new round
+    round_id = test_utils.create_round(game_id)
+
+    # Create new players
+    bid = 21
+    player_id = str(uuid.uuid4())
+    with app.test_client() as test_client:
+        # Attempt to access the get round api
+        response = test_client.put(
+            f"/api/play/{round_id}/submit_bid?player_id={player_id}&bid={bid}"
+        )
+        assert response.status == "404 NOT FOUND"
+        response_str = response.get_data(as_text=True)
+        assert "Player" in response_str and "not found" in response_str
+
+        # Verify the database is unchanged
+        temp_round = utils.query_round(round_id)
+        assert temp_round.bid == 20
+        assert temp_round.bid_winner is None
+        print(f"score={temp_round.bid}")
