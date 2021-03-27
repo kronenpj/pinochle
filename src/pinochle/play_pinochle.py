@@ -1,9 +1,7 @@
 """
 This is the module that handles Pinochle game play.
 """
-import json
-
-from flask import abort, make_response
+from flask import abort
 
 from pinochle import hand, round_
 from pinochle.cards.const import SUITS

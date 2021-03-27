@@ -6,9 +6,7 @@ from flask import abort, make_response
 
 from pinochle.models import utils
 from pinochle.models.core import db
-from pinochle.models.game import Game
-from pinochle.models.gameround import GameRound, GameRoundSchema
-from pinochle.models.round_ import Round
+from pinochle.models.gameround import GameRoundSchema
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member
@@ -163,7 +161,6 @@ def _update_data(game_id: str, round_id: str, data: dict):
     data = schema.dump(update_round)
 
     return data, 200
-
 
 
 def delete(game_id: str, round_id: str):

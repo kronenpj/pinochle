@@ -35,6 +35,7 @@ def read_all():
     return data
 
 
+# TODO: This appears to be unused and unneeded.
 def read_one(round_id: str):
     """
     This function responds to a request for /api/round/{round_id}/teams
@@ -239,9 +240,7 @@ def _update_data(round_id: str, data: dict):
     :return:            Updated record.
     """
     # Get the round requested from the db into session
-    update_round = RoundTeam.query.filter(
-        RoundTeam.round_id == round_id
-    ).one_or_none()
+    update_round = RoundTeam.query.filter(RoundTeam.round_id == round_id).one_or_none()
 
     # Did we find an existing roundteam record?
     if update_round is not None or update_round == {}:
