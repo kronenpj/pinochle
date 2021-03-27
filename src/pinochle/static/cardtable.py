@@ -12,8 +12,6 @@ from brySVG.dragcanvas import TextObject, UseObject  # pylint: disable=import-er
 from constants import CARD_URL, GAME_MODES, OTHER_DECK_CONFIG, PLAYER_DECK_CONFIG
 
 # TODO: Retrieve current game state from API
-# TODO: Set a cookie for the game & player so that the game mode can be skipped
-#       once chosen by the user.
 GAME_MODE = 0
 
 # Programmatically create a pre-sorted deck to compare to when sorting decks of cards.
@@ -846,9 +844,6 @@ def update_display(event=None):  # pylint: disable=unused-argument
     mode = GAME_MODES[GAME_MODE]
     mylog.error("Entering update_display. (mode=%s)", mode)
     calculate_dimensions()
-
-    # TODO: If there is no kitty in this game, don't bother showing the kitty
-    # deck during bid process.
 
     # Place the desired decks on the display.
     if not canvas.objectDict:
