@@ -107,14 +107,10 @@ paths:
           description: Id the game to update
           type: string
           required: True
-        - name: team_id
-          in: body
-          schema:
-            type: string
-            properties:
-              team:
-                type: object
-                description: TODO- Replace with something that updates an aspect of the team. An updated team in the game
+        - name: kitty_size
+          in: query
+          type: integer
+          description: Change the number of cards to allocate to the kitty.
       responses:
         200:
           description: Successfully updated game
@@ -145,6 +141,8 @@ paths:
       responses:
         200:
           description: Successfully deleted a game
+        404:
+          description: Game not found
 
   /game/{game_id}/round:
     get:
@@ -245,8 +243,8 @@ paths:
       operationId: pinochle.round_.update
       tags:
         - Games
-      summary: Update a round associated with a game
-      description: Update a round associated with a game
+      summary: Update a round
+      description: Update a round
       parameters:
         - name: game_id
           in: path

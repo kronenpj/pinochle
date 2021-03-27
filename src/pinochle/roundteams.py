@@ -218,40 +218,53 @@ def create(round_id: str, teams: list):
     return data, 201
 
 
-def update(game_id, round_id):
+def update(round_id: str, teams: dict):
     """
-    This function updates an existing round in the round structure
+    This function updates an existing round/team in the roundteam structure
 
-    :param game_id:     Id of the round to update
-    :param round_id:    Round to add
-    :return:            updated round structure
+    :param round_id:    Id of the round to update.
+    :param teams:       Dictionary containing the data to update.
+    :return:            Updated record.
+    """
+    return _update_data(round_id, teams)
+
+
+def _update_data(round_id: str, data: dict):
+    """
+    This function updates an existing round/team in the roundteam structure
+
+    :param round_id:    Id of the round to update.
+    :param team_id:     Id of the team to update.
+    :param data:        Dictionary containing the data to update.
+    :return:            Updated record.
     """
     # Get the round requested from the db into session
     update_round = RoundTeam.query.filter(
-        RoundTeam.game_id == game_id, RoundTeam.round_id == round_id
+        RoundTeam.round_id == round_id
     ).one_or_none()
 
-    # Did we find an existing round?
-    if update_round is not None:
+    # Did we find an existing roundteam record?
+    if update_round is not None or update_round == {}:
+        # Otherwise, nope, didn't find one
+        abort(404, f"Round Id {round_id} not found.")
 
-        # turn the passed in round into a db object
-        schema = RoundTeamSchema()
-        db_update = schema.load(round_id, session=db.session)
+    # turn the passed in game/round into a db object
+    db_session = db.session()
+    local_object = db_session.merge(update_round)
 
-        # Set the id to the round we want to update
-        db_update.game_id = update_round.game_id
+    # Update any key present in data that isn't round_id.
+    for key in [x for x in data if x not in ["round_id"]]:
+        setattr(local_object, key, data[key])
 
-        # merge the new object into the old and commit it to the db
-        db.session.merge(db_update)
-        db.session.commit()
+    # Add the updated data to the transaction.
+    db_session.add(local_object)
+    db_session.commit()
 
-        # return updated round in the response
-        data = schema.dump(update_round)
+    # return updated round in the response
+    schema = RoundTeamSchema()
+    data = schema.dump(update_round)
 
-        return data, 200
-
-    # Otherwise, nope, didn't find that round
-    abort(404, f"Round {round_id} not found for Id: {game_id}")
+    return data, 200
 
 
 def delete(round_id: str, team_id: str):

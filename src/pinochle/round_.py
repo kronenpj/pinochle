@@ -98,15 +98,27 @@ def update(round_id: str, a_round: dict):
     """
     This function updates an existing round in the round structure
 
-    :param round_id:   Id of the round to update in the round structure
-    :param round:      round to update
-    :return:            updated round structure
+    :param game_id:     Id of the game to update - unused.
+    :param round_id:    Id of the round to update
+    :param data:        String containing the data to update.
+    :return:            Updated record.
+    """
+    return _update_data(round_id, a_round)
+
+
+def _update_data(round_id: str, data: dict):
+    """
+    This function updates an existing round in the round structure
+
+    :param round_id:    Id of the round to update in the round structure
+    :param data:        Dictionary containing the data to update.
+    :return:            Updated record.
     """
     # Get the round requested from the db into session
-    update_round = utils.query_round(round_id)
+    update_round = utils.query_round(round_id=round_id)
 
     # Did we find an existing round?
-    if update_round is None:
+    if update_round is None or update_round == {}:
         # Otherwise, nope, didn't find that round
         abort(404, f"Round not found for Id: {round_id}")
 
@@ -114,13 +126,15 @@ def update(round_id: str, a_round: dict):
     db_session = db.session()
     local_object = db_session.merge(update_round)
 
-    # Update any key present in a_round that isn't round_id or round_seq.
-    for key in [x for x in a_round if x not in ["round_id", "round_seq"]]:
-        setattr(local_object, key, a_round[key])
+    # Update any key present in data that isn't round_id or round_seq.
+    for key in [x for x in data if x not in ["round_id", "round_seq"]]:
+        setattr(local_object, key, data[key])
 
+    # Add the updated data to the transaction.
     db_session.add(local_object)
     db_session.commit()
 
+    # return updated round in the response
     schema = RoundSchema()
     data = schema.dump(update_round)
 

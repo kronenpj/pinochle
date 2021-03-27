@@ -13,7 +13,6 @@ from .round_ import Round
 from .roundteam import RoundTeam
 from .teamplayers import TeamPlayers
 
-
 # This is used for database debugging only. No test coverage needed.
 def dump_db():  # pragma: no cover
     con = db.engine.raw_connection()

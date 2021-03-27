@@ -160,38 +160,50 @@ def deletecard(player_id: str, card: dict):
         return hand.deletecard(hand_id, card)
 
 
-def update(player_id: str, player: dict):
+def update(player_id: str, data: dict):
+    """
+    This function updates an existing player in the player structure
+
+    :param player_id:   Id of the player to update
+    :param data:        Dictionary containing the data to update.
+    :return:            Updated record.
+    """
+    return _update_data(player_id, data)
+
+
+def _update_data(player_id: str, data: dict):
     """
     This function updates an existing player in the player structure
 
     :param player_id:   Id of the player to update in the player structure
-    :param player:      player to update
-    :return:            updated player structure
+    :param data:        Dictionary containing the data to update.
+    :return:            Updated record.
     """
     # Get the player requested from the db into session
     update_player = utils.query_player(player_id=player_id)
 
     # Did we find an existing player?
-    if update_player is not None:
+    if update_player is None or update_player == {}:
+        # Otherwise, nope, didn't find that player
+        abort(404, f"Player not found for Id: {player_id}")
 
-        # turn the passed in player into a db object
-        schema = PlayerSchema()
-        db_update = schema.load(player, session=db.session)
+    # turn the passed in round into a db object
+    db_session = db.session()
+    local_object = db_session.merge(update_player)
 
-        # Set the id to the player we want to update
-        db_update.player_id = update_player.player_id
+    # Update any key present in a_round that isn't round_id or round_seq.
+    for key in [x for x in data if x not in ["player_id"]]:
+        setattr(local_object, key, data[key])
 
-        # merge the new object into the old and commit it to the db
-        db.session.merge(db_update)
-        db.session.commit()
+    # Add the updated data to the transaction.
+    db_session.add(local_object)
+    db_session.commit()
 
-        # return updated player in the response
-        data = schema.dump(update_player)
+    # return updated player in the response
+    schema = PlayerSchema()
+    data = schema.dump(update_player)
 
-        return data, 200
-
-    # Otherwise, nope, didn't find that player
-    abort(404, f"Player not found for Id: {player_id}")
+    return data, 200
 
 
 def delete(player_id: str):

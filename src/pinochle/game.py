@@ -76,38 +76,50 @@ def create(kitty_size=0):
     return data, 201
 
 
-def update(game_id: str, game: dict):
+def update(game_id: str, kitty_size: int):
     """
     This function updates an existing game in the game structure
 
-    :param game_id:   Id of the game to update in the game structure
-    :param game:      game to update
-    :return:            updated game structure
+    :param game_id:     Id of the game to update in the game structure
+    :param kitty_size:  Size of the new kitty.
+    :return:            Updated record.
+    """
+    return _update_data(game_id, {"kitty_size": kitty_size})
+
+
+def _update_data(game_id: str, data: dict):
+    """
+    This function updates an existing game in the game structure
+
+    :param game_id:     Id of the game to update in the game structure
+    :param data:        Dictionary containing the data to update.
+    :return:            Updated record.
     """
     # Get the game requested from the db into session
     update_game = utils.query_game(game_id=game_id)
 
     # Did we find an existing game?
-    if update_game is not None:
+    if update_game is None or update_game == {}:
+        # Otherwise, nope, didn't find that game
+        abort(404, f"Game not found for Id: {game_id}")
 
-        # turn the passed in game into a db object
-        schema = GameSchema(many=True)
-        db_update = schema.load(game, session=db.session)
+    # turn the passed in game into a db object
+    db_session = db.session()
+    local_object = db_session.merge(update_game)
 
-        # Set the id to the game we want to update
-        db_update.game_id = update_game.game_id
+    # Update any key present in game that isn't game_id or game_seq.
+    for key in [x for x in data if x not in ["game_id", "game_seq"]]:
+        setattr(local_object, key, data[key])
 
-        # merge the new object into the old and commit it to the db
-        db.session.merge(db_update)
-        db.session.commit()
+    # Add the updated data to the transaction.
+    db_session.add(local_object)
+    db_session.commit()
 
-        # return updated game in the response
-        data = schema.dump(update_game)
+    # return updated game in the response
+    schema = GameSchema()
+    data = schema.dump(update_game)
 
-        return data, 200
-
-    # Otherwise, nope, didn't find that game
-    abort(404, f"Game not found for Id: {game_id}")
+    return data, 200
 
 
 def delete(game_id: str):
@@ -121,10 +133,10 @@ def delete(game_id: str):
     game = utils.query_game(game_id=game_id)
 
     # Did we find a game?
-    if game is not None:
-        db.session.delete(game)
-        db.session.commit()
-        return make_response(f"Game {game_id} deleted", 200)
+    if game is None or game == {}:
+        # Otherwise, nope, didn't find that game
+        abort(404, f"Game not found for Id: {game_id}")
 
-    # Otherwise, nope, didn't find that game
-    abort(404, f"Game not found for Id: {game_id}")
+    db.session.delete(game)
+    db.session.commit()
+    return make_response(f"Game {game_id} deleted", 200)

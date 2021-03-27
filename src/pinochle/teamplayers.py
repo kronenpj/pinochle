@@ -102,39 +102,6 @@ def create(team_id: str, player_id: dict):
     return data, 201
 
 
-def update(team_id: str, team: dict):
-    """
-    This function updates an existing team in the team structure
-
-    :param team_id:     Id of the team to update
-    :param team:        Player to add
-    :return:            updated team structure
-    """
-    # Get the team requested from the db into session
-    update_team = TeamPlayers.query.filter(TeamPlayers.team_id == team_id).one_or_none()
-
-    # Did we find an existing team?
-    if update_team is not None:
-        # turn the passed in team into a db object
-        schema = TeamPlayersSchema()
-        db_update = schema.load(team, session=db.session)
-
-        # Set the id to the team we want to update
-        db_update.team_id = update_team.team_id
-
-        # merge the new object into the old and commit it to the db
-        db.session.merge(db_update)
-        db.session.commit()
-
-        # return updated team in the response
-        data = schema.dump(update_team)
-
-        return data, 200
-
-    # Otherwise, nope, didn't find that team
-    abort(404, f"Team not found for Id: {team_id}")
-
-
 def delete(team_id: str):
     """
     This function deletes a team from the team structure
