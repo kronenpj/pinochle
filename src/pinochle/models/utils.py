@@ -13,6 +13,7 @@ from .round_ import Round
 from .roundteam import RoundTeam
 from .teamplayers import TeamPlayers
 
+
 # This is used for database debugging only. No test coverage needed.
 def dump_db():  # pragma: no cover
     con = db.engine.raw_connection()
@@ -232,31 +233,3 @@ def query_teamplayer_list(team_id: str) -> List[Dict]:
     """
     temp = TeamPlayers.query.filter(TeamPlayers.team_id == team_id).all()
     return temp
-
-
-def update_player_meld_score(player_id: str, meld_score: int) -> bool:
-    """
-    Update player's meld score in the database.
-
-    :param player_id: [description]
-    :type player_id: str
-    :param meld_score: [description]
-    :type meld_score: int
-    :return: Update success or failure.
-    :rtype: bool
-    """
-    temp = Player.query.filter(Player.player_id == player_id).one_or_none()
-
-    if temp is None:
-        return False
-
-    db_session = db.session()
-    local_object = db_session.merge(temp)
-    # Set the updated meld score
-    local_object.meld_score = meld_score
-
-    # merge the new object into the old and commit it to the db
-    db_session.merge(local_object)
-    db_session.commit()
-
-    return True

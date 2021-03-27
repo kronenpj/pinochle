@@ -7,7 +7,7 @@ import json
 
 from flask import abort, make_response
 
-from pinochle import gameround, play_pinochle, score_meld, score_tricks
+from pinochle import gameround, play_pinochle, player, score_meld, score_tricks
 from pinochle.cards import utils as card_utils
 from pinochle.cards.const import SUITS
 from pinochle.cards.deck import PinochleDeck
@@ -246,14 +246,14 @@ def score_hand_meld(round_id: str, player_id: str, cards: str):
     # print(f"\nscore_hand_meld: round_id={round_id}")
     # Get the round requested
     a_round: dict = utils.query_round(round_id)
-    player: dict = utils.query_player(player_id)
+    a_player: dict = utils.query_player(player_id)
 
     # Did we find a round?
     if a_round is None or a_round == {}:
         abort(404, f"Round {round_id} not found.")
 
     # Did we find the player?
-    if player is None or player == {}:
+    if a_player is None or a_player == {}:
         abort(409, f"No player found for {player_id}.")
 
     # Associate the player with that player's hand.
@@ -284,7 +284,7 @@ def score_hand_meld(round_id: str, player_id: str, cards: str):
     # Score the deck supplied.
     score = score_meld.score(provided_deck)
 
-    utils.update_player_meld_score(player_id=player_id, meld_score=score)
+    player.update(player_id=player_id, data={"meld_score": score})
 
     # print(f"score_hand_meld: score={score}")
     return make_response(json.dumps({"score": score}), 200)

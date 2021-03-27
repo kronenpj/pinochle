@@ -9,8 +9,8 @@ from flask import abort, make_response
 from pinochle import hand
 from pinochle.models import utils
 from pinochle.models.core import db
-from pinochle.models.player import PlayerSchema
 from pinochle.models.hand import HandSchema
+from pinochle.models.player import PlayerSchema
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member
