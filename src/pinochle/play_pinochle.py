@@ -1,8 +1,11 @@
 """
 This is the module that handles Pinochle game play.
 """
+import json
 
-from pinochle import hand
+from flask import abort, make_response
+
+from pinochle import hand, round_
 from pinochle.cards.utils import convert_to_svg_names, deal_hands
 from pinochle.models import utils
 
@@ -29,6 +32,30 @@ def deal_pinochle(player_ids: list, kitty_len: int = 0, kitty_id: str = None) ->
         hand.addcards(hand_id=hand_id, cards=convert_to_svg_names(hand_decks[index]))
 
 
-# NOTE- Hands dealt into the database are using generated UUIDs
-# NOT the hand_ids already generated. Need to fix the generation
-# routine to take a hand id as an argument.
+def submit_bid(round_id: str, player_id: str, bid: int):
+    """
+    This function processes a bid submission for a player.
+
+    :param round_id:   Id of the round to delete
+    :param game_id:    Id of the player submitting the bid
+    :return:           200 on successful delete, 404 if not found,
+                       409 if requirements are not satisfied.
+    """
+    # print(f"\nround_id={round_id}, player_id={player_id}")
+    # Get the round requested
+    a_round: dict = utils.query_round(round_id)
+    player: dict = utils.query_player(player_id=player_id)
+
+    # Did we find a round?
+    if a_round is None or a_round == {}:
+        abort(404, f"Round {round_id} not found.")
+
+    # Did we find a player?
+    if player is None or player == {}:
+        abort(404, f"Player {player_id} not found.")
+
+    # New bid must be higher than current bid.
+    if a_round.bid >= bid:
+        abort(409, f"Bid {bid} is below current bid {a_round.bid}.")
+
+    return round_.update(round_id, {"bid": bid, "bid_winner": player_id})

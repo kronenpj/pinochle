@@ -75,6 +75,8 @@ def create(game_id: str):
         # Create a round instance using the schema and the passed in round
         schema = RoundSchema()
         new_round = schema.load({}, session=db.session)
+        # TODO: Find more appropriate way to declare minimum bid.
+        new_round.bid = 20
 
         # Add the round to the database
         db.session.add(new_round)
@@ -104,26 +106,25 @@ def update(round_id: str, a_round: dict):
     update_round = utils.query_round(round_id)
 
     # Did we find an existing round?
-    if update_round is not None:
+    if update_round is None:
+        # Otherwise, nope, didn't find that round
+        abort(404, f"Round not found for Id: {round_id}")
 
-        # turn the passed in round into a db object
-        schema = RoundSchema()
-        db_update = schema.load(a_round, session=db.session)
+    # turn the passed in round into a db object
+    db_session = db.session()
+    local_object = db_session.merge(update_round)
 
-        # Set the id to the round we want to update
-        db_update.round_id = update_round.round_id
+    # Update any key present in a_round that isn't round_id or round_seq.
+    for key in [x for x in a_round if x not in ["round_id", "round_seq"]]:
+        setattr(local_object, key, a_round[key])
 
-        # merge the new object into the old and commit it to the db
-        db.session.merge(db_update)
-        db.session.commit()
+    db_session.add(local_object)
+    db_session.commit()
 
-        # return updated round in the response
-        data = schema.dump(update_round)
+    schema = RoundSchema()
+    data = schema.dump(update_round)
 
-        return data, 200
-
-    # Otherwise, nope, didn't find that round
-    abort(404, f"Round not found for Id: {round_id}")
+    return data, 200
 
 
 def delete(game_id: str, round_id: str):

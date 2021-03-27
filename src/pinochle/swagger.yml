@@ -1033,3 +1033,34 @@ paths:
       responses:
         200:
           description: Successfully removed card from player's hand
+
+  /play/{round_id}/submit_bid:
+    put:
+      operationId: pinochle.play_pinochle.submit_bid
+      tags:
+        - Play
+      summary: Submit a bid for a player.
+      description: Submit a bid for a player.
+      parameters:
+        - name: round_id
+          in: path
+          description: Id of the round to reference.
+          type: string
+          required: True
+        - name: player_id
+          in: query
+          description: Player Id to validate card holdings.
+          type: string
+          required: True
+        - name: bid
+          in: query
+          description: Numeric bid
+          type: integer
+          required: True
+      responses:
+        200:
+          description: Bid accepted and recorded.
+        404:
+          description: Specified round was not found.
+        409:
+          description: Failed to record bid.
