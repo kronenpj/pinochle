@@ -24,7 +24,9 @@ for _suit in ["spade", "diamond", "club", "heart"]:
         DECK_SORTED.append(f"{_suit}_{_card}")
 
 mylog = logging.getLogger("cardtable")
-mylog.setLevel(logging.WARNING)
+# mylog.setLevel(logging.CRITICAL)  # No output
+mylog.setLevel(logging.ERROR)  # Function entry/exit
+# mylog.setLevel(logging.WARNING)  # Everything
 
 # API "Constants"
 AJAX_URL_ENCODING = "application/x-www-form-urlencoded"
@@ -253,7 +255,7 @@ class PlayingCard(UseObject):
         mylog.error("Entering PlayingCard.card_click_handler()")
         if event and "click" in event.type:
             if GAME_MODES[GAME_MODE] in ["reveal"] and self.flippable:
-                mylog.critical(
+                mylog.warning(
                     "PlayingCard.card_click_handler: flippable=%r", self.flippable
                 )
                 self.show_face = not self.show_face
@@ -329,7 +331,7 @@ def on_complete_teams(req):
     # Set the global list of teams for this round.
     team_list.clear()
     team_list = temp["team_ids"]
-    mylog.warning("on_complete_teams: team_list=%s", team_list)
+    mylog.warning("on_complete_teams: team_list=%r", team_list)
 
     # Clear the team dict here because of the multiple callbacks.
     team_dict.clear()
@@ -352,9 +354,16 @@ def on_complete_team_names(req):
         return
 
     # Set the global dict of team names for this round.
+    mylog.warning(
+        "on_complete_team_names: Setting team_dict[%s]=%r", temp["team_id"], temp
+    )
     team_dict[temp["team_id"]] = temp
     mylog.warning("on_complete_team_names: team_dict=%s", team_dict)
-    display_game_options()
+
+    # Only call API once per team, per player.
+    for item in team_dict[temp["team_id"]]["player_ids"]:
+        mylog.warning("on_complete_team_names: calling get/player/%s", item)
+        get(f"/player/{item}", on_complete_players)
 
 
 def on_complete_players(req):
@@ -370,9 +379,83 @@ def on_complete_players(req):
     if temp is None:
         return
 
-    # Set the global deck of cards for the player's hand.
+    # Set the global dict of players for reference later.
     player_dict[temp["player_id"]] = temp
     mylog.warning("In on_complete_players: player_dict=%s", player_dict)
+    display_game_options()
+
+
+def on_complete_set_gamecookie(req):
+    """
+    Callback for AJAX request for setcookie information.
+
+    :param req: Request object from callback.
+    :type req: [type]
+    """
+    mylog.error("In on_complete_set_gamecookie.")
+
+    if req.status == 200 or req.status == 0:
+        get("/getcookie/game_id", on_complete_getcookie)
+
+
+def on_complete_set_playercookie(req):
+    """
+    Callback for AJAX request for setcookie information.
+
+    :param req: Request object from callback.
+    :type req: [type]
+    """
+    mylog.error("In on_complete_set_playercookie.")
+
+    if req.status == 200 or req.status == 0:
+        get("/getcookie/player_id", on_complete_getcookie)
+
+
+def on_complete_getcookie(req):
+    """
+    Callback for AJAX request for setcookie information.
+
+    :param req: Request object from callback.
+    :type req: [type]
+    """
+    mylog.error("In on_complete_getcookie.")
+    global GAME_ID, PLAYER_ID, KITTY_SIZE, TEAM_ID, kitty_deck  # pylint: disable=global-statement, invalid-name
+
+    if req.status != 200 or req.status == 0:
+        return
+    if req.text is None or req.text == "":
+        mylog.warning("on_complete_getcookie: cookie response is None.")
+        return
+    mylog.warning("on_complete_getcookie: req.text=%s", req.text)
+    response_data = json.loads(req.text)
+
+    # Set the global deck of cards for the player's hand.
+    print(f"on_complete_getcookie: response_data={response_data}")
+    if "game_id" in response_data["kind"]:
+        GAME_ID = response_data["ident"]
+        mylog.warning(
+            "on_complete_getcookie: Setting GAME_ID=%s", response_data["ident"]
+        )
+        try:
+            KITTY_SIZE = game_dict[GAME_ID]["kitty_size"]
+            mylog.critical("on_complete_getcookie: KITTY_SIZE=%s", KITTY_SIZE)
+            if KITTY_SIZE > 0:
+                kitty_deck = ["card-base" for _ in range(KITTY_SIZE)]
+        except KeyError:
+            pass
+        clear_display()
+    elif "player_id" in response_data["kind"]:
+        PLAYER_ID = response_data["ident"]
+        mylog.warning(
+            "on_complete_getcookie: Setting PLAYER_ID=%s", response_data["ident"]
+        )
+        get(f"/player/{PLAYER_ID}/hand", on_complete_player_cards)
+
+        # Set the TEAM_ID variable based on the player id chosen.
+        for _temp in team_dict:
+            mylog.warning("Key: %s Value: %r", _temp, team_dict[_temp]["player_ids"])
+            if PLAYER_ID in team_dict[_temp]["player_ids"]:
+                TEAM_ID = team_dict[_temp]["team_id"]
     display_game_options()
 
 
@@ -420,7 +503,6 @@ def on_complete_player_cards(req):
     mylog.warning("on_complete_player_cards: players_hand=%s", players_hand)
     players_meld_deck = copy.deepcopy(players_hand)  # Deep copy
 
-    advance_mode()
     update_display()
 
 
@@ -701,8 +783,7 @@ def display_game_options():
     Conditional ladder for early game data selection. This needs to be done better and
     have new game/team/player capability.
     """
-    global canvas, game_dict, player_dict, team_list, team_dict  # pylint: disable=global-statement, invalid-name
-
+    added_button = False
     xpos = 10
     ypos = 0
     # Grab the game_id, team_ids, and players. Display and allow player to choose.
@@ -719,17 +800,14 @@ def display_game_options():
                 objid=item,
             )
             canvas <= game_button  # pylint: disable=pointless-statement
+            added_button = True
             ypos += 40
     elif ROUND_ID == "":
         get(f"/game/{GAME_ID}/round", on_complete_rounds)
     elif team_list == []:
         get(f"/round/{ROUND_ID}/teams", on_complete_teams)
-    elif player_dict == {}:
-        for team in team_dict:
-            for item in team_dict[team]["player_ids"]:
-                get(f"/player/{item}", on_complete_players)
     elif PLAYER_ID == "":
-        clear_display()
+        # clear_display()
         for item in player_dict:
             mylog.warning("player_dict[item]=%s", player_dict[item])
             round_button = SVG.Button(
@@ -743,8 +821,17 @@ def display_game_options():
             mylog.warning("display_game_options: player_dict item: item=%s", item)
             canvas <= round_button  # pylint: disable=pointless-statement
             ypos += 40
+            added_button = True
+    else:
+        if GAME_MODE == 0:
+            mylog.warning("KITTY_SIZE=%d", KITTY_SIZE)
+            advance_mode()
 
-    canvas.fitContents()
+    try:
+        if added_button:
+            canvas.fitContents()
+    except AttributeError:
+        pass
 
 
 def update_display(event=None):  # pylint: disable=unused-argument
@@ -766,7 +853,7 @@ def update_display(event=None):  # pylint: disable=unused-argument
     # Place the desired decks on the display.
     if not canvas.objectDict:
         if mode in ["game"] and GAME_ID == "":  # Choose game, player
-            get("/game", on_complete_games)
+            display_game_options()
         if mode in ["bid", "bidfinal"]:  # Bid
             # Use empty deck to prevent peeking at the kitty.
             populate_canvas(kitty_deck, canvas, "kitty")
@@ -836,11 +923,14 @@ def clear_display(event=None):  # pylint: disable=unused-argument
     # Update buttons
     if GAME_MODE > 0:  # Only display sort cards button when there are cards.
         canvas.addObject(button_sort_player)
-    canvas.addObject(button_clear)
-    canvas.addObject(button_refresh)
-    canvas.addObject(button_advance_mode)
+        canvas.addObject(button_clear)
+        canvas.addObject(button_refresh)
+        canvas.addObject(button_advance_mode)
 
-    canvas.fitContents()
+    try:
+        canvas.fitContents()
+    except AttributeError:
+        pass
     canvas.mouseMode = SVG.MouseMode.DRAG
 
 
@@ -892,13 +982,12 @@ def choose_game(event=None):
     :param event: The event object passed in during callback, defaults to None
     :type event: [type], optional
     """
-    global GAME_ID, KITTY_SIZE, kitty_deck  # pylint: disable=global-statement, invalid-name
-    GAME_ID = event.currentTarget.id
-    KITTY_SIZE = game_dict[GAME_ID]["kitty_size"]
-    mylog.warning("choose_game: GAME_ID=%s", GAME_ID)
-    mylog.warning("choose_game: KITTY_SIZE=%s", KITTY_SIZE)
-    kitty_deck = ["card-base" for _ in range(KITTY_SIZE)]
-    display_game_options()
+    try:
+        game_to_be = event.currentTarget.id
+        get(f"/setcookie/game_id/{game_to_be}", on_complete_set_gamecookie)
+        mylog.warning("choose_game: GAME_ID will be %s", game_to_be)
+    except AttributeError:
+        return
 
 
 def choose_player(event=None):
@@ -908,25 +997,16 @@ def choose_player(event=None):
     :param event: The event object passed in during callback, defaults to None
     :type event: [type], optional
     """
-    global PLAYER_ID, TEAM_ID  # pylint: disable=global-statement
+    try:
+        player_to_be = event.currentTarget.id
+        get(f"/setcookie/player_id/{player_to_be}", on_complete_set_playercookie)
+        get(f"/player/{player_to_be}/hand", on_complete_player_cards)
+        mylog.warning("choose_player: PLAYER_ID will be %s", player_to_be)
+    except AttributeError:
+        return
 
-    PLAYER_ID = event.currentTarget.id
-    mylog.warning("choose_player: PLAYER_ID=%s", PLAYER_ID)
 
-    # Set the TEAM_ID variable based on the player id chosen.
-    for _temp in team_dict:
-        mylog.warning("Key: %s Value: %r", _temp, team_dict[_temp]["player_ids"])
-        if PLAYER_ID in team_dict[_temp]["player_ids"]:
-            TEAM_ID = team_dict[_temp]["team_id"]
-    mylog.warning(
-        "In choose_player: TEAM_ID=%s, Team name: %s",
-        TEAM_ID,
-        team_dict[TEAM_ID]["team_name"],
-    )
-
-    get(f"/player/{PLAYER_ID}/hand", on_complete_player_cards)
-    display_game_options()
-
+## END Function definitions.
 
 # Make the update_display function easily available to scripts.
 window.update_display = update_display
@@ -945,6 +1025,11 @@ document[  # pylint: disable=pointless-statement, expression-not-assigned
 canvas = SVG.CanvasObject("95vw", "95vh", None, objid="canvas")
 calculate_dimensions()
 canvas.attrs["mode"] = "initial"
+
+# See if some steps can be bypassed because we refreshed in the middle of the game.
+get("/game", on_complete_games)
+get("/getcookie/game_id", on_complete_getcookie)
+get("/getcookie/player_id", on_complete_getcookie)
 
 # TODO: Add buttons & display to facilitate bidding. Tie into API.
 
@@ -995,10 +1080,5 @@ button_sort_player = SVG.Button(
     objid="button_sort_player",
 )
 
-mylog.critical("Critical... %d", mylog.getEffectiveLevel())
-mylog.error("Error...")
-mylog.warning("Warning...")
-mylog.info("Info...")
-mylog.debug("Debug...")
 document.getElementById("please_wait").remove()
 clear_display()
