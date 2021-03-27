@@ -98,17 +98,22 @@ def create_app(register_blueprints=True):
         if ident is None:
             abort(404, f"{kind.capitalize()} not supplied.")
 
-        db_player = None
+        db_response = None
         # print(f"app.setcookie: Setting {kind} cookie with value {ident}")
-        if kind == "game_id":
-            db_player = utils.query_game(game_id=ident)
+        if ident == "clear":
+            db_response = "clear"
+        elif kind == "game_id":
+            db_response = utils.query_game(game_id=ident)
         elif kind == "player_id":
-            db_player = utils.query_player(player_id=ident)
-        if db_player is None:
+            db_response = utils.query_player(player_id=ident)
+        if db_response is None:
             abort(404, f"{kind.capitalize()} not registered.")
         resp = make_response("The Cookie has been Set")
         resp.status_code = 200
-        resp.set_cookie(kind, ident, samesite="Strict")
+        if db_response == "clear":
+            resp.set_cookie(kind, "", samesite="Strict", expires=0)
+        else:
+            resp.set_cookie(kind, ident, samesite="Strict")
         # print(f"app.setcookie: resp={resp}")
         return resp
 

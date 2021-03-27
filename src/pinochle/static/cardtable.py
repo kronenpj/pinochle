@@ -937,6 +937,8 @@ def clear_display(event=None):  # pylint: disable=unused-argument
         canvas.addObject(button_clear)
         canvas.addObject(button_refresh)
         canvas.addObject(button_advance_mode)
+        canvas.addObject(button_clear_game)
+        canvas.addObject(button_clear_player)
     if GAME_MODES[GAME_MODE] in ["meld"]:
         canvas.addObject(button_send_meld)
 
@@ -1005,6 +1007,27 @@ def send_meld(event=None):  # pylint: disable=unused-argument
     )
 
 
+def clear_game(event=None):  # pylint: disable=unused-argument
+    """
+    Request the game cookie be cleared.
+
+    :param event: The event object passed in during callback, defaults to None
+    :type event: Event(?), optional
+    """
+    get(f"/setcookie/game_id/clear", on_complete_set_gamecookie)
+    get(f"/setcookie/player_id/clear", on_complete_set_playercookie)
+
+
+def clear_player(event=None):  # pylint: disable=unused-argument
+    """
+    Request the player cookie be cleared.
+
+    :param event: The event object passed in during callback, defaults to None
+    :type event: Event(?), optional
+    """
+    get(f"/setcookie/player_id/clear", on_complete_set_playercookie)
+
+
 def choose_game(event=None):
     """
     Callback for a button press of the choose game button.
@@ -1039,9 +1062,9 @@ def choose_player(event=None):
 ## END Function definitions.
 
 # Make the update_display function easily available to scripts.
-window.update_display = update_display
+# window.update_display = update_display
 window.clear_display = clear_display
-window.advance_mode = advance_mode
+# window.advance_mode = advance_mode
 
 # Locate the card table in the HTML document.
 CardTable = document["card_table"]
@@ -1072,7 +1095,7 @@ meld_deck = ["card-base" for _ in range(HAND_SIZE)]
 
 # Button to call clear_display on demand
 button_advance_mode = SVG.Button(
-    position=(-70, 0),
+    position=(0, -40),
     size=(70, 35),
     text=GAME_MODES[GAME_MODE].capitalize(),
     onclick=advance_mode,
@@ -1082,7 +1105,7 @@ button_advance_mode = SVG.Button(
 
 # Button to call update_display on demand
 button_refresh = SVG.Button(
-    position=(-70, 40),
+    position=(80*1, -40),
     size=(70, 35),
     text="Refresh",
     onclick=update_display,
@@ -1092,7 +1115,7 @@ button_refresh = SVG.Button(
 
 # Button to call clear_display on demand
 button_clear = SVG.Button(
-    position=(-70, 80),
+    position=(80*2, -40),
     size=(70, 35),
     text="Clear",
     onclick=clear_display,
@@ -1102,17 +1125,37 @@ button_clear = SVG.Button(
 
 # Button to call submit_meld on demand
 button_send_meld = SVG.Button(
-    position=(-70, 120),
+    position=(80*5, -40),
     size=(70, 35),
-    text="Send Meld",
+    text="Send\nMeld",
     onclick=send_meld,
-    fontsize=18,
+    fontsize=16,
     objid="button_send_meld",
+)
+
+# Button to call clear_game on demand
+button_clear_game = SVG.Button(
+    position=(80*7, -40),
+    size=(70, 35),
+    text="Clear\nGame",
+    onclick=clear_game,
+    fontsize=16,
+    objid="button_clear_game",
+)
+
+# Button to call clear_player on demand
+button_clear_player = SVG.Button(
+    position=(80*8, -40),
+    size=(70, 35),
+    text="Clear\nPlayer",
+    onclick=clear_player,
+    fontsize=16,
+    objid="button_clear_player",
 )
 
 # Button to call sort_player_cards on demand
 button_sort_player = SVG.Button(
-    position=(-70, card_height * 2),
+    position=(-70, card_height * 2.25),
     size=(70, 35),
     text="Sort",
     onclick=sort_player_cards,
