@@ -9,6 +9,8 @@ from flask import abort, make_response
 
 from pinochle import gameround, play_pinochle, score_meld, score_tricks
 from pinochle.cards import utils as card_utils
+from pinochle.cards.const import SUITS
+from pinochle.cards.deck import PinochleDeck
 from pinochle.models import utils
 from pinochle.models.core import db
 from pinochle.models.round_ import RoundSchema
@@ -268,8 +270,19 @@ def score_hand_meld(round_id: str, player_id: str, cards: str):
         if item not in player_hand_list:
             abort(409, f"Card {item} not in player's hand.")
 
+    # Convert from list of SVG card names to PinochleDeck list.
     cardclass_list = card_utils.convert_from_svg_names(card_list)
-    score = score_meld.score(cardclass_list)
+
+    # Set trump, if it's been declared (and recorded in the datatbase)
+    temp_trump: str = a_round.trump
+    provided_deck = PinochleDeck(cards=cardclass_list)
+
+    # Set trump on the newly created deck, if it's been declared
+    if temp_trump.capitalize() in SUITS:
+        card_utils.set_trump(temp_trump, provided_deck)
+
+    # Score the deck supplied.
+    score = score_meld.score(provided_deck)
 
     utils.update_player_meld_score(player_id=player_id, meld_score=score)
 

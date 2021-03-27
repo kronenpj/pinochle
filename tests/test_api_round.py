@@ -8,7 +8,8 @@ import uuid
 from random import choice
 
 import pytest
-from pinochle import gameround, round_, roundteams, teamplayers
+from pinochle import gameround, play_pinochle, round_, roundteams, teamplayers
+from pinochle.cards.const import SUITS
 from pinochle.models import utils
 from pinochle.models.core import db
 
@@ -74,7 +75,7 @@ def test_game_round_start(app):
     # print(f"db_response={db_response}")
 
 
-def test_round_score_meld_hand(app):
+def test_round_score_meld_hand_no_trump(app):
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/round/{round_id}/score_hand_meld' page is requested (POST)
@@ -141,6 +142,89 @@ def test_round_score_meld_hand(app):
     updated_player = utils.query_player(player_id=player_id)
     print(f"updated_player={updated_player}")
     assert updated_player.meld_score == score
+
+
+def test_round_score_meld_hand_with_trump(app):
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/round/{round_id}/score_hand_meld' page is requested (POST)
+    THEN check that the response is successful
+    """
+    # Create a new game
+    game_id = str(test_utils.create_game(4))
+
+    # Create a new round
+    round_id = str(test_utils.create_round(game_id))
+
+    # Verify the database agrees.
+    db_response = round_.read_one(round_id)
+    assert db_response is not None
+
+    db_response = gameround.read_one(game_id, round_id)
+    assert db_response is not None
+
+    # Create players
+    player_ids = []
+    for player_name in test_utils.PLAYER_NAMES:
+        player_id = test_utils.create_player(player_name)
+        assert test_utils.UUID_REGEX.match(player_id)
+        player_ids.append(player_id)
+
+    # Create a new teams
+    team_ids = []
+    for item in range(2):
+        team_id = test_utils.create_team(choice(test_utils.TEAM_NAMES))
+        team_ids.append(team_id)
+        teamplayers.create(team_id=team_id, player_id={"player_id": player_ids[item]})
+        teamplayers.create(
+            team_id=team_id, player_id={"player_id": player_ids[item + 2]}
+        )
+
+    # Create the roundteam association for the teams.
+    roundteams.create(round_id=round_id, teams=team_ids)
+
+    round_.start(round_id=round_id)
+    player_id = choice(player_ids)
+    round_.update(round_id, {"bid_winner": player_id})
+    hand_id = test_utils.query_player_hand_id(player_id=player_id)
+    temp_cards = []
+    for item in utils.query_hand_list(hand_id):
+        temp_cards.append(item.card)
+
+    print(f"round_id={round_id}, player_id={player_id}")
+    print(f"player_cards={temp_cards}")
+    print(f"temp_cards= {','.join(temp_cards)}")
+    cards_str = ",".join(temp_cards)
+    with app.test_client() as test_client:
+        # Attempt to access the get round api
+        response = test_client.get(
+            f"/api/round/{round_id}/score_meld?player_id={player_id}&cards={cards_str}"
+        )
+        assert response.status == "200 OK"
+        response_str = response.get_data(as_text=True)
+        response_data = json.loads(response_str)
+        score = response_data.get("score")
+        assert "score" in response_str
+        assert isinstance(score, int)
+        print(f"score={score}")
+
+    trump = choice(SUITS)
+    play_pinochle.set_trump(round_id, player_id, trump)
+
+    with app.test_client() as test_client:
+        # Attempt to access the get round api
+        response = test_client.get(
+            f"/api/round/{round_id}/score_meld?player_id={player_id}&cards={cards_str}"
+        )
+        assert response.status == "200 OK"
+        response_str = response.get_data(as_text=True)
+        response_data = json.loads(response_str)
+        t_score = response_data.get("score")
+        assert "score" in response_str
+        assert isinstance(t_score, int)
+        assert t_score >= score
+        print(f"t_score={t_score}")
+
 
 def test_game_round_start_no_cards(app):
     """
@@ -490,6 +574,7 @@ def test_game_round_create_invalid(app):
 
     with pytest.raises(exceptions.Conflict):
         gameround.create(game_id, {"round_id": round_id})
+
 
 def test_round_score_meld_bad_hand(app):
     """

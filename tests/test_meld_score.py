@@ -8,8 +8,10 @@ import unittest
 from pinochle import score_meld
 from pinochle.cards import card, deck, utils
 
+#pragma: pylint: disable=protected-access
 
 class TestMeldScoring(unittest.TestCase):
+    """"""
     def test_no_trump(self):
         """"""
         temp_deck = deck.PinochleDeck(build=True)

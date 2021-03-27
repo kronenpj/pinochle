@@ -1042,7 +1042,7 @@ paths:
       parameters:
         - name: round_id
           in: path
-          description: Id of the round to reference.
+          description: Id of the round to update.
           type: string
           required: True
         - name: player_id
@@ -1062,3 +1062,34 @@ paths:
           description: Specified round was not found.
         409:
           description: Failed to record bid.
+
+  /play/{round_id}/set_trump:
+    put:
+      operationId: pinochle.play_pinochle.set_trump
+      tags:
+        - Play
+      summary: Submit trump for the round by the player who won the bid.
+      description: Submit trump for the round by the player who won the bid.
+      parameters:
+        - name: round_id
+          in: path
+          description: Id of the round to update.
+          type: string
+          required: True
+        - name: player_id
+          in: query
+          description: Player Id to validate bid win.
+          type: string
+          required: True
+        - name: trump
+          in: query
+          description: Trump for this round
+          type: string
+          required: True
+      responses:
+        200:
+          description: Trump accepted and recorded.
+        404:
+          description: Specified round was not found.
+        409:
+          description: Failed to record trump.
