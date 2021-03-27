@@ -413,12 +413,12 @@ paths:
       parameters:
         - name: round_id
           in: path
-          description: Id of the round to update.
+          description: Id of the round to reference.
           type: string
           required: True
         - name: player_id
           in: query
-          description: Player Id to score and record.
+          description: Player Id to validate card holdings.
           type: string
           required: True
         - name: cards
