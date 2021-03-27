@@ -40,6 +40,9 @@ def read_one(player_id: str):
     :param player_id:   Id of player to find
     :return:            player matching id
     """
+    if player_id is None or player_id in ["", "hand"]:
+        abort(404, "Player_id not supplied.")
+
     # Build the initial query
     player = utils.query_player(player_id)
 
@@ -67,11 +70,11 @@ def read_hand(player_id: str):
 
     # Did we find a player?
     if player is not None:
-        print(f"player={player}")
+        # print(f"read_hand: player={player}")
         hand_id = str(player.hand_id)
-        print(f"hand_id={hand_id}")
+        # print(f"read_hand: hand_id={hand_id}")
         player_hand = utils.query_hand_list(hand_id=hand_id)
-        # print(f"player_hand={player_hand}")
+        # print(f"read_hand: player_hand={player_hand}")
         # Serialize the data for the response
         hand_schema = HandSchema(many=True)
         data = hand_schema.dump(player_hand)

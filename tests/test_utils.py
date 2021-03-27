@@ -26,6 +26,8 @@ def create_game(kitty_size=0) -> str:
     """
     Create a game in the database.
 
+    :param kitty_size: Number of cards to allocate to the kitty.
+    :type kitty_size: int
     :return: UUID of the created game (game_id)
     :rtype: str
     """

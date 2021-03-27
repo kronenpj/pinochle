@@ -34,8 +34,8 @@ def read_one(game_id: str):
     This function responds to a request for /api/game/{game_id}
     with one matching game from game
 
-    :param game_id:   Id of game to find
-    :return:            game matching id
+    :param game_id:    Id of game to find
+    :return:           game matching id
     """
     # Build the initial query
     game = utils.query_game(game_id=game_id)
@@ -55,7 +55,9 @@ def create(kitty_size=0):
     """
     This function creates a new game in the game structure
 
-    :return:        201 on success, 406 on game exists
+    :param kitty_size:  Number of cards to allocate to the kitty, optional
+    :type kitty_size:   int
+    :return:            201 on success, 406 on game exists
     """
 
     # print(f"game.create: kitty_size={kitty_size}")
