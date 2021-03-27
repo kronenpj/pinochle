@@ -404,7 +404,7 @@ paths:
           description: Failed to start the round.
 
   /round/{round_id}/score_meld:
-    post:
+    get:
       operationId: pinochle.round_.score_hand_meld
       tags:
         - Rounds

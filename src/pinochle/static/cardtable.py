@@ -504,6 +504,22 @@ def on_complete_player_cards(req):
     update_display()
 
 
+def on_complete_get_meld_score(req):
+    """
+    Callback for AJAX request for the player's meld.
+
+    :param req: Request object from callback.
+    :type req: [type]
+    """
+    mylog.error("In on_complete_get_meld_score.")
+
+    temp = on_complete_common(req)
+    if temp is None:
+        return
+
+    print(f"on_complete_get_meld_score: score: {temp}")
+
+
 def on_complete_common(req):
     """
     Common function for AJAX callbacks.
@@ -921,6 +937,8 @@ def clear_display(event=None):  # pylint: disable=unused-argument
         canvas.addObject(button_clear)
         canvas.addObject(button_refresh)
         canvas.addObject(button_advance_mode)
+    if GAME_MODES[GAME_MODE] in ["meld"]:
+        canvas.addObject(button_send_meld)
 
     try:
         canvas.fitContents()
@@ -968,6 +986,23 @@ def sort_player_cards(event=None):  # pylint: disable=unused-argument
         key=lambda x: DECK_SORTED.index(x)  # pylint: disable=unnecessary-lambda
     )
     clear_display()
+
+
+def send_meld(event=None):  # pylint: disable=unused-argument
+    """
+    Send the meld deck to the server.
+
+    :param event: The event object passed in during callback, defaults to None
+    :type event: Event(?), optional
+    """
+    card_string = ",".join([x for x in meld_deck if x != "card-base"])
+
+    # print(f"/round/{ROUND_ID}/score_meld?player_id={PLAYER_ID}&cards={card_string}")
+
+    get(
+        f"/round/{ROUND_ID}/score_meld?player_id={PLAYER_ID}&cards={card_string}",
+        on_complete_get_meld_score,
+    )
 
 
 def choose_game(event=None):
@@ -1063,6 +1098,16 @@ button_clear = SVG.Button(
     onclick=clear_display,
     fontsize=18,
     objid="button_clear",
+)
+
+# Button to call submit_meld on demand
+button_send_meld = SVG.Button(
+    position=(-70, 120),
+    size=(70, 35),
+    text="Send Meld",
+    onclick=send_meld,
+    fontsize=18,
+    objid="button_send_meld",
 )
 
 # Button to call sort_player_cards on demand
