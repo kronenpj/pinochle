@@ -19,7 +19,7 @@ def test_deal_to_players_w_kitty(app):
     THEN check that the response contains the expected information
     """
     # Create a new game
-    game_id = test_utils.create_game()
+    game_id = test_utils.create_game(kitty_size=4)
 
     # Create a new round
     round_id = test_utils.create_round(game_id)
@@ -74,7 +74,7 @@ def test_deal_to_players_no_kitty(app):
     THEN check that the response contains the expected information
     """
     # Create a new game
-    game_id = test_utils.create_game()
+    game_id = test_utils.create_game(kitty_size=0)
 
     # Create a new round
     round_id = test_utils.create_round(game_id)
