@@ -3,10 +3,10 @@ This is the module that handles Pinochle game play.
 """
 from flask import abort
 
-from pinochle import hand, round_
-from pinochle.cards.const import SUITS
-from pinochle.cards.utils import convert_to_svg_names, deal_hands
-from pinochle.models import utils
+from . import hand, round_
+from .cards.const import SUITS
+from .cards.utils import convert_to_svg_names, deal_hands
+from .models import utils
 
 
 def deal_pinochle(player_ids: list, kitty_len: int = 0, kitty_id: str = None) -> None:

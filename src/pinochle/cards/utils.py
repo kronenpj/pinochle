@@ -9,14 +9,14 @@ Modernized and modified for Pinochle by Paul Kronenwetter
 from copy import deepcopy
 from typing import List
 
-from pinochle import score_meld, score_tricks
-from pinochle.cards import const
-from pinochle.cards.card import PinochleCard
-from pinochle.cards.deck import PinochleDeck
-from pinochle.exceptions import InvalidDeckError, InvalidSuitError
-from pinochle.log_decorator import log_decorator
-from pinochle.models.hand import Hand
-from pinochle.models.player import Player
+from .. import score_meld, score_tricks
+from ..exceptions import InvalidDeckError, InvalidSuitError
+from ..log_decorator import log_decorator
+from ..models.hand import Hand
+from ..models.player import Player
+from . import const
+from .card import PinochleCard
+from .deck import PinochleDeck
 
 
 @log_decorator

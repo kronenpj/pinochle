@@ -4,9 +4,9 @@ game data
 """
 from flask import abort, make_response
 
-from pinochle.models import utils
-from pinochle.models.core import db
-from pinochle.models.game import GameSchema
+from .models import utils
+from .models.core import db
+from .models.game import GameSchema
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member

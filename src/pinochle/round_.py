@@ -7,13 +7,13 @@ import json
 
 from flask import abort, make_response
 
-from pinochle import gameround, play_pinochle, player, score_meld, score_tricks
-from pinochle.cards import utils as card_utils
-from pinochle.cards.const import SUITS
-from pinochle.cards.deck import PinochleDeck
-from pinochle.models import utils
-from pinochle.models.core import db
-from pinochle.models.round_ import RoundSchema
+from . import gameround, play_pinochle, player, score_meld, score_tricks
+from .cards import utils as card_utils
+from .cards.const import SUITS
+from .cards.deck import PinochleDeck
+from .models import utils
+from .models.core import db
+from .models.round_ import RoundSchema
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member

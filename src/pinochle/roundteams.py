@@ -5,12 +5,12 @@ This is the roundplayer module and supports all the REST actions roundplayer dat
 import sqlalchemy
 from flask import abort, make_response
 
-from pinochle.models import utils
-from pinochle.models.core import db
-from pinochle.models.hand import Hand, HandSchema
-from pinochle.models.round_ import Round
-from pinochle.models.roundteam import RoundTeam, RoundTeamSchema
-from pinochle.models.team import Team
+from .models import utils
+from .models.core import db
+from .models.hand import Hand, HandSchema
+from .models.round_ import Round
+from .models.roundteam import RoundTeam, RoundTeamSchema
+from .models.team import Team
 
 # pylint: disable=unused-import
 # from pinochle.models.utils import dump_db

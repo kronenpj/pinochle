@@ -37,8 +37,8 @@ import random
 from collections import deque
 from copy import deepcopy
 
-from pinochle.cards import tools
-from pinochle.cards.const import BOTTOM, DEFAULT_RANKS, TOP
+from . import tools
+from .const import BOTTOM, DEFAULT_RANKS, TOP
 
 # ===============================================================================
 # PinochleStack Class

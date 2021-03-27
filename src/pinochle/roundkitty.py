@@ -2,10 +2,10 @@
 This is the roundkitty module which supports the REST actions relating to roundkitty data
 """
 
-from pinochle import hand
-from pinochle.models import utils
-from pinochle.models.core import db
-from pinochle.models.round_ import RoundSchema
+from . import hand
+from .models import utils
+from .models.core import db
+from .models.round_ import RoundSchema
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member

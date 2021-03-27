@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from pinochle import wsgi  # pragma: no cover
+from . import wsgi  # pragma: no cover
 
 if __name__ == "__main__":
     wsgi.application.run(

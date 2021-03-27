@@ -4,10 +4,10 @@ This is the teamplayer module and supports all the REST actions teamplayer data
 
 from flask import abort, make_response
 
-from pinochle.models.core import db
-from pinochle.models.player import Player
-from pinochle.models.team import Team
-from pinochle.models.teamplayers import TeamPlayers, TeamPlayersSchema
+from .models.core import db
+from .models.player import Player
+from .models.team import Team
+from .models.teamplayers import TeamPlayers, TeamPlayersSchema
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member

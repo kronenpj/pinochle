@@ -6,9 +6,9 @@ people data
 import sqlalchemy
 from flask import abort, make_response
 
-from pinochle import teamplayers
-from pinochle.models.core import db
-from pinochle.models.team import Team, TeamSchema
+from . import teamplayers
+from .models.core import db
+from .models.team import Team, TeamSchema
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member

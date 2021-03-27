@@ -4,9 +4,9 @@ This is the roundplayer module and supports all the REST actions roundplayer dat
 
 from flask import abort, make_response
 
-from pinochle.models import utils
-from pinochle.models.core import db
-from pinochle.models.gameround import GameRoundSchema
+from .models import utils
+from .models.core import db
+from .models.gameround import GameRoundSchema
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member
