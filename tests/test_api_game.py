@@ -68,6 +68,50 @@ def test_game_delete(app):
         assert db_response is not None
 
 
+def test_game_update(app):
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/game/{game_id}' page is requested (PUT)
+    THEN check that the response is a UUID
+    """
+    new_kitty = 10
+    # Create a new game
+    game_id = test_utils.create_game(0)
+
+    with app.test_client() as test_client:
+        # Attempt to access the delete game api
+        response = test_client.put(f"/api/game/{game_id}?kitty_size={new_kitty}")
+        assert response.status == "200 OK"
+
+    # Verify the database agrees.
+    db_response = game.read_one(game_id)
+    assert db_response is not None
+    assert game_id == db_response.get("game_id")
+    assert new_kitty == db_response.get("kitty_size")
+
+
+
+
+def test_game_update_invalid_game(app):
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/game/{game_id}' page is requested (PUT)
+    THEN check that the response is a UUID
+    """
+    new_kitty = 12
+    # Create a new game
+    game_id = uuid.uuid4()
+
+    with app.test_client() as test_client:
+        # Attempt to access the delete game api
+        response = test_client.put(f"/api/game/{game_id}?kitty_size={new_kitty}")
+        assert response.status == "404 NOT FOUND"
+
+    # Verify the database agrees.
+    with pytest.raises(exceptions.NotFound):
+        game.read_one(game_id)
+
+
 def test_game_read_all(app):
     """
     GIVEN a Flask application configured for testing
@@ -165,7 +209,7 @@ def test_game_read_one_missing(app):
 def test_game_delete_missing(app):
     """
     GIVEN a Flask application configured for testing
-    WHEN the '/api/game' page is requested (DELETE) with non-existent game_id
+    WHEN the '/api/game/{game_id}' page is requested (DELETE) with non-existent game_id
     THEN check that the response is correct
     """
     # Create a new game
