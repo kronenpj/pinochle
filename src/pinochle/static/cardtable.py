@@ -803,6 +803,19 @@ def display_game_options():
     # Grab the game_id, team_ids, and players. Display and allow player to choose.
     if GAME_ID == "":
         mylog.warning("display_game_options: game_dict=%s", game_dict)
+        if game_dict == {}:
+            no_game_button = SVG.Button(
+                position=(xpos, ypos),
+                size=(450, 35),
+                text="No games found, create one and press here.",
+                onclick=lambda x: get("/game", on_complete_games),
+                fontsize=18,
+                objid="nogame",
+            )
+            canvas.attach(no_game_button)
+            added_button = True
+        else:
+            canvas.deleteAll()
         for item in game_dict:
             mylog.warning("display_game_options: game_dict item: item=%s", item)
             game_button = SVG.Button(
