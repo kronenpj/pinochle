@@ -16,9 +16,11 @@ GAME_MODE = 0
 
 # Programmatically create a pre-sorted deck to compare to when sorting decks of cards.
 # Importing a statically-defined list from constants doesn't work for some reason.
+# "9", "jack", "queen", "king", "10", "ace"
+# "ace", "10", "king", "queen", "jack", "9"
 DECK_SORTED = []
 for _suit in ["spade", "diamond", "club", "heart"]:
-    for _card in ["9", "jack", "queen", "king", "10", "ace"]:
+    for _card in ["ace", "10", "king", "queen", "jack", "9"]:
         DECK_SORTED.append(f"{_suit}_{_card}")
 
 mylog = logging.getLogger("cardtable")
