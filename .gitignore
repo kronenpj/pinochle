@@ -37,6 +37,8 @@ gitlab-runner-linux-amd64
 .mutmut-cache
 */pinochle.db
 releases
+sandbox.html
+sandbox.py
 .scannerwork
 sonar-scan
 *.sql
