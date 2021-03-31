@@ -837,6 +837,13 @@ def display_game_options():
             ypos += 40
             added_button = True
     else:
+        # Display the player's name in the UI
+        if player_dict != {} and PLAYER_ID != "":
+            document.getElementById("player_name").clear()
+            document.getElementById("player_name").attach(
+                html.BIG(player_dict[PLAYER_ID]["name"].capitalize())
+            )
+        # Open the websocket if needed.
         if GAME_MODE == 0:
             mylog.warning("KITTY_SIZE=%d", KITTY_SIZE)
             advance_mode()
