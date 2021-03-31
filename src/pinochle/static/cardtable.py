@@ -813,7 +813,7 @@ def display_game_options():
                 fontsize=18,
                 objid=item,
             )
-            canvas <= game_button  # pylint: disable=pointless-statement
+            canvas.attach(game_button)
             added_button = True
             ypos += 40
     elif ROUND_ID == "":
@@ -821,7 +821,6 @@ def display_game_options():
     elif team_list == []:
         get(f"/round/{ROUND_ID}/teams", on_complete_teams)
     elif PLAYER_ID == "":
-        # clear_display()
         for item in player_dict:
             mylog.warning("player_dict[item]=%s", player_dict[item])
             round_button = SVG.Button(
@@ -833,7 +832,7 @@ def display_game_options():
                 objid=player_dict[item]["player_id"],
             )
             mylog.warning("display_game_options: player_dict item: item=%s", item)
-            canvas <= round_button  # pylint: disable=pointless-statement
+            canvas.attach(round_button)
             ypos += 40
             added_button = True
     else:
@@ -946,6 +945,7 @@ def clear_display(event=None):  # pylint: disable=unused-argument
         canvas.addObject(button_advance_mode)
         canvas.addObject(button_clear_game)
         canvas.addObject(button_clear_player)
+        canvas.addObject(button_reload_page)
     if GAME_MODES[GAME_MODE] in ["meld"]:
         canvas.addObject(button_send_meld)
 
@@ -1069,17 +1069,13 @@ def choose_player(event=None):
 ## END Function definitions.
 
 # Make the update_display function easily available to scripts.
-# window.update_display = update_display
 window.clear_display = clear_display
-# window.advance_mode = advance_mode
 
 # Locate the card table in the HTML document.
 CardTable = document["card_table"]
 
 # Attach the card graphics file
-document[  # pylint: disable=pointless-statement, expression-not-assigned
-    "card_definitions"
-] <= SVG.Definitions(filename=CARD_URL)
+document["card_definitions"].attach(SVG.Definitions(filename=CARD_URL))
 
 # Create the base SVG object for the card table.
 canvas = SVG.CanvasObject("95vw", "95vh", None, objid="canvas")
@@ -1100,7 +1096,7 @@ discard_deck = ["card-base" for _ in range(PLAYERS)]
 HAND_SIZE = int(48 / PLAYERS)
 meld_deck = ["card-base" for _ in range(HAND_SIZE)]
 
-# Button to call clear_display on demand
+# Button to call advance_mode on demand
 button_advance_mode = SVG.Button(
     position=(0, -40),
     size=(70, 35),
@@ -1112,7 +1108,7 @@ button_advance_mode = SVG.Button(
 
 # Button to call update_display on demand
 button_refresh = SVG.Button(
-    position=(80*1, -40),
+    position=(80 * 1, -40),
     size=(70, 35),
     text="Refresh",
     onclick=update_display,
@@ -1122,7 +1118,7 @@ button_refresh = SVG.Button(
 
 # Button to call clear_display on demand
 button_clear = SVG.Button(
-    position=(80*2, -40),
+    position=(80 * 2, -40),
     size=(70, 35),
     text="Clear",
     onclick=clear_display,
@@ -1132,7 +1128,7 @@ button_clear = SVG.Button(
 
 # Button to call submit_meld on demand
 button_send_meld = SVG.Button(
-    position=(80*5, -40),
+    position=(80 * 5, -40),
     size=(70, 35),
     text="Send\nMeld",
     onclick=send_meld,
@@ -1142,7 +1138,7 @@ button_send_meld = SVG.Button(
 
 # Button to call clear_game on demand
 button_clear_game = SVG.Button(
-    position=(80*7, -40),
+    position=(80 * 7, -40),
     size=(70, 35),
     text="Clear\nGame",
     onclick=clear_game,
@@ -1152,13 +1148,24 @@ button_clear_game = SVG.Button(
 
 # Button to call clear_player on demand
 button_clear_player = SVG.Button(
-    position=(80*8, -40),
+    position=(80 * 8, -40),
     size=(70, 35),
     text="Clear\nPlayer",
     onclick=clear_player,
     fontsize=16,
     objid="button_clear_player",
 )
+
+# Button to call window reload on demand
+button_reload_page = SVG.Button(
+    position=(80 * 9, -40),
+    size=(70, 35),
+    text="Reload",
+    onclick=window.location.reload,
+    fontsize=16,
+    objid="button_reload_page",
+)
+
 
 # Button to call sort_player_cards on demand
 button_sort_player = SVG.Button(
