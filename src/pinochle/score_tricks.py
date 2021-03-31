@@ -18,10 +18,10 @@ def score(deck: PinochleStack) -> int:
     :rtype: int
     """
 
-    score = 0
+    value = 0
 
     for face in const.TRICK_SCORES:
         card_l = deck.find(face)
-        score += len(card_l) * const.TRICK_SCORES[face]
+        value += len(card_l) * const.TRICK_SCORES[face]
 
-    return score
+    return value

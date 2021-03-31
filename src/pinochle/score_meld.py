@@ -116,7 +116,7 @@ def _marriages(deck: PinochleDeck) -> int:
         if trump is not None and suit == trump:
             temp_score = temp_score * 2
 
-        value = value + temp_score
+        value += temp_score
 
     mylog.info("Marriages score: %d", value)
     return value
@@ -146,10 +146,10 @@ def _jacks(deck: PinochleDeck) -> int:
         count = min(count, len(array[index]))
 
     if count == 1:
-        value = value + 4
+        value += 4
         mylog.info("Single jacks!")
     elif count == 2:
-        value = value + 40
+        value += 40
         mylog.info("Double jacks!!")
 
     mylog.info("Jacks score: %d", value)
@@ -180,10 +180,10 @@ def _queens(deck: PinochleDeck) -> int:
         count = min(count, len(array[index]))
 
     if count == 1:
-        value = value + 6
+        value += 6
         mylog.info("Single Queens!")
     elif count == 2:
-        value = value + 60
+        value += 60
         mylog.info("Double Queens!!")
 
     mylog.info("Queens score: %d", value)
@@ -214,10 +214,10 @@ def _kings(deck: PinochleDeck) -> int:
         count = min(count, len(array[index]))
 
     if count == 1:
-        value = value + 8
+        value += 8
         mylog.info("Single Kings!")
     elif count == 2:
-        value = value + 80
+        value += 80
         mylog.info("Double Kings!!")
 
     mylog.info("Kings score: %d", value)
@@ -249,10 +249,10 @@ def _aces(deck: PinochleDeck) -> int:
         count = min(count, len(array[index]))
 
     if count == 1:
-        value = value + 10
+        value += 10
         mylog.info("Single Aces!")
     elif count == 2:
-        value = value + 100
+        value += 100
         mylog.info("Double Aces!!")
 
     mylog.info("Aces score: %d", value)
@@ -290,7 +290,7 @@ def _run(deck: PinochleDeck) -> int:
     for index in range(len(values)):
         count = min(count, len(array[index]))
 
-    value = value + count * 11
+    value += count * 11
 
     mylog.info("Run score: %d", value)
     return value

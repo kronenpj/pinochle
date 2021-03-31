@@ -7,15 +7,18 @@ import json
 import os
 
 import connexion
-from flask import abort, make_response, redirect, render_template, request  # pragma: no cover
 
 # pragma: pylint: disable=unused-import
-from . import models
+from . import custom_log, models
+from .__main__ import GLOBAL_LOG_LEVEL
 from .models import utils
 from .models.core import db
 
 
 def create_app(register_blueprints=True):
+    mylog = custom_log.get_logger()
+    mylog.setLevel(GLOBAL_LOG_LEVEL)
+
     # Create the connexion application instance
     basedir = os.path.abspath(os.path.dirname(__file__))
     connex_app = connexion.App(__name__, specification_dir=basedir)
@@ -45,11 +48,13 @@ def create_app(register_blueprints=True):
             db=app.config["DB_NAME"],
         )
     else:
-        print(
-            f"NOTE: You are using a SQLite database: sqlite:///{app.config['DB_NAME']}"
+        mylog.info(
+            "NOTE: You are using a SQLite database: sqlite:///%s", app.config["DB_NAME"]
         )
-        print("Using a SQLite database in production is not recommended.")
-        print(f"Add 'instance/application.cfg.py' to {basedir} to override defaults.")
+        mylog.info("Using a SQLite database in production is not recommended.")
+        mylog.info(
+            "Add 'instance/application.cfg.py' to %s to override defaults.", basedir
+        )
         app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///{db}".format(
             db=app.config["DB_NAME"]
         )

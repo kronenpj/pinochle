@@ -47,7 +47,7 @@ team_dict = {}
 team_list = []
 
 # Track whether this user is the round's bid winner.
-round_bid_winner = False
+round_bid_winner = False  # pylint: disable=invalid-name
 
 table_width = 0  # pylint: disable=invalid-name
 table_height = 0  # pylint: disable=invalid-name
@@ -394,7 +394,7 @@ def on_complete_set_gamecookie(req):
     """
     mylog.error("In on_complete_set_gamecookie.")
 
-    if req.status == 200 or req.status == 0:
+    if req.status in [200, 0]:
         get("/getcookie/game_id", on_complete_getcookie)
 
 
@@ -407,7 +407,7 @@ def on_complete_set_playercookie(req):
     """
     mylog.error("In on_complete_set_playercookie.")
 
-    if req.status == 200 or req.status == 0:
+    if req.status in [200, 0]:
         get("/getcookie/player_id", on_complete_getcookie)
 
 
@@ -421,7 +421,7 @@ def on_complete_getcookie(req):
     mylog.error("In on_complete_getcookie.")
     global GAME_ID, PLAYER_ID, KITTY_SIZE, TEAM_ID, kitty_deck  # pylint: disable=global-statement, invalid-name
 
-    if req.status != 200 or req.status == 0:
+    if req.status != 200:
         return
     if req.text is None or req.text == "":
         mylog.warning("on_complete_getcookie: cookie response is None.")
@@ -430,7 +430,7 @@ def on_complete_getcookie(req):
     response_data = json.loads(req.text)
 
     # Set the global deck of cards for the player's hand.
-    print(f"on_complete_getcookie: response_data={response_data}")
+    mylog.warning("on_complete_getcookie: response_data=%s", response_data)
     if "game_id" in response_data["kind"]:
         GAME_ID = response_data["ident"]
         mylog.warning(
@@ -438,7 +438,7 @@ def on_complete_getcookie(req):
         )
         try:
             KITTY_SIZE = game_dict[GAME_ID]["kitty_size"]
-            mylog.critical("on_complete_getcookie: KITTY_SIZE=%s", KITTY_SIZE)
+            mylog.warning("on_complete_getcookie: KITTY_SIZE=%s", KITTY_SIZE)
             if KITTY_SIZE > 0:
                 kitty_deck = ["card-base" for _ in range(KITTY_SIZE)]
         except KeyError:
@@ -519,7 +519,7 @@ def on_complete_get_meld_score(req):
     if temp is None:
         return
 
-    print(f"on_complete_get_meld_score: score: {temp}")
+    mylog.warning("on_complete_get_meld_score: score: %s", temp)
 
 
 def on_complete_common(req):
@@ -532,10 +532,9 @@ def on_complete_common(req):
     :rtype: [type]
     """
     mylog.error("In on_complete_common.")
-    if req.status == 200 or req.status == 0:
-        temp = json.loads(req.text)
-        return temp
-    else:
+    if req.status in [200, 0]:
+        return json.loads(req.text)
+
         mylog.warning("on_complete_common: req=%s", req)
 
 
@@ -701,9 +700,7 @@ def calculate_y(location: str) -> (float, float):
     else:
         # Place cards in the middle.
         start_y = table_height / 2 - card_height / 2
-        # Keep the decks relatively close together.
-        if start_y > card_height * 2:
-            start_y = card_height * 2
+        start_y = min(start_y, card_height * 2)
     return start_y, yincr
 
 
@@ -838,7 +835,7 @@ def display_game_options():
     elif PLAYER_ID == "":
         for item in player_dict:
             mylog.warning("player_dict[item]=%s", player_dict[item])
-            round_button = SVG.Button(
+        player_button = SVG.Button(
                 position=(xpos, ypos),
                 size=(450, 35),
                 text=f"Player: {player_dict[item]['name']}",
@@ -846,8 +843,8 @@ def display_game_options():
                 fontsize=18,
                 objid=player_dict[item]["player_id"],
             )
-            mylog.warning("display_game_options: player_dict item: item=%s", item)
-            canvas.attach(round_button)
+        mylog.warning("create_player_select_buttons: player_dict item: item=%s", item)
+        canvas.attach(player_button)
             ypos += 40
             added_button = True
     else:
@@ -923,6 +920,12 @@ def update_display(event=None):  # pylint: disable=unused-argument
         place_cards(discard_deck, canvas, location="top", deck_type=mode)
         place_cards(players_hand, canvas, location="bottom", deck_type="player")
 
+    # try:
+    #     canvas.fitContents()
+    # except AttributeError:
+    #     pass
+    canvas.mouseMode = SVG.MouseMode.DRAG
+
 
 def clear_display(event=None):  # pylint: disable=unused-argument
     """
@@ -944,7 +947,7 @@ def clear_display(event=None):  # pylint: disable=unused-argument
     canvas.deleteAll()
 
     # Create the base SVG object for the card table.
-    canvas = SVG.CanvasObject("95vw", "95vh", None, objid="canvas")
+    canvas = SVG.CanvasObject("95vw", "90vh", None, objid="canvas")
     canvas.attrs["mode"] = mode
 
     # Attach the new canvas to the card_table div of the document.
@@ -1019,9 +1022,11 @@ def send_meld(event=None):  # pylint: disable=unused-argument
     :param event: The event object passed in during callback, defaults to None
     :type event: Event(?), optional
     """
-    card_string = ",".join([x for x in meld_deck if x != "card-base"])
+    card_string = ",".join(x for x in meld_deck if x != "card-base")
 
-    # print(f"/round/{ROUND_ID}/score_meld?player_id={PLAYER_ID}&cards={card_string}")
+    mylog.warning(
+        "/round/%s/score_meld?player_id=%s&cards=%s", ROUND_ID, PLAYER_ID, card_string
+    )
 
     get(
         f"/round/{ROUND_ID}/score_meld?player_id={PLAYER_ID}&cards={card_string}",
@@ -1036,8 +1041,8 @@ def clear_game(event=None):  # pylint: disable=unused-argument
     :param event: The event object passed in during callback, defaults to None
     :type event: Event(?), optional
     """
-    get(f"/setcookie/game_id/clear", on_complete_set_gamecookie)
-    get(f"/setcookie/player_id/clear", on_complete_set_playercookie)
+    get("/setcookie/game_id/clear", on_complete_set_gamecookie)
+    get("/setcookie/player_id/clear", on_complete_set_playercookie)
 
 
 def clear_player(event=None):  # pylint: disable=unused-argument
@@ -1093,7 +1098,7 @@ CardTable = document["card_table"]
 document["card_definitions"].attach(SVG.Definitions(filename=CARD_URL))
 
 # Create the base SVG object for the card table.
-canvas = SVG.CanvasObject("95vw", "95vh", None, objid="canvas")
+canvas = SVG.CanvasObject("95vw", "90vh", None, objid="canvas")
 calculate_dimensions()
 canvas.attrs["mode"] = "initial"
 
