@@ -51,6 +51,7 @@ round_bid_winner = False  # pylint: disable=invalid-name
 
 table_width = 0  # pylint: disable=invalid-name
 table_height = 0  # pylint: disable=invalid-name
+button_advance_mode = None  # pylint: disable=invalid-name
 
 # Intrinsic dimensions of the cards in the deck.
 card_width = 170  # pylint: disable=invalid-name
@@ -791,17 +792,8 @@ def calculate_dimensions():
     (table_width, table_height) = canvas.setDimensions()
 
 
-def display_game_options():
-    """
-    Conditional ladder for early game data selection. This needs to be done better and
-    have new game/team/player capability.
-    """
-    added_button = False
-    xpos = 10
-    ypos = 0
-    # Grab the game_id, team_ids, and players. Display and allow player to choose.
-    if GAME_ID == "":
-        mylog.warning("display_game_options: game_dict=%s", game_dict)
+def create_game_select_buttons(xpos, ypos) -> bool:
+    mylog.warning("create_game_select_buttons: game_dict=%s", game_dict)
         if game_dict == {}:
             no_game_button = SVG.Button(
                 position=(xpos, ypos),
@@ -816,7 +808,7 @@ def display_game_options():
         else:
             canvas.deleteAll()
         for item in game_dict:
-            mylog.warning("display_game_options: game_dict item: item=%s", item)
+        mylog.warning("create_game_select_buttons: game_dict item: item=%s", item)
             game_button = SVG.Button(
                 position=(xpos, ypos),
                 size=(450, 35),
@@ -828,11 +820,10 @@ def display_game_options():
             canvas.attach(game_button)
             added_button = True
             ypos += 40
-    elif ROUND_ID == "":
-        get(f"/game/{GAME_ID}/round", on_complete_rounds)
-    elif team_list == []:
-        get(f"/round/{ROUND_ID}/teams", on_complete_teams)
-    elif PLAYER_ID == "":
+    return added_button
+
+
+def create_player_select_buttons(xpos, ypos) -> bool:
         for item in player_dict:
             mylog.warning("player_dict[item]=%s", player_dict[item])
         player_button = SVG.Button(
@@ -847,9 +838,35 @@ def display_game_options():
         canvas.attach(player_button)
             ypos += 40
             added_button = True
+    return added_button
+
+
+def display_game_options():
+    """
+    Conditional ladder for early game data selection. This needs to be done better and
+    have new game/team/player capability.
+    """
+    added_button = False
+    xpos = 10
+    ypos = 0
+    # Grab the game_id, team_ids, and players. Display and allow player to choose.
+    if GAME_ID == "":
+        added_button = create_game_select_buttons(xpos, ypos)
+    elif ROUND_ID == "":
+        # Open the websocket if needed.
+        if WEBSOCKET is None:
+            ws_open()
+
+        get(f"/game/{GAME_ID}/round", on_complete_rounds)
+    elif team_list == []:
+        get(f"/round/{ROUND_ID}/teams", on_complete_teams)
+    elif PLAYER_ID == "":
+        added_button = create_player_select_buttons(xpos, ypos)
     else:
         # Display the player's name in the UI
-        if player_dict != {} and PLAYER_ID != "":
+        if player_dict != {} and PLAYER_ID in player_dict:
+            mylog.warning("Players: %r", player_dict)
+
             document.getElementById("player_name").clear()
             document.getElementById("player_name").attach(
                 html.BIG(player_dict[PLAYER_ID]["name"].capitalize())
@@ -936,7 +953,7 @@ def clear_display(event=None):  # pylint: disable=unused-argument
     :param event: The event object passed in during callback, defaults to None
     :type event: Event(?), optional
     """
-    global canvas  # pylint: disable=global-statement, invalid-name
+    global button_advance_mode, canvas  # pylint: disable=global-statement, invalid-name
     mode = GAME_MODES[GAME_MODE]
     mylog.error("Entering clear_display (mode=%s)", mode)
     try:
@@ -956,16 +973,111 @@ def clear_display(event=None):  # pylint: disable=unused-argument
     update_display()
 
     # Update buttons
-    if GAME_MODE > 0:  # Only display sort cards button when there are cards.
+    if GAME_MODE > 0:  # Only display buttons when there are cards.
+        half_table = table_width / 2 - 35
+
+        # Button to call advance_mode on demand
+        button_advance_mode = SVG.Button(
+            position=(half_table - 80 * 3, -40),
+            size=(70, 35),
+            text=GAME_MODES[GAME_MODE].capitalize(),
+            onclick=advance_mode,
+            fontsize=18,
+            objid="button_advance_mode",
+        )
+
+        # Button to call update_display on demand
+        button_refresh = SVG.Button(
+            position=(half_table - 80 * 2, -40),
+            size=(70, 35),
+            text="Refresh",
+            onclick=update_display,
+            fontsize=18,
+            objid="button_refresh",
+        )
+
+        # Button to call clear_display on demand
+        button_clear = SVG.Button(
+            position=(half_table - 80 * 1, -40),
+            size=(70, 35),
+            text="Clear",
+            onclick=clear_display,
+            fontsize=18,
+            objid="button_clear",
+        )
+
+        # Button to call submit_meld on demand
+        button_send_meld = SVG.Button(
+            position=(half_table, -40),
+            size=(70, 35),
+            text="Send\nMeld",
+            onclick=send_meld,
+            fontsize=16,
+            objid="button_send_meld",
+        )
+
+        # Button to call clear_game on demand
+        button_clear_game = SVG.Button(
+            position=(half_table + 80 * 1, -40),
+            size=(70, 35),
+            text="Clear\nGame",
+            onclick=clear_game,
+            fontsize=16,
+            objid="button_clear_game",
+        )
+
+        # Button to call clear_player on demand
+        button_clear_player = SVG.Button(
+            position=(half_table + 80 * 2, -40),
+            size=(70, 35),
+            text="Clear\nPlayer",
+            onclick=clear_player,
+            fontsize=16,
+            objid="button_clear_player",
+        )
+
+        # Button to call window reload on demand
+        button_reload_page = SVG.Button(
+            position=(half_table + 80 * 3, -40),
+            size=(70, 35),
+            text="Reload",
+            onclick=window.location.reload,
+            fontsize=16,
+            objid="button_reload_page",
+        )
+
+        start_y, yincr = calculate_y(location="bottom")
+        # Button to call sort_player_cards on demand
+        button_sort_player = SVG.Button(
+            position=(half_table, start_y - yincr * 0.75),
+            size=(70, 35),
+            text="Sort",
+            onclick=sort_player_cards,
+            fontsize=18,
+            objid="button_sort_player",
+        )
+
         canvas.addObject(button_sort_player)
-        canvas.addObject(button_clear)
-        canvas.addObject(button_refresh)
-        canvas.addObject(button_advance_mode)
-        canvas.addObject(button_clear_game)
-        canvas.addObject(button_clear_player)
-        canvas.addObject(button_reload_page)
+
+        for item in [
+            button_clear,
+            button_refresh,
+            button_advance_mode,
+            button_clear_game,
+            button_clear_player,
+            button_reload_page,
+        ]:
+            canvas.addObject(item)
+
+        # canvas.translateObject(button_clear, (half_table - 80 * 1, -40))
+        # canvas.translateObject(button_refresh, (half_table - 80 * 2, -40))
+        # canvas.translateObject(button_advance_mode, (half_table - 80 * 3, -40))
+        # canvas.translateObject(button_clear_game, (half_table + 80 * 1, -40))
+        # canvas.translateObject(button_clear_player, (half_table + 80 * 2, -40))
+        # canvas.translateObject(button_reload_page, (half_table + 80 * 3, -40))
     if GAME_MODES[GAME_MODE] in ["meld"]:
         canvas.addObject(button_send_meld)
+        # canvas.translateObject(button_send_meld, (table_width / 2 - 35, -40))
 
     try:
         canvas.fitContents()
@@ -1115,87 +1227,6 @@ discard_deck = ["card-base" for _ in range(PLAYERS)]
 # TODO: Figure out how better to calculate HAND_SIZE.
 HAND_SIZE = int(48 / PLAYERS)
 meld_deck = ["card-base" for _ in range(HAND_SIZE)]
-
-# Button to call advance_mode on demand
-button_advance_mode = SVG.Button(
-    position=(0, -40),
-    size=(70, 35),
-    text=GAME_MODES[GAME_MODE].capitalize(),
-    onclick=advance_mode,
-    fontsize=18,
-    objid="button_advance_mode",
-)
-
-# Button to call update_display on demand
-button_refresh = SVG.Button(
-    position=(80 * 1, -40),
-    size=(70, 35),
-    text="Refresh",
-    onclick=update_display,
-    fontsize=18,
-    objid="button_refresh",
-)
-
-# Button to call clear_display on demand
-button_clear = SVG.Button(
-    position=(80 * 2, -40),
-    size=(70, 35),
-    text="Clear",
-    onclick=clear_display,
-    fontsize=18,
-    objid="button_clear",
-)
-
-# Button to call submit_meld on demand
-button_send_meld = SVG.Button(
-    position=(80 * 5, -40),
-    size=(70, 35),
-    text="Send\nMeld",
-    onclick=send_meld,
-    fontsize=16,
-    objid="button_send_meld",
-)
-
-# Button to call clear_game on demand
-button_clear_game = SVG.Button(
-    position=(80 * 7, -40),
-    size=(70, 35),
-    text="Clear\nGame",
-    onclick=clear_game,
-    fontsize=16,
-    objid="button_clear_game",
-)
-
-# Button to call clear_player on demand
-button_clear_player = SVG.Button(
-    position=(80 * 8, -40),
-    size=(70, 35),
-    text="Clear\nPlayer",
-    onclick=clear_player,
-    fontsize=16,
-    objid="button_clear_player",
-)
-
-# Button to call window reload on demand
-button_reload_page = SVG.Button(
-    position=(80 * 9, -40),
-    size=(70, 35),
-    text="Reload",
-    onclick=window.location.reload,
-    fontsize=16,
-    objid="button_reload_page",
-)
-
-
-# Button to call sort_player_cards on demand
-button_sort_player = SVG.Button(
-    position=(-70, card_height * 2.25),
-    size=(70, 35),
-    text="Sort",
-    onclick=sort_player_cards,
-    fontsize=18,
-    objid="button_sort_player",
-)
 
 document.getElementById("please_wait").remove()
 clear_display()
