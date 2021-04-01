@@ -871,7 +871,20 @@ def display_game_options():
             document.getElementById("player_name").attach(
                 html.BIG(player_dict[PLAYER_ID]["name"].capitalize())
             )
-        # Open the websocket if needed.
+            # TODO: Do something more useful like a line of names with color change when
+            # the player's client registers.
+            document.getElementById("player_name").attach(html.BR())
+            document.getElementById("player_name").attach(
+                html.SMALL(
+                    ", ".join(
+                        y["name"].capitalize()
+                        for y in [player_dict[x] for x in player_dict if x != PLAYER_ID]
+                    )
+                )
+            )
+        # Send the registration message.
+        send_registration()
+
         if GAME_MODE == 0:
             mylog.warning("KITTY_SIZE=%d", KITTY_SIZE)
             advance_mode()
