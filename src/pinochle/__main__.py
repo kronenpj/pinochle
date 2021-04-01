@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import logging
+
 from . import wsgi  # pragma: no cover
 
 GLOBAL_LOG_LEVEL = logging.WARNING
