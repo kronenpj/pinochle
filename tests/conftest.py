@@ -4,7 +4,7 @@ Module to hold test fixtures.
 License: GPLv3
 """
 import pytest
-from pinochle import app_factory
+from pinochle import wsgi
 from pinochle.models.core import db
 
 # Suppress invalid redefined-outer-name messages from pylint.
@@ -24,7 +24,7 @@ def app():
         :rtype: FlaskApp
     """
     # print("Entering conftest.app...")
-    app = app_factory.create_app()
+    app = wsgi.app
 
     # print("conftest.app, yielding app")
     yield app

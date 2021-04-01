@@ -6,7 +6,7 @@ import json
 import logging
 
 import brySVG.dragcanvas as SVG  # pylint: disable=import-error
-from browser import ajax, document, window
+from browser import ajax, document, html, window
 from brySVG.dragcanvas import TextObject, UseObject  # pylint: disable=import-error
 
 from constants import (
@@ -539,7 +539,7 @@ def on_complete_common(req):
     if req.status in [200, 0]:
         return json.loads(req.text)
 
-        mylog.warning("on_complete_common: req=%s", req)
+    mylog.warning("on_complete_common: req=%s", req)
 
 
 def get(url: str, callback=None):
@@ -797,50 +797,50 @@ def calculate_dimensions():
 
 def create_game_select_buttons(xpos, ypos) -> bool:
     mylog.warning("create_game_select_buttons: game_dict=%s", game_dict)
-        if game_dict == {}:
-            no_game_button = SVG.Button(
-                position=(xpos, ypos),
-                size=(450, 35),
-                text="No games found, create one and press here.",
-                onclick=lambda x: get("/game", on_complete_games),
-                fontsize=18,
-                objid="nogame",
-            )
-            canvas.attach(no_game_button)
-            added_button = True
-        else:
-            canvas.deleteAll()
-        for item in game_dict:
+    if game_dict == {}:
+        no_game_button = SVG.Button(
+            position=(xpos, ypos),
+            size=(450, 35),
+            text="No games found, create one and press here.",
+            onclick=lambda x: get("/game", on_complete_games),
+            fontsize=18,
+            objid="nogame",
+        )
+        canvas.attach(no_game_button)
+        added_button = True
+    else:
+        canvas.deleteAll()
+    for item in game_dict:
         mylog.warning("create_game_select_buttons: game_dict item: item=%s", item)
-            game_button = SVG.Button(
-                position=(xpos, ypos),
-                size=(450, 35),
-                text=f"Game: {game_dict[item]['timestamp'].replace('T',' ')}",
-                onclick=choose_game,
-                fontsize=18,
-                objid=item,
-            )
-            canvas.attach(game_button)
-            added_button = True
-            ypos += 40
+        game_button = SVG.Button(
+            position=(xpos, ypos),
+            size=(450, 35),
+            text=f"Game: {game_dict[item]['timestamp'].replace('T',' ')}",
+            onclick=choose_game,
+            fontsize=18,
+            objid=item,
+        )
+        canvas.attach(game_button)
+        added_button = True
+        ypos += 40
     return added_button
 
 
 def create_player_select_buttons(xpos, ypos) -> bool:
-        for item in player_dict:
-            mylog.warning("player_dict[item]=%s", player_dict[item])
+    for item in player_dict:
+        mylog.warning("player_dict[item]=%s", player_dict[item])
         player_button = SVG.Button(
-                position=(xpos, ypos),
-                size=(450, 35),
-                text=f"Player: {player_dict[item]['name']}",
-                onclick=choose_player,
-                fontsize=18,
-                objid=player_dict[item]["player_id"],
-            )
+            position=(xpos, ypos),
+            size=(450, 35),
+            text=f"Player: {player_dict[item]['name']}",
+            onclick=choose_player,
+            fontsize=18,
+            objid=player_dict[item]["player_id"],
+        )
         mylog.warning("create_player_select_buttons: player_dict item: item=%s", item)
         canvas.attach(player_button)
-            ypos += 40
-            added_button = True
+        ypos += 40
+        added_button = True
     return added_button
 
 
@@ -857,8 +857,8 @@ def display_game_options():
         added_button = create_game_select_buttons(xpos, ypos)
     elif ROUND_ID == "":
         # Open the websocket if needed.
-        if WEBSOCKET is None:
-            ws_open()
+        # if WEBSOCKET is None:
+        #     ws_open()
 
         get(f"/game/{GAME_ID}/round", on_complete_rounds)
     elif team_list == []:
@@ -886,7 +886,7 @@ def display_game_options():
                 )
             )
         # Send the registration message.
-        send_registration()
+        # send_registration()
 
         if GAME_MODE == 0:
             mylog.warning("KITTY_SIZE=%d", KITTY_SIZE)
@@ -1124,7 +1124,7 @@ def advance_mode(event=None):  # pylint: disable=unused-argument
         # TODO: Create new round & deal cards...
         GAME_MODE += 1
     try:
-    button_advance_mode.label.textContent = GAME_MODES[GAME_MODE].capitalize()
+        button_advance_mode.label.textContent = GAME_MODES[GAME_MODE].capitalize()
     except AttributeError:
         pass
     clear_display()

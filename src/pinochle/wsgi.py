@@ -2,12 +2,10 @@
 
 import json
 
-import geventwebsocket
 from flask import abort, make_response, redirect, render_template, request
-from flask_sockets import Sockets
 
 from . import app_factory, custom_log
-from .__main__ import GLOBAL_LOG_LEVEL
+from .__init__ import GLOBAL_LOG_LEVEL
 from .models import utils
 
 
