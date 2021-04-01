@@ -693,11 +693,11 @@ def calculate_y(location: str) -> (float, float):
     if location.lower() == "top":
         start_y = 0
     elif location.lower() == "bottom":
-        # Place cards one card height above the bottom, plus a bit.
-        start_y = table_height - card_height - 2
+        # Place cards one card height above the bottom, plus "a bit."
+        start_y = table_height - card_height * 1.25
         # Keep the decks relatively close together.
-        if start_y > card_height * 3:
-            start_y = card_height * 3 + card_height / 20
+        if start_y > card_height * 2.5:
+            start_y = card_height * 2.5 + card_height / 20
     else:
         # Place cards in the middle.
         start_y = table_height / 2 - card_height / 2
