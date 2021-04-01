@@ -9,7 +9,14 @@ import brySVG.dragcanvas as SVG  # pylint: disable=import-error
 from browser import ajax, document, window
 from brySVG.dragcanvas import TextObject, UseObject  # pylint: disable=import-error
 
-from constants import CARD_URL, GAME_MODES, OTHER_DECK_CONFIG, PLAYER_DECK_CONFIG
+from constants import (
+    CARD_URL,
+    GAME_MODES,
+    OTHER_DECK_CONFIG,
+    PLAYER_DECK_CONFIG,
+    card_height,
+    card_width,
+)
 
 # TODO: Retrieve current game state from API
 GAME_MODE = 0
@@ -52,10 +59,6 @@ round_bid_winner = False  # pylint: disable=invalid-name
 table_width = 0  # pylint: disable=invalid-name
 table_height = 0  # pylint: disable=invalid-name
 button_advance_mode = None  # pylint: disable=invalid-name
-
-# Intrinsic dimensions of the cards in the deck.
-card_width = 170  # pylint: disable=invalid-name
-card_height = 245  # pylint: disable=invalid-name
 
 
 class PlayingCard(UseObject):
@@ -420,7 +423,7 @@ def on_complete_getcookie(req):
     :type req: [type]
     """
     mylog.error("In on_complete_getcookie.")
-    global GAME_ID, PLAYER_ID, KITTY_SIZE, TEAM_ID, kitty_deck  # pylint: disable=global-statement, invalid-name
+    global GAME_MODE, GAME_ID, PLAYER_ID, KITTY_SIZE, TEAM_ID, kitty_deck  # pylint: disable=global-statement, invalid-name
 
     if req.status != 200:
         return
@@ -1054,7 +1057,7 @@ def clear_display(event=None):  # pylint: disable=unused-argument
             position=(half_table + 80 * 3, -40),
             size=(70, 35),
             text="Reload",
-            onclick=window.location.reload,
+            onclick=window.location.reload,  # pylint: disable=no-member
             fontsize=16,
             objid="button_reload_page",
         )
@@ -1120,7 +1123,10 @@ def advance_mode(event=None):  # pylint: disable=unused-argument
         # TODO: Close out current round and...
         # TODO: Create new round & deal cards...
         GAME_MODE += 1
+    try:
     button_advance_mode.label.textContent = GAME_MODES[GAME_MODE].capitalize()
+    except AttributeError:
+        pass
     clear_display()
 
 
@@ -1177,7 +1183,7 @@ def clear_player(event=None):  # pylint: disable=unused-argument
     :param event: The event object passed in during callback, defaults to None
     :type event: Event(?), optional
     """
-    get(f"/setcookie/player_id/clear", on_complete_set_playercookie)
+    get("/setcookie/player_id/clear", on_complete_set_playercookie)
 
 
 def choose_game(event=None):
@@ -1213,7 +1219,7 @@ def choose_player(event=None):
 
 ## END Function definitions.
 
-# Make the update_display function easily available to scripts.
+# Make the clear_display function easily available to plain javascript code.
 window.clear_display = clear_display
 
 # Locate the card table in the HTML document.
