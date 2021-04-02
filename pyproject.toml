@@ -19,6 +19,14 @@ readme = "README.md"
 homepage = "https://gitlab.com/iqpinochle/pinochle"
 repository = "https://gitlab.com/iqpinochle/pinochle"
 exclude = [ "*.db" ]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+]
 
 [tool.poetry.dependencies]
 python = "^3.6"
@@ -44,7 +52,6 @@ black = "^19.10b0"
 bumpversion = "^0.6.0"
 coverage = {version = "^5.5", extras = ["toml"]}
 eralchemy = "^1.2.10"
-jedi = "^0.18.0"
 mockbrython = "^0.0.3"
 pylint = "^2.7.2"
 pytest = "^6.2.2"
@@ -53,6 +60,7 @@ pytest-flask = "^1.2.0"
 pytest-selenium = "^2.0.1"
 rope = "^0.18.0"
 tox = {version = "^3.23.0", extras = ["toml"]}
+# tox-poetry-dev-dependencies = "^0.0.5"
 typing = [
     {version = "^3.7", python = "<=3.8.99"},
     {version = "< 3.7", python = "^3.9"},
@@ -60,6 +68,59 @@ typing = [
 yapf = "^0.31.0"
 # A little skeptical about this one.
 #mutmut = "^2.1.0"
+
+[tool.tox]
+# From: https://github.com/python-poetry/poetry/issues/1941#issuecomment-667152907
+legacy_tox_ini = """
+[tox]
+# TODO: Add py310 when required packages support it.
+envlist = coverage-clean, py{36,37,38,39}, coverage-combine
+skip_missing_interpreters = True
+isolated_build = True
+
+[tox:.package]
+# note tox will use the same python version as under what tox is installed to package
+# so unless this is python 3 you can require a given python version for the packaging
+# environment via the basepython key
+basepython = python3
+
+[testenv]
+# For some reason, with poetry, tox testing always fails unless the environment is recreated.
+recreate = True
+deps =
+    poetry
+    coverage [toml]
+    pytest
+# extras = test
+# requires =
+#     tox-poetry-dev-dependencies
+# poetry_add_dev_dependencies = True
+commands =
+    poetry install --no-root -v
+    coverage run --parallel -m pytest {posargs}
+setenv =
+    PYTHONPATH=src
+    PYENV=none
+
+[testenv:coverage-clean]
+deps = coverage [toml]
+skip_install = true
+commands = coverage erase
+
+[testenv:coverage-combine]
+deps = coverage [toml]
+skip_install = true
+commands =
+    coverage combine
+    coverage xml
+depends =
+    py36
+    py37
+    py38
+    py39
+    py310
+    pypy3
+"""
 
 [tool.black]
 line-length = 88
