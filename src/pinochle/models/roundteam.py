@@ -1,6 +1,8 @@
 import uuid
 from datetime import datetime
 
+from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
+
 from .core import db, ma
 from .GUID import GUID
 
@@ -44,7 +46,7 @@ class RoundTeam(db.Model):
         return output
 
 
-class RoundTeamSchema(ma.SQLAlchemyAutoSchema):
+class RoundTeamSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = RoundTeam
         sqla_session = db.session

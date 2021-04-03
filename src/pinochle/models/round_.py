@@ -1,6 +1,8 @@
 import uuid
 from datetime import datetime
 
+from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
+
 from .core import db, ma
 from .GUID import GUID
 
@@ -45,7 +47,7 @@ class Round(db.Model):
         return output
 
 
-class RoundSchema(ma.SQLAlchemyAutoSchema):
+class RoundSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Round
         sqla_session = db.session

@@ -1,6 +1,8 @@
 from datetime import datetime
 
-from .core import db, ma
+from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
+
+from .core import db
 from .GUID import GUID
 
 # Suppress invalid no-member messages from pylint.
@@ -35,7 +37,7 @@ class TeamPlayers(db.Model):
         return output
 
 
-class TeamPlayersSchema(ma.SQLAlchemyAutoSchema):
+class TeamPlayersSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = TeamPlayers
         sqla_session = db.session

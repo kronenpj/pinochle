@@ -1,4 +1,6 @@
-from .core import db, ma
+from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
+
+from .core import db
 from .GUID import GUID
 
 # Suppress invalid no-member messages from pylint.
@@ -25,7 +27,7 @@ class Hand(db.Model):
         return output
 
 
-class HandSchema(ma.SQLAlchemyAutoSchema):
+class HandSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Hand
         sqla_session = db.session

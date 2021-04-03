@@ -4,10 +4,8 @@ import json
 
 from flask import abort, make_response, redirect, render_template, request
 
-from . import app_factory, custom_log
-from .__init__ import GLOBAL_LOG_LEVEL
+from . import app_factory
 from .models import utils
-
 
 application = app_factory.create_app()  # pragma: no cover
 app = application
