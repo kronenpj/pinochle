@@ -4,6 +4,7 @@ In-browser script to handle the card-table user interface.
 import copy
 import json
 import logging
+from typing import Dict, List, Tuple
 
 import brySVG.dragcanvas as SVG  # pylint: disable=import-error
 from browser import ajax, document, html, window
@@ -19,13 +20,11 @@ from constants import (
 
 # pylint: disable=global-statement
 
-GAME_MODE = 0
-
 # Programmatically create a pre-sorted deck to compare to when sorting decks of cards.
 # Importing a statically-defined list from constants doesn't work for some reason.
 # "9", "jack", "queen", "king", "10", "ace"
 # "ace", "10", "king", "queen", "jack", "9"
-DECK_SORTED = []
+DECK_SORTED: List[str] = []
 for _suit in ["spade", "diamond", "club", "heart"]:
     for _card in ["ace", "10", "king", "queen", "jack", "9"]:
         DECK_SORTED.append(f"{_suit}_{_card}")
@@ -38,6 +37,7 @@ mylog.setLevel(logging.ERROR)  # Function entry/exit
 # API "Constants"
 AJAX_URL_ENCODING = "application/x-www-form-urlencoded"
 GAME_ID = ""
+GAME_MODE = 0
 KITTY_SIZE = 0
 PLAYER_ID = ""
 PLAYERS = 4
@@ -45,13 +45,13 @@ ROUND_ID = ""
 TEAM_ID = ""
 
 # Various state globals
-game_dict = {}
-kitty_deck = []
-player_dict = {}
-players_hand = []
-players_meld_deck = []
-team_dict = {}
-team_list = []
+game_dict: Dict[str, str] = {}
+kitty_deck: List[str] = []
+player_dict: Dict[str, str] = {}
+players_hand: List[str] = []
+players_meld_deck: List[str] = []
+team_dict: Dict[str, str] = {}
+team_list: List[str] = []
 
 # Track whether this user is the round's bid winner.
 round_bid_winner = False  # pylint: disable=invalid-name
@@ -181,6 +181,7 @@ class PlayingCard(SVG.UseObject):
         # Protect the player's deck during meld process.
         # Create a reference to the appropriate deck by mode.
         receiving_deck = []
+        sending_deck = []
         # This "should never be called" during GAME_MODEs 0 or 1.
         add_only = False
         if GAME_MODES[GAME_MODE] in ["meld"]:  # Meld
@@ -271,7 +272,7 @@ class PlayingCard(SVG.UseObject):
                 self.play_handler(event)
 
 
-def on_complete_games(req):
+def on_complete_games(req: ajax.Ajax):
     """
     Callback for AJAX request for the list of games.
 
@@ -294,7 +295,7 @@ def on_complete_games(req):
     display_game_options()
 
 
-def on_complete_rounds(req):
+def on_complete_rounds(req: ajax.Ajax):
     """
     Callback for AJAX request for the list of rounds.
 
@@ -316,7 +317,7 @@ def on_complete_rounds(req):
     display_game_options()
 
 
-def on_complete_teams(req):
+def on_complete_teams(req: ajax.Ajax):
     """
     Callback for AJAX request for the information on the teams associated with the round.
 
@@ -341,7 +342,7 @@ def on_complete_teams(req):
         get(f"/team/{item}", on_complete_team_names)
 
 
-def on_complete_team_names(req):
+def on_complete_team_names(req: ajax.Ajax):
     """
     Callback for AJAX request for team information.
 
@@ -368,7 +369,7 @@ def on_complete_team_names(req):
         get(f"/player/{item}", on_complete_players)
 
 
-def on_complete_players(req):
+def on_complete_players(req: ajax.Ajax):
     """
     Callback for AJAX request for player information.
 
@@ -387,7 +388,7 @@ def on_complete_players(req):
     display_game_options()
 
 
-def on_complete_set_gamecookie(req):
+def on_complete_set_gamecookie(req: ajax.Ajax):
     """
     Callback for AJAX request for setcookie information.
 
@@ -400,7 +401,7 @@ def on_complete_set_gamecookie(req):
         get("/getcookie/game_id", on_complete_getcookie)
 
 
-def on_complete_set_playercookie(req):
+def on_complete_set_playercookie(req: ajax.Ajax):
     """
     Callback for AJAX request for setcookie information.
 
@@ -413,7 +414,7 @@ def on_complete_set_playercookie(req):
         get("/getcookie/player_id", on_complete_getcookie)
 
 
-def on_complete_getcookie(req):
+def on_complete_getcookie(req: ajax.Ajax):
     """
     Callback for AJAX request for setcookie information.
 
@@ -439,7 +440,7 @@ def on_complete_getcookie(req):
             "on_complete_getcookie: Setting GAME_ID=%s", response_data["ident"]
         )
         try:
-            KITTY_SIZE = game_dict[GAME_ID]["kitty_size"]
+            KITTY_SIZE = int(game_dict[GAME_ID]["kitty_size"])
             mylog.warning("on_complete_getcookie: KITTY_SIZE=%s", KITTY_SIZE)
             if KITTY_SIZE > 0:
                 kitty_deck = ["card-base" for _ in range(KITTY_SIZE)]
@@ -461,7 +462,7 @@ def on_complete_getcookie(req):
     display_game_options()
 
 
-def on_complete_kitty(req):
+def on_complete_kitty(req: ajax.Ajax):
     """
     Callback for AJAX request for the round's kitty cards, if any.
 
@@ -488,7 +489,7 @@ def on_complete_kitty(req):
         advance_mode()
 
 
-def on_complete_player_cards(req):
+def on_complete_player_cards(req: ajax.Ajax):
     """
     Callback for AJAX request for the player's cards.
 
@@ -512,7 +513,7 @@ def on_complete_player_cards(req):
     update_display()
 
 
-def on_complete_get_meld_score(req):
+def on_complete_get_meld_score(req: ajax.Ajax):
     """
     Callback for AJAX request for the player's meld.
 
@@ -528,7 +529,7 @@ def on_complete_get_meld_score(req):
     mylog.warning("on_complete_get_meld_score: score: %s", temp)
 
 
-def on_complete_common(req):
+def on_complete_common(req: ajax.Ajax):
     """
     Common function for AJAX callbacks.
 
@@ -553,7 +554,7 @@ def get(url: str, callback=None):
     :param callback: Function to be called when the AJAX request is complete.
     :type callback: function, optional
     """
-    req = ajax.ajax()  # pylint: disable=no-value-for-parameter
+    req = ajax.Ajax()  # pylint: disable=no-value-for-parameter
     if callback is not None:
         req.bind("complete", callback)
     mylog.warning("Calling GET /api%s", url)
@@ -573,7 +574,7 @@ def put(data: dict, url: str, callback=None):
     :param callback: Function to be called when the AJAX request is complete.
     :type callback: function, optional
     """
-    req = ajax.ajax()  # pylint: disable=no-value-for-parameter
+    req = ajax.Ajax()  # pylint: disable=no-value-for-parameter
     if callback is not None:
         req.bind("complete", callback)
     mylog.warning("Calling PUT /api%s with data: %r", url, data)
@@ -594,7 +595,7 @@ def post(data: dict, url: str, callback=None):
     :param callback: Function to be called when the AJAX request is complete.
     :type callback: function, optional
     """
-    req = ajax.ajax()  # pylint: disable=no-value-for-parameter
+    req = ajax.Ajax()  # pylint: disable=no-value-for-parameter
     if callback is not None:
         req.bind("complete", callback)
     mylog.warning("Calling POST /api%s with data: %r", url, data)
@@ -612,7 +613,7 @@ def delete(url: str, callback=None):
     :param callback: Function to be called when the AJAX request is complete.
     :type callback: function, optional
     """
-    req = ajax.ajax()  # pylint: disable=no-value-for-parameter
+    req = ajax.Ajax()  # pylint: disable=no-value-for-parameter
     if callback is not None:
         req.bind("complete", callback)
     # pass the arguments in the query string
@@ -692,7 +693,7 @@ def populate_canvas(deck, target_canvas, deck_type="player"):
         counter += 1
 
 
-def calculate_y(location: str) -> (float, float):
+def calculate_y(location: str) -> Tuple[float, float]:
     """
     Calculate how far to move each card vertically then based on that,
     calculate the starting vertical position.
@@ -708,7 +709,7 @@ def calculate_y(location: str) -> (float, float):
 
     # Where to vertically place first card on the table
     if location.lower() == "top":
-        start_y = 0
+        start_y = 0.0
     elif location.lower() == "bottom":
         # Place cards one card height above the bottom, plus "a bit."
         start_y = table_height - card_height * 1.25
@@ -722,7 +723,7 @@ def calculate_y(location: str) -> (float, float):
     return start_y, yincr
 
 
-def calculate_x(deck: list) -> (float, float):
+def calculate_x(deck: list) -> Tuple[float, float]:
     """
     Calculate how far to move each card horizontally then based on that,
     calculate the starting horizontal position.
@@ -733,7 +734,7 @@ def calculate_x(deck: list) -> (float, float):
     :rtype: tuple(float, float)
     """
     xincr = int(table_width / (len(deck) + 0.5))  # Spacing to cover entire width
-    start_x = 0
+    start_x = 0.0
     mylog.warning("place_cards: Calculated: xincr=%f, start_x=%f", xincr, start_x)
     if xincr > card_width:
         xincr = int(card_width)
@@ -811,6 +812,7 @@ def calculate_dimensions():
 
 def create_game_select_buttons(xpos, ypos) -> bool:
     mylog.warning("create_game_select_buttons: game_dict=%s", game_dict)
+    added_button = False
     if game_dict == {}:
         no_game_button = SVG.Button(
             position=(xpos, ypos),
@@ -841,6 +843,7 @@ def create_game_select_buttons(xpos, ypos) -> bool:
 
 
 def create_player_select_buttons(xpos, ypos) -> bool:
+    added_button = False
     for item in player_dict:
         mylog.warning("player_dict[item]=%s", player_dict[item])
         player_button = SVG.Button(
@@ -1004,9 +1007,9 @@ def clear_display(event=None):  # pylint: disable=unused-argument
     calculate_dimensions()
     update_display()
 
+    half_table = table_width / 2 - 35
     # Update buttons
     if GAME_MODE > 0:  # Only display buttons when there are cards.
-        half_table = table_width / 2 - 35
 
         # Button to call advance_mode on demand
         button_advance_mode = SVG.Button(
@@ -1036,16 +1039,6 @@ def clear_display(event=None):  # pylint: disable=unused-argument
             onclick=clear_display,
             fontsize=18,
             objid="button_clear",
-        )
-
-        # Button to call submit_meld on demand
-        button_send_meld = SVG.Button(
-            position=(half_table, -40),
-            size=(70, 35),
-            text="Send\nMeld",
-            onclick=send_meld,
-            fontsize=16,
-            objid="button_send_meld",
         )
 
         # Button to call clear_game on demand
@@ -1108,6 +1101,16 @@ def clear_display(event=None):  # pylint: disable=unused-argument
         # canvas.translateObject(button_clear_player, (half_table + 80 * 2, -40))
         # canvas.translateObject(button_reload_page, (half_table + 80 * 3, -40))
     if GAME_MODES[GAME_MODE] in ["meld"]:
+        # Button to call submit_meld on demand
+        button_send_meld = SVG.Button(
+            position=(half_table, -40),
+            size=(70, 35),
+            text="Send\nMeld",
+            onclick=send_meld,
+            fontsize=16,
+            objid="button_send_meld",
+        )
+
         canvas.addObject(button_send_meld)
         # canvas.translateObject(button_send_meld, (table_width / 2 - 35, -40))
 
@@ -1131,7 +1134,7 @@ def advance_mode(event=None):  # pylint: disable=unused-argument
     put({}, f"/game/{GAME_ID}?state=true", advance_mode_callback)
 
 
-def advance_mode_callback(req):
+def advance_mode_callback(req: ajax.Ajax):
     """
     Routine to capture the response of the server when advancing the game mode.
 
