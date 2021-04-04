@@ -26,8 +26,7 @@ def read_all():
 
     # Serialize the data for the response
     hand_schema = HandSchema(many=True)
-    data = hand_schema.dump(hands)
-    return data
+    return hand_schema.dump(hands)
 
 
 def read_one(hand_id: str):
@@ -44,12 +43,9 @@ def read_one(hand_id: str):
     # Did we find a hand?
     if hand_id is not None and a_hand is not None:
         # Serialize the data for the response
-        temp = list()
-        for _, card in enumerate(a_hand):
-            temp.append(card.card)
-        if len(temp) > 0:
-            data = {"hand_id": hand_id, "cards": temp}
-            return data
+        temp = [card.card for _, card in enumerate(a_hand)]
+        if temp:
+            return {"hand_id": hand_id, "cards": temp}
 
     # Otherwise, nope, didn't find any rounds with cards.
     return None

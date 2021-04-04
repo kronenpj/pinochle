@@ -24,8 +24,7 @@ def read_all():
 
     # Serialize the data for the response
     game_schema = GameRoundSchema(many=True)
-    data = game_schema.dump(games)
-    return data
+    return game_schema.dump(games)
 
 
 def read_rounds(game_id: str):
@@ -37,15 +36,14 @@ def read_rounds(game_id: str):
     :return:            round matching id
     """
     # Build the initial query
-    a_round_list = utils.query_round_list_for_game(game_id=game_id)
+    a_round_list = utils.query_gameround_for_game(game_id=game_id)
 
     # Did we find a round?
     if a_round_list is not None:
         # print(f"{a_round_list=}")
         # Serialize the data for the response
         game_schema = GameRoundSchema()
-        data = game_schema.dump(a_round_list)
-        return data
+        return game_schema.dump(a_round_list)
 
     # Otherwise, nope, didn't find any rounds
     abort(404, f"No rounds found for game {game_id}")
@@ -67,8 +65,7 @@ def read_one(game_id: str, round_id: str):
     if a_round is not None:
         # Serialize the data for the response
         game_schema = GameRoundSchema()
-        data = game_schema.dump(a_round)
-        return data
+        return game_schema.dump(a_round)
 
     # Otherwise, nope, didn't find any rounds
     abort(404, f"No rounds found for game {game_id}")

@@ -7,7 +7,6 @@ import logging
 
 import brySVG.dragcanvas as SVG  # pylint: disable=import-error
 from browser import ajax, document, html, window
-from brySVG.dragcanvas import TextObject, UseObject  # pylint: disable=import-error
 
 from constants import (
     CARD_URL,
@@ -18,7 +17,8 @@ from constants import (
     card_width,
 )
 
-# TODO: Retrieve current game state from API
+# pylint: disable=global-statement
+
 GAME_MODE = 0
 
 # Programmatically create a pre-sorted deck to compare to when sorting decks of cards.
@@ -61,7 +61,7 @@ table_height = 0  # pylint: disable=invalid-name
 button_advance_mode = None  # pylint: disable=invalid-name
 
 
-class PlayingCard(UseObject):
+class PlayingCard(SVG.UseObject):
     """
     PlayingCard class to hold additional attributes than available from UseObject,
     specific to the Pinochle game.
@@ -84,9 +84,7 @@ class PlayingCard(UseObject):
             href = "#back"
         self.face_value = face_value
         self.show_face = show_face
-        UseObject.__init__(
-            self, href=href, objid=objid,
-        )
+        SVG.UseObject.__init__(self, href=href, objid=objid)
         self.flippable = flippable
         self.bind("click", self.card_click_handler)
         if movable:
@@ -255,7 +253,7 @@ class PlayingCard(UseObject):
         :param event: The event object passed in during callback, defaults to None
         :type event: Event(?), optional
         """
-        global players_hand, players_meld_deck  # pylint: disable=global-statement, invalid-name
+        global players_hand, players_meld_deck  # pylint: disable=invalid-name
         mylog.error("Entering PlayingCard.card_click_handler()")
         if event and "click" in event.type:
             if GAME_MODES[GAME_MODE] in ["reveal"] and self.flippable:
@@ -303,7 +301,7 @@ def on_complete_rounds(req):
     :param req: Request object from callback.
     :type req: [type]
     """
-    global ROUND_ID, team_list  # pylint: disable=global-statement, invalid-name
+    global ROUND_ID, team_list  # pylint: disable=invalid-name
     team_list.clear()
     mylog.error("In on_complete_rounds.")
 
@@ -325,7 +323,7 @@ def on_complete_teams(req):
     :param req: Request object from callback.
     :type req: [type]
     """
-    global team_list  # pylint: disable=global-statement, invalid-name
+    global team_list  # pylint: disable=invalid-name
     mylog.error("In on_complete_teams.")
 
     temp = on_complete_common(req)
@@ -350,7 +348,7 @@ def on_complete_team_names(req):
     :param req: Request object from callback.
     :type req: [type]
     """
-    global team_dict  # pylint: disable=global-statement, invalid-name
+    global team_dict  # pylint: disable=invalid-name
     mylog.error("In on_complete_team_names.")
 
     temp = on_complete_common(req)
@@ -423,7 +421,7 @@ def on_complete_getcookie(req):
     :type req: [type]
     """
     mylog.error("In on_complete_getcookie.")
-    global GAME_MODE, GAME_ID, PLAYER_ID, KITTY_SIZE, TEAM_ID, kitty_deck  # pylint: disable=global-statement, invalid-name
+    global GAME_MODE, GAME_ID, PLAYER_ID, KITTY_SIZE, TEAM_ID, kitty_deck  # pylint: disable=invalid-name
 
     if req.status != 200:
         return
@@ -470,7 +468,7 @@ def on_complete_kitty(req):
     :param req: Request object from callback.
     :type req: [type]
     """
-    global kitty_deck  # pylint: disable=global-statement, invalid-name
+    global kitty_deck  # pylint: disable=invalid-name
     mylog.error("In on_complete_kitty.")
 
     temp = on_complete_common(req)
@@ -482,6 +480,10 @@ def on_complete_kitty(req):
     kitty_deck = temp["cards"]
     mylog.warning("on_complete_kitty: kitty_deck=%s", kitty_deck)
     if len(kitty_deck) == 0:
+        mylog.critical(
+            "on_complete_kitty: calling advance_mode twice. Current=%s",
+            GAME_MODES[GAME_MODE],
+        )
         advance_mode()
         advance_mode()
 
@@ -493,7 +495,7 @@ def on_complete_player_cards(req):
     :param req: Request object from callback.
     :type req: [type]
     """
-    global players_hand, players_meld_deck  # pylint: disable=global-statement, invalid-name
+    global players_hand, players_meld_deck  # pylint: disable=invalid-name
     mylog.error("In on_complete_player_cards.")
 
     temp = on_complete_common(req)
@@ -575,7 +577,7 @@ def put(data: dict, url: str, callback=None):
     if callback is not None:
         req.bind("complete", callback)
     mylog.warning("Calling PUT /api%s with data: %r", url, data)
-    req.open("PUT", url, True)
+    req.open("PUT", "/api" + url, True)
     req.set_header("content-type", AJAX_URL_ENCODING)
     # req.send({"a": a, "b":b})
     req.send(data)
@@ -596,7 +598,7 @@ def post(data: dict, url: str, callback=None):
     if callback is not None:
         req.bind("complete", callback)
     mylog.warning("Calling POST /api%s with data: %r", url, data)
-    req.open("POST", url, True)
+    req.open("POST", "/api" + url, True)
     req.set_header("content-type", AJAX_URL_ENCODING)
     req.send(data)
 
@@ -614,9 +616,18 @@ def delete(url: str, callback=None):
     if callback is not None:
         req.bind("complete", callback)
     # pass the arguments in the query string
-    req.open("DELETE", url)
+    req.open("DELETE", "/api" + url)
     req.set_header("content-type", AJAX_URL_ENCODING)
     req.send()
+
+
+def clear_globals_for_round_change():
+    global ROUND_ID, team_list, players_hand, players_meld_deck  # pylint: disable=invalid-name
+
+    ROUND_ID = ""
+    team_list.clear()
+    players_hand.clear()
+    players_meld_deck.clear()
 
 
 def populate_canvas(deck, target_canvas, deck_type="player"):
@@ -643,14 +654,14 @@ def populate_canvas(deck, target_canvas, deck_type="player"):
         flippable = False
         movable = True
         show_face = True
-        if "player" in deck_type:
+        if "player" in deck_type and GAME_MODE >= 0:
             flippable = PLAYER_DECK_CONFIG[GAME_MODE]["flippable"]
             movable = PLAYER_DECK_CONFIG[GAME_MODE]["movable"]
-        elif "kitty" in deck_type:
+        elif "kitty" in deck_type and GAME_MODE >= 0:
             show_face = OTHER_DECK_CONFIG[GAME_MODE]["show_face"]
             flippable = round_bid_winner
             movable = OTHER_DECK_CONFIG[GAME_MODE]["movable"]
-        elif "meld" in deck_type or "trick" in deck_type:
+        elif ("meld" in deck_type or "trick" in deck_type) and GAME_MODE >= 0:
             show_face = OTHER_DECK_CONFIG[GAME_MODE]["show_face"]
             flippable = OTHER_DECK_CONFIG[GAME_MODE]["flippable"]
             movable = OTHER_DECK_CONFIG[GAME_MODE]["movable"]
@@ -666,10 +677,13 @@ def populate_canvas(deck, target_canvas, deck_type="player"):
             movable=movable,
         )
         target_canvas.addObject(piece, fixed=not movable)
+        if "player" not in deck_type:
+            # print("Scaling %r", piece)
+            target_canvas.scaleElement(piece, 0.15)
         if False and "trick" in deck_type:
             # TODO: This needs to start with the player who won the bid or the last trick.
             mylog.warning("%s %s", counter, player_dict[PLAYER_ID]["name"])
-            text = TextObject(
+            text = SVG.TextObject(
                 f"{player_dict[PLAYER_ID]['name']}",
                 fontsize=24,
                 objid=f"t_{deck_type}{counter}",
@@ -764,7 +778,7 @@ def place_cards(deck, target_canvas, location="top", deck_type="player"):
     for node in [
         x for (objid, x) in target_canvas.objectDict.items() if deck_type in objid
     ]:
-        if not isinstance(node, UseObject):
+        if not isinstance(node, SVG.UseObject):
             continue
 
         mylog.warning(
@@ -790,7 +804,7 @@ def calculate_dimensions():
     """
     Run setDimensions and set global variables on demand.
     """
-    global table_width, table_height  # pylint: disable=global-statement, invalid-name
+    global table_width, table_height  # pylint: disable=invalid-name
     # Gather information about the display environment
     (table_width, table_height) = canvas.setDimensions()
 
@@ -849,6 +863,7 @@ def display_game_options():
     Conditional ladder for early game data selection. This needs to be done better and
     have new game/team/player capability.
     """
+    global GAME_MODE
     added_button = False
     xpos = 10
     ypos = 0
@@ -889,7 +904,8 @@ def display_game_options():
         # send_registration()
 
         if GAME_MODE == 0:
-            mylog.warning("KITTY_SIZE=%d", KITTY_SIZE)
+            GAME_MODE = -1
+            mylog.critical("display_game_options: KITTY_SIZE=%d", KITTY_SIZE)
             advance_mode()
 
     try:
@@ -907,7 +923,7 @@ def update_display(event=None):  # pylint: disable=unused-argument
     :param event: The event object passed in during callback, defaults to None
     :type event: [type], optional
     """
-    global GAME_MODE  # pylint: disable=global-statement
+    global GAME_MODE
     mode = GAME_MODES[GAME_MODE]
     mylog.error("Entering update_display. (mode=%s)", mode)
     calculate_dimensions()
@@ -969,7 +985,7 @@ def clear_display(event=None):  # pylint: disable=unused-argument
     :param event: The event object passed in during callback, defaults to None
     :type event: Event(?), optional
     """
-    global button_advance_mode, canvas  # pylint: disable=global-statement, invalid-name
+    global button_advance_mode, canvas  # pylint: disable=invalid-name
     mode = GAME_MODES[GAME_MODE]
     mylog.error("Entering clear_display (mode=%s)", mode)
     try:
@@ -1111,22 +1127,41 @@ def advance_mode(event=None):  # pylint: disable=unused-argument
     :param event: The event object passed in during callback, defaults to None
     :type event: [type], optional
     """
-    global GAME_MODE  # pylint: disable=global-statement
+    mylog.error("advance_mode: Calling API (current mode=%s)", GAME_MODES[GAME_MODE])
+    put({}, f"/game/{GAME_ID}?state=true", advance_mode_callback)
+
+
+def advance_mode_callback(req):
+    """
+    Routine to capture the response of the server when advancing the game mode.
+
+    :param req:   The request response passed in during callback
+    :type req:    Request
+    """
+    global GAME_MODE
     mylog.error(
-        "Entering advance_mode (mode=%s->%s)",
-        GAME_MODES[GAME_MODE],
-        GAME_MODES[(GAME_MODE + 1) % len(GAME_MODES)],
+        "Entering advance_mode_callback (current mode=%s)", GAME_MODES[GAME_MODE]
     )
-    GAME_MODE = (GAME_MODE + 1) % len(GAME_MODES)
-    # Skip over 'choose game & player' mode when already playing a game.
-    if GAME_MODE == 0:
-        # TODO: Close out current round and...
-        # TODO: Create new round & deal cards...
-        GAME_MODE += 1
-    try:
-        button_advance_mode.label.textContent = GAME_MODES[GAME_MODE].capitalize()
-    except AttributeError:
-        pass
+    if req.status not in [200, 0]:
+        return
+
+    if "Round" in req.text and "started" in req.text:
+        mylog.error("Starting new round.")
+        GAME_MODE = 0
+        clear_globals_for_round_change()
+        get(f"/player/{PLAYER_ID}/hand", on_complete_player_cards)
+
+        display_game_options()
+        return
+
+    mylog.error("req.text=%s", req.text)
+    data = json.loads(req.text)
+    mylog.error("data=%r", data)
+    GAME_MODE = data["state"]
+
+    mylog.error(
+        "Leaving advance_mode_callback (current mode=%s)", GAME_MODES[GAME_MODE]
+    )
     clear_display()
 
 

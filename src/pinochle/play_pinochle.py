@@ -42,8 +42,8 @@ def submit_bid(round_id: str, player_id: str, bid: int):
     """
     # print(f"\nround_id={round_id}, player_id={player_id}")
     # Get the round requested
-    a_round: dict = utils.query_round(round_id)
-    player: dict = utils.query_player(player_id=player_id)
+    a_round: dict = utils.query_round(str(round_id))
+    player: dict = utils.query_player(str(player_id))
 
     # Did we find a round?
     if a_round is None or a_round == {}:
@@ -71,8 +71,8 @@ def set_trump(round_id: str, player_id: str, trump: str):
     """
     # print(f"\nround_id={round_id}, player_id={player_id}")
     # Get the round requested
-    a_round: dict = utils.query_round(round_id)
-    player: dict = utils.query_player(player_id=player_id)
+    a_round: dict = utils.query_round(str(round_id))
+    player: dict = utils.query_player(str(player_id))
 
     # Did we find a round?
     if a_round is None or a_round == {}:

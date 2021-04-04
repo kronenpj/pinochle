@@ -31,8 +31,7 @@ def read_all():
 
     # Serialize the data for the response
     rt_schema = RoundTeamSchema(many=True)
-    data = rt_schema.dump(round_teams)
-    return data
+    return rt_schema.dump(round_teams)
 
 
 # TODO: This appears to be unused and unneeded.
@@ -51,9 +50,7 @@ def read_one(round_id: str):
     if a_round is not None:
         # Serialize the data for the response
         data = {"round_id": round_id}
-        temp = list()
-        for _, team in enumerate(a_round):
-            temp.append(str(team.team_id))
+        temp = [str(team.team_id) for _, team in enumerate(a_round)]
         data["team_ids"] = temp
         return data, 200
 
@@ -82,9 +79,7 @@ def read(round_id: str, team_id: str):
         if team_cards is not None:
             # Serialize the data for the response
             data = {"round_id": round_id, "team_id": team_id}
-            temp = list()
-            for _, team_cards in enumerate(team_cards):
-                temp.append(team_cards)
+            temp = [team_cards for _, team_cards in enumerate(team_cards)]
             data["team_cards"] = temp
             return data
     except sqlalchemy.orm.exc.NoResultFound:
@@ -243,7 +238,7 @@ def _update_data(round_id: str, data: dict):
     update_round = RoundTeam.query.filter(RoundTeam.round_id == round_id).one_or_none()
 
     # Did we find an existing roundteam record?
-    if update_round is not None or update_round == {}:
+    if update_round is None or update_round == {}:
         # Otherwise, nope, didn't find one
         abort(404, f"Round Id {round_id} not found.")
 

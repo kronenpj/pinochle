@@ -20,7 +20,7 @@ def read(round_id: str):
     :return:            list of cards in the kitty or None
     """
     # Build the initial query
-    a_round = utils.query_round(round_id)
+    a_round = utils.query_round(str(round_id))
 
     # Did we find a round?
     if a_round is not None:
@@ -32,10 +32,8 @@ def read(round_id: str):
         cards = utils.query_hand_list(hand_id)
 
         # Serialize the data for the response
-        data = dict()
-        temp = list()
-        for _, card in enumerate(cards):
-            temp.append(card.card)
+        data = {}
+        temp = [card.card for _, card in enumerate(cards)]
         data["cards"] = temp
         return data
 
@@ -55,7 +53,7 @@ def delete(round_id: str):
     if round_id is not None:
         # Retrieve the hand_id from the returned data.
         round_schema = RoundSchema()
-        a_round = utils.query_round(round_id)
+        a_round = utils.query_round(str(round_id))
         temp_hand_data = round_schema.dump(a_round)
         if len(temp_hand_data) == 0:
             return

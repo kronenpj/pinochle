@@ -4,9 +4,11 @@ game data
 """
 from flask import abort, make_response
 
+from . import round_
 from .models import utils
 from .models.core import db
 from .models.game import GameSchema
+from .static.constants import GAME_MODES
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member
@@ -25,8 +27,7 @@ def read_all():
 
     # Serialize the data for the response
     game_schema = GameSchema(many=True)
-    data = game_schema.dump(games)
-    return data
+    return game_schema.dump(games)
 
 
 def read_one(game_id: str):
@@ -41,14 +42,13 @@ def read_one(game_id: str):
     game = utils.query_game(game_id=game_id)
 
     # Did we find a game?
-    if game is not None:
-        # Serialize the data for the response
-        game_schema = GameSchema()
-        data = game_schema.dump(game)
-        return data
+    if game is None:
+        # Otherwise, nope, didn't find that game
+        abort(404, f"Game not found for Id: {game_id}")
 
-    # Otherwise, nope, didn't find that game
-    abort(404, f"Game not found for Id: {game_id}")
+    # Serialize the data for the response
+    game_schema = GameSchema()
+    return game_schema.dump(game)
 
 
 def create(kitty_size=0):
@@ -76,15 +76,34 @@ def create(kitty_size=0):
     return data, 201
 
 
-def update(game_id: str, kitty_size: int):
+def update(game_id: str, kitty_size=None, state=None):
     """
     This function updates an existing game in the game structure
 
     :param game_id:     Id of the game to update in the game structure
     :param kitty_size:  Size of the new kitty.
-    :return:            Updated record.
+    :type kitty_size:   int
+    :param state:       Updated state.
+    :type state:        boolean
+    :return:            Updated / new record.
     """
-    return _update_data(game_id, {"kitty_size": kitty_size})
+    if kitty_size:
+        return _update_data(game_id, {"kitty_size": kitty_size})
+    if state:
+        game = utils.query_game(game_id=game_id)
+        current_state = game.state
+        new_state = current_state + 1
+        if new_state < len(GAME_MODES):
+            return _update_data(game_id, {"state": new_state})
+
+        new_state = 0
+        # Reset the game state
+        _update_data(game_id, {"state": new_state})
+
+        # Create and start a new round
+        current_round = utils.query_gameround_for_game(game.game_id)
+        # print(f"current_round is: {type(current_round)}")
+        return round_.new_round(game_id, str(current_round.round_id))
 
 
 def _update_data(game_id: str, data: dict):

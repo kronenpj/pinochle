@@ -226,7 +226,7 @@ def test_round_score_meld_hand_with_trump(app):
         print(f"t_score={t_score}")
 
 
-def test_game_round_start_no_cards(app):
+def test_game_round_start_no_teams(app):
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/round/{round_id}/start' page is requested (POST)
@@ -247,9 +247,8 @@ def test_game_round_start_no_cards(app):
 
     with app.test_client() as test_client:
         # Attempt to access the get round api
-        with pytest.raises(AssertionError):
-            response = test_client.post(f"/api/round/{round_id}/start")
-            assert response.status == "404 NOT FOUND"
+        response = test_client.post(f"/api/round/{round_id}/start")
+        assert response.status == "409 CONFLICT"
         # response_str = response.get_data(as_text=True)
         # assert f"Round {round_id} not found." in response_str
 

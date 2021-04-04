@@ -25,8 +25,7 @@ def read_all():
 
     # Serialize the data for the response
     team_schema = TeamPlayersSchema(many=True)
-    data = team_schema.dump(teams)
-    return data
+    return team_schema.dump(teams)
 
 
 def read_one(team_id: str):
@@ -48,11 +47,8 @@ def read_one(team_id: str):
     # Did we find a team?
     if team is not None and team != []:
         # Serialize the data for the response
-        data = {"team_id": team_id}
-        data["team_name"] = team_info.name
-        temp = list()
-        for _, one_team in enumerate(team):
-            temp.append(one_team.player_id)
+        data = {"team_id": team_id, "team_name": team_info.name}
+        temp = [one_team.player_id for _, one_team in enumerate(team)]
         data["player_ids"] = temp
         return data, 200
 

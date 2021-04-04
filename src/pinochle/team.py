@@ -26,8 +26,7 @@ def read_all():
 
     # Serialize the data for the response
     team_schema = TeamSchema(many=True)
-    data = team_schema.dump(teams)
-    return data
+    return team_schema.dump(teams)
 
 
 def read_one(team_id: str):
@@ -50,8 +49,7 @@ def read_one(team_id: str):
 
         # Serialize the data for the response
         team_schema = TeamSchema()
-        data = team_schema.dump(team)
-        return data
+        return team_schema.dump(team)
 
     # Otherwise, nope, didn't find that team
     abort(404, f"Team not found for Id: {team_id}")

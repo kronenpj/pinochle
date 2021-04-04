@@ -4,10 +4,11 @@ round data
 """
 
 import json
+import uuid
 
 from flask import abort, make_response
 
-from . import gameround, play_pinochle, player, score_meld, score_tricks
+from . import gameround, play_pinochle, player, roundteams, score_meld, score_tricks
 from .cards import utils as card_utils
 from .cards.const import SUITS
 from .cards.deck import PinochleDeck
@@ -35,8 +36,7 @@ def read_all():
 
     # Serialize the data for the response
     round_schema = RoundSchema(many=True)
-    data = round_schema.dump(rounds)
-    return data
+    return round_schema.dump(rounds)
 
 
 def read_one(round_id: str):
@@ -51,14 +51,13 @@ def read_one(round_id: str):
     a_round = utils.query_round(round_id)
 
     # Did we find a round?
-    if a_round is not None:
-        # Serialize the data for the response
-        round_schema = RoundSchema()
-        data = round_schema.dump(a_round)
-        return data
+    if a_round is None:
+        # Otherwise, nope, didn't find that round
+        abort(404, f"Round not found for Id: {round_id}")
 
-    # Otherwise, nope, didn't find that round
-    abort(404, f"Round not found for Id: {round_id}")
+    # Serialize the data for the response
+    round_schema = RoundSchema()
+    return round_schema.dump(a_round)
 
 
 def create(game_id: str):
@@ -73,27 +72,27 @@ def create(game_id: str):
     existing_game = utils.query_game(game_id)
 
     # Did we find an existing round?
-    if existing_game is not None:
-        # Create a round instance using the schema and the passed in round
-        schema = RoundSchema()
-        new_round = schema.load({}, session=db.session)
-        # TODO: Find more appropriate way to declare minimum bid.
-        new_round.bid = 20
+    if existing_game is None:
+        abort(400, f"Counld not create new round for game {game_id}.")
 
-        # Add the round to the database
-        db.session.add(new_round)
-        db.session.commit()
+    # Create a round instance using the schema and the passed in round
+    schema = RoundSchema()
+    _round = schema.load({}, session=db.session)
+    # TODO: Find more appropriate way to declare minimum bid.
+    _round.bid = 20
 
-        # Serialize and return the newly created round in the response
-        data = schema.dump(new_round)
+    # Add the round to the database
+    db.session.add(_round)
+    db.session.commit()
 
-        round_id = data["round_id"]
+    # Serialize and return the newly created round in the response
+    data = schema.dump(_round)
 
-        # Also insert a record into the game_round table
-        # print(f"game_id={game_id} round_id={round_id}")
-        return gameround.create(game_id=game_id, round_id={"round_id": round_id})
+    round_id = data["round_id"]
 
-    abort(400, f"Counld not create new round for game {game_id}.")
+    # Also insert a record into the game_round table
+    # print(f"game_id={game_id} round_id={round_id}")
+    return gameround.create(game_id=game_id, round_id={"round_id": round_id})
 
 
 def update(round_id: str, a_round: dict):
@@ -157,19 +156,16 @@ def delete(game_id: str, round_id: str):
     g_round = gameround.read_one(game_id=game_id, round_id=round_id)
 
     # Did we find a game-round?
-    if g_round is not None:
-        gameround.delete(game_id=game_id, round_id=round_id)
+    if g_round is None or a_round is None:
+        # Otherwise, nope, didn't find that round
+        abort(404, f"Round not found for Id: {round_id}")
 
-    # Did we find a round?
-    if a_round is not None:
-        db_session = db.session()
-        local_object = db_session.merge(a_round)
-        db_session.delete(local_object)
-        db_session.commit()
-        return make_response(f"Round {round_id} deleted", 200)
-
-    # Otherwise, nope, didn't find that round
-    abort(404, f"Round not found for Id: {round_id}")
+    gameround.delete(game_id=game_id, round_id=round_id)
+    db_session = db.session()
+    local_object = db_session.merge(a_round)
+    db_session.delete(local_object)
+    db_session.commit()
+    return make_response(f"Round {round_id} deleted", 200)
 
 
 def start(round_id: str):
@@ -193,7 +189,7 @@ def start(round_id: str):
     round_t: list = utils.query_roundteam_list(round_id)
 
     # Did we find one or more round-team entries?
-    if round_t is None or round_t == {}:
+    if round_t is None or round_t == []:
         abort(409, f"No teams found for round {round_id}.")
 
     # Retrieve the hand_id for the kitty.
@@ -210,20 +206,17 @@ def start(round_id: str):
     # Collect the individual players.
     player_hand_id = {}
     for team_id in teams:
-        team_temp: dict = utils.query_teamplayer_list(team_id)
+        team_temp: list = utils.query_teamplayer_list(team_id)
         for team_info in team_temp:
-            player_hand_id[str(team_info.player_id)] = ""
-
-    # Associate the player with that player's hand.
-    for player_id in player_hand_id:
-        player_temp: dict = utils.query_player(player_id=player_id)
-        player_hand_id[player_id] = str(player_temp.hand_id)
+            # Generate new hand IDs.
+            new_hand_id = str(uuid.uuid4())
+            player_hand_id[str(team_info.player_id)] = new_hand_id
+            player.update(team_info.player_id, {"hand_id": new_hand_id})
 
     # print(f"kitty={kitty}")
     # print(f"team_hand_id={team_hand_id}")
     # print(f"player_hand_id={player_hand_id}\n")
 
-    assert len(list(player_hand_id.keys())) == 4
     # print(f"player_hand_ids: {list(player_hand_id.keys())}")
     # Time to deal the cards.
     play_pinochle.deal_pinochle(
@@ -288,3 +281,20 @@ def score_hand_meld(round_id: str, player_id: str, cards: str):
 
     # print(f"score_hand_meld: score={score}")
     return make_response(json.dumps({"score": score}), 200)
+
+
+def new_round(game_id, current_round):
+    # Deactivate soon-to-be previous round.
+    prev_gameround = utils.query_gameround(game_id, current_round)
+    gameround.update(game_id, prev_gameround.round_id, {"active_flag": False})
+
+    # Create new round and gameround
+    temp_gameround, __ = create(game_id)
+    # Obtain the new round's ID.
+    _round_id = temp_gameround["round_id"]
+    cur_roundteam = utils.query_roundteam_list(current_round)
+    # Tie the current teams to the new round.
+    roundteams.create(_round_id, [str(t.team_id) for t in cur_roundteam])
+
+    # Start the new round.
+    return start(_round_id)

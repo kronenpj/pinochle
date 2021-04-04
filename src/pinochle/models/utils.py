@@ -128,14 +128,14 @@ def query_gameround(game_id: str, round_id: str) -> Dict:
     return temp
 
 
-def query_round_list_for_game(game_id: str) -> Dict:
+def query_gameround_for_game(game_id: str) -> GameRound:
     """
     Retrieve information about the active round for a given game.
 
     :param game_id: [description]
     :type game_id: str
     :return: [description]
-    :rtype: List[Dict]
+    :rtype: GameRound
     """
     temp = GameRound.query.filter(
         GameRound.game_id == game_id, GameRound.active_flag is True
@@ -147,7 +147,7 @@ def query_round_list_for_game(game_id: str) -> Dict:
             GameRound.game_id == game_id, GameRound.active_flag == 1
         ).one_or_none()
 
-    # print(f"round_list={temp}")
+    # print(f"gameround={temp}")
     return temp
 
 

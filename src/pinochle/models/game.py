@@ -22,6 +22,7 @@ class Game(db.Model):
         unique=True,
     )
     kitty_size = db.Column(db.Integer, default=0)
+    state = db.Column(db.Integer, default=0)
     timestamp = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )

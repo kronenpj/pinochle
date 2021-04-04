@@ -7,13 +7,15 @@ import json
 import uuid
 
 import pytest
-from pinochle import game
+from pinochle import game, gameround, roundteams
 from pinochle.models.core import db
+from pinochle.static.constants import GAME_MODES
 
 # pylint: disable=wrong-import-order
 from werkzeug import exceptions
 
 import test_utils
+from random import choice, shuffle
 
 # from pinochle.models.utils import dump_db
 
@@ -42,6 +44,7 @@ def test_game_create(app):
     assert db_response is not None
     assert game_id == db_response.get("game_id")
     assert db_response.get("kitty_size") == 4
+    assert db_response.get("state") == 0
 
 
 def test_game_delete(app):
@@ -68,7 +71,7 @@ def test_game_delete(app):
         assert db_response is not None
 
 
-def test_game_update(app):
+def test_game_update_kitty_size(app):
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/game/{game_id}' page is requested (PUT)
@@ -90,6 +93,78 @@ def test_game_update(app):
     assert new_kitty == db_response.get("kitty_size")
 
 
+def test_game_update_state(app):
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/game/{game_id}?state' page is requested (PUT)
+    THEN check that the response is valid
+    """
+    # Create a new game
+    game_id = test_utils.create_game(0)
+
+    # Verify the database agrees.
+    db_response = game.read_one(game_id)
+    initial_state = db_response.get("state")
+    assert initial_state == 0
+    state = initial_state + 1
+
+    with app.test_client() as test_client:
+        # Attempt to access the delete game api
+        response = test_client.put(f"/api/game/{game_id}?state=true")
+        assert response.status == "200 OK"
+
+    # Verify the database agrees.
+    db_response = game.read_one(game_id)
+    assert db_response is not None
+    assert game_id == db_response.get("game_id")
+    assert state == db_response.get("state")
+
+
+def test_game_update_state_wrap(app):
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/game/{game_id}?state' page is requested (PUT)
+    THEN check that the response is valid
+    """
+    # Create a new game & round
+    game_id = test_utils.create_game(0)
+    round_id = test_utils.create_round(game_id)
+
+    # Create players players
+    player_ids = []
+    for player_name in test_utils.PLAYER_NAMES:
+        player_id = test_utils.create_player(player_name)
+        player_ids.append(player_id)
+
+    # Populate teams with players
+    team_ids = []
+    for idx, __ in enumerate(test_utils.TEAM_NAMES):
+        team_id = test_utils.create_team(choice(test_utils.TEAM_NAMES))
+        team_ids.append(team_id)
+        test_utils.create_teamplayer(team_id, player_ids[0 + idx * 2])
+        test_utils.create_teamplayer(team_id, player_ids[1 + idx * 2])
+
+    # Create the roundteam association for the teams.
+    roundteams.create(round_id, teams=team_ids)
+
+    # Set state to the last one available.
+    test_utils.set_game_state(game_id, len(GAME_MODES))
+
+    # Verify the database agrees.
+    db_response = game.read_one(game_id)
+    initial_state = db_response.get("state")
+    assert len(GAME_MODES) == initial_state
+
+    with app.test_client() as test_client:
+        # Attempt to access the delete game api
+        response = test_client.put(f"/api/game/{game_id}?state=true")
+        assert response.status == "200 OK"
+
+    # Verify the database agrees.
+    db_response = game.read_one(game_id)
+    assert db_response is not None
+    assert game_id == db_response.get("game_id")
+    assert db_response.get("state") == 0
 
 
 def test_game_update_invalid_game(app):

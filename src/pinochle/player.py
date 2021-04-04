@@ -28,8 +28,7 @@ def read_all():
 
     # Serialize the data for the response
     player_schema = PlayerSchema(many=True)
-    data = player_schema.dump(players)
-    return data
+    return player_schema.dump(players)
 
 
 def read_one(player_id: str):
@@ -50,8 +49,7 @@ def read_one(player_id: str):
     if player is not None:
         # Serialize the data for the response
         player_schema = PlayerSchema()
-        data = player_schema.dump(player)
-        return data
+        return player_schema.dump(player)
 
     # Otherwise, nope, didn't find that player
     abort(404, f"Player not found for Id: {player_id}")
@@ -77,8 +75,7 @@ def read_hand(player_id: str):
         # print(f"read_hand: player_hand={player_hand}")
         # Serialize the data for the response
         hand_schema = HandSchema(many=True)
-        data = hand_schema.dump(player_hand)
-        return data
+        return hand_schema.dump(player_hand)
 
     # Otherwise, nope, didn't find that player
     abort(404, f"Player not found for Id: {player_id}")
@@ -153,9 +150,9 @@ def deletecard(player_id: str, card: dict):
     if player is None:
         return
 
-    hand_id = str(player.hand_id)
-
     if player.hand_id is not None and card is not None:
+        hand_id = str(player.hand_id)
+
         # Delete the card from the selected hand in the database.
         return hand.deletecard(hand_id, card)
 

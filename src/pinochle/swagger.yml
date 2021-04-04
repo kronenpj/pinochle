@@ -111,6 +111,10 @@ paths:
           in: query
           type: integer
           description: Change the number of cards to allocate to the kitty.
+        - name: state
+          in: query
+          type: boolean
+          description: Increment the state and create new round when appropriate.
       responses:
         200:
           description: Successfully updated game

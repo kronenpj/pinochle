@@ -3,15 +3,11 @@ Routines commonly used in tests
 
 """
 import regex
-from pinochle import (
-    game,
-    player,  # gameround,; roundkitty,; roundteams,
-    round_,
-    team,
-    teamplayers,
-)
+from pinochle import game, gameround, player, round_, team, teamplayers
+from pinochle.models.game import Game
 from pinochle.models.player import Player
 from pinochle.models.roundteam import RoundTeam
+from pinochle.models.game import Game
 
 UUID_REGEX_TEXT = r"^([a-f\d]{8}(-[a-f\d]{4}){3}-[a-f\d]{12}?)$"
 UUID_REGEX = regex.compile(UUID_REGEX_TEXT)
@@ -39,6 +35,23 @@ def create_game(kitty_size=0) -> str:
     assert UUID_REGEX.match(game_id)
 
     return game_id
+
+
+def set_game_state(game_id: str, state=0):
+    """
+    Set the state of a game in the database.
+
+    :param game_id:   Id of the game to update.
+    :type game_id:    str
+    :param state:     Number of cards to allocate to the kitty.
+    :type state:      int
+    :return:          UUID of the created game (game_id)
+    :rtype:           str
+    """
+    # Create a new game
+    game._update_data(game_id, {"state": state})  # pylint: disable=protected-access
+    game_ = query_game_data(game_id)
+    assert game_.state == state
 
 
 def create_round(game_id: str) -> str:
@@ -113,13 +126,13 @@ def query_team_hand_id(round_id: str, team_id: str) -> str:
         RoundTeam.hand_id is not None,
     ).one_or_none()
 
-    if rt_data is not None:
-        # Extract the properly formatted UUID.
-        hand_id = str(rt_data.hand_id)
+    if rt_data is None:
+        return None
 
-        return hand_id
+    # Extract the properly formatted UUID.
+    hand_id = str(rt_data.hand_id)
 
-    return None
+    return hand_id
 
 
 def query_player_hand_id(player_id: str) -> str:
@@ -128,10 +141,17 @@ def query_player_hand_id(player_id: str) -> str:
         Player.player_id == player_id, Player.hand_id is not None,
     ).one_or_none()
 
-    if rt_data is not None:
-        # Extract the properly formatted UUID.
-        hand_id = str(rt_data.hand_id)
+    if rt_data is None:
+        return None
+    # Extract the properly formatted UUID.
+    hand_id = str(rt_data.hand_id)
 
-        return hand_id
+    return hand_id
 
-    return None
+
+def query_game_data(game_id: str) -> str:
+    # Build the query to extract the hand_id
+    rt_data = Game.query.filter(Game.game_id == game_id).one_or_none()
+
+    return rt_data
+
