@@ -5,6 +5,7 @@ round data
 
 import json
 import uuid
+from typing import List
 
 from flask import abort, make_response
 
@@ -14,7 +15,10 @@ from .cards.const import SUITS
 from .cards.deck import PinochleDeck
 from .models import utils
 from .models.core import db
-from .models.round_ import RoundSchema
+from .models.gameround import GameRound
+from .models.player import Player
+from .models.round_ import Round, RoundSchema
+from .models.roundteam import RoundTeam
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member
@@ -28,9 +32,9 @@ def read_all():
     :return:        json string of list of rounds
     """
     # Create the list of round from our data
-    rounds = utils.query_round_list()
+    rounds: List[Round] = utils.query_round_list()
 
-    if len(rounds) == 0:
+    if not rounds:
         # Otherwise, nope, didn't find any players
         abort(404, "No Rounds defined in database")
 
@@ -179,7 +183,7 @@ def start(round_id: str):
     """
     # print(f"\nround_id={round_id}")
     # Get the round requested
-    a_round: dict = utils.query_round(round_id)
+    a_round: Round = utils.query_round(round_id)
 
     # Did we find a round?
     if a_round is None or a_round == {}:
@@ -238,8 +242,8 @@ def score_hand_meld(round_id: str, player_id: str, cards: str):
     """
     # print(f"\nscore_hand_meld: round_id={round_id}")
     # Get the round requested
-    a_round: dict = utils.query_round(round_id)
-    a_player: dict = utils.query_player(player_id)
+    a_round: Round = utils.query_round(round_id)
+    a_player: Player = utils.query_player(player_id)
 
     # Did we find a round?
     if a_round is None or a_round == {}:
@@ -250,7 +254,7 @@ def score_hand_meld(round_id: str, player_id: str, cards: str):
         abort(409, f"No player found for {player_id}.")
 
     # Associate the player with that player's hand.
-    player_temp: dict = utils.query_player(player_id=player_id)
+    player_temp: Player = utils.query_player(player_id=player_id)
     player_hand_id = str(player_temp.hand_id)
     player_hand = utils.query_hand_list(player_hand_id)
     player_hand_list = [x.card for x in player_hand]
@@ -285,14 +289,14 @@ def score_hand_meld(round_id: str, player_id: str, cards: str):
 
 def new_round(game_id, current_round):
     # Deactivate soon-to-be previous round.
-    prev_gameround = utils.query_gameround(game_id, current_round)
+    prev_gameround: GameRound = utils.query_gameround(game_id, current_round)
     gameround.update(game_id, prev_gameround.round_id, {"active_flag": False})
 
     # Create new round and gameround
     temp_gameround, __ = create(game_id)
     # Obtain the new round's ID.
     _round_id = temp_gameround["round_id"]
-    cur_roundteam = utils.query_roundteam_list(current_round)
+    cur_roundteam: List[RoundTeam] = utils.query_roundteam_list(current_round)
     # Tie the current teams to the new round.
     roundteams.create(_round_id, [str(t.team_id) for t in cur_roundteam])
 

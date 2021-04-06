@@ -19,26 +19,29 @@ def read(round_id: str):
     :param round_id:    Id of round to find
     :return:            list of cards in the kitty or None
     """
+    # Did we find a round?
+    if round_id is None or round_id == "":
+        return None
+
     # Build the initial query
     a_round = utils.query_round(str(round_id))
 
     # Did we find a round?
-    if a_round is not None:
-        # Retrieve the hand_id from the returned data.
-        round_schema = RoundSchema()
-        temp_hand_data = round_schema.dump(a_round)
-        hand_id = temp_hand_data["hand_id"]
+    if a_round is None:
+        return None
 
-        cards = utils.query_hand_list(hand_id)
+    # Retrieve the hand_id from the returned data.
+    round_schema = RoundSchema()
+    temp_hand_data = round_schema.dump(a_round)
+    hand_id = temp_hand_data["hand_id"]
 
-        # Serialize the data for the response
-        data = {}
-        temp = [card.card for _, card in enumerate(cards)]
-        data["cards"] = temp
-        return data
+    cards = utils.query_hand_list(hand_id)
 
-    # Otherwise, nope, didn't find any rounds
-    return None
+    # Serialize the data for the response
+    data = {}
+    temp = [card.card for _, card in enumerate(cards)]
+    data["cards"] = temp
+    return data
 
 
 def delete(round_id: str):

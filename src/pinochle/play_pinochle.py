@@ -6,7 +6,7 @@ from flask import abort
 from . import hand, round_
 from .cards.const import SUITS
 from .cards.utils import convert_to_svg_names, deal_hands
-from .models import utils
+from .models import utils, Round, Player
 
 
 def deal_pinochle(player_ids: list, kitty_len: int = 0, kitty_id: str = None) -> None:
@@ -26,7 +26,7 @@ def deal_pinochle(player_ids: list, kitty_len: int = 0, kitty_id: str = None) ->
     if kitty_len > 0 and kitty_id is not None:
         hand.addcards(hand_id=kitty_id, cards=convert_to_svg_names(kitty_deck))
     for index, __ in enumerate(player_ids):
-        player_info = utils.query_player(player_ids[index])
+        player_info: Player = utils.query_player(player_ids[index])
         hand_id = str(player_info.hand_id)
         hand.addcards(hand_id=hand_id, cards=convert_to_svg_names(hand_decks[index]))
 
@@ -42,8 +42,8 @@ def submit_bid(round_id: str, player_id: str, bid: int):
     """
     # print(f"\nround_id={round_id}, player_id={player_id}")
     # Get the round requested
-    a_round: dict = utils.query_round(str(round_id))
-    player: dict = utils.query_player(str(player_id))
+    a_round: Round = utils.query_round(str(round_id))
+    player: Player = utils.query_player(str(player_id))
 
     # Did we find a round?
     if a_round is None or a_round == {}:
@@ -71,8 +71,8 @@ def set_trump(round_id: str, player_id: str, trump: str):
     """
     # print(f"\nround_id={round_id}, player_id={player_id}")
     # Get the round requested
-    a_round: dict = utils.query_round(str(round_id))
-    player: dict = utils.query_player(str(player_id))
+    a_round: Round = utils.query_round(str(round_id))
+    player: Player = utils.query_player(str(player_id))
 
     # Did we find a round?
     if a_round is None or a_round == {}:

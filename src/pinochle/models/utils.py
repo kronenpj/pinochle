@@ -22,7 +22,7 @@ def dump_db():  # pragma: no cover
             print("%s\n" % line)
 
 
-def query_game(game_id: str) -> Dict:
+def query_game(game_id: str) -> Game:
     """
     Retrieve information about the specified game.
 
@@ -31,22 +31,20 @@ def query_game(game_id: str) -> Dict:
     :return: [description]
     :rtype: Dict
     """
-    temp = Game.query.filter(Game.game_id == game_id).one_or_none()
-    return temp
+    return Game.query.filter(Game.game_id == game_id).one_or_none()
 
 
-def query_game_list() -> List[Dict]:
+def query_game_list() -> List[Game]:
     """
     Retrieve list of games in the database.
 
     :return: [description]
     :rtype: List[Dict]
     """
-    temp = Game.query.order_by(Game.timestamp.desc()).all()
-    return temp
+    return Game.query.order_by(Game.timestamp.desc()).all()
 
 
-def query_hand_list(hand_id: str) -> List[Dict]:
+def query_hand_list(hand_id: str) -> List[Hand]:
     """
     Retrieve list of cards contained in the specified hand.
 
@@ -55,11 +53,10 @@ def query_hand_list(hand_id: str) -> List[Dict]:
     :return: [description]
     :rtype: List[Dict]
     """
-    temp = Hand.query.filter(Hand.hand_id == hand_id).all()
-    return temp
+    return Hand.query.filter(Hand.hand_id == hand_id).all()
 
 
-def query_hand_card(hand_id: str, card: str) -> Dict:
+def query_hand_card(hand_id: str, card: str) -> Hand:
     """
     Query whether the specified hand contains the specified card.
 
@@ -70,11 +67,10 @@ def query_hand_card(hand_id: str, card: str) -> Dict:
     :return: [description]
     :rtype: Dict
     """
-    temp = Hand.query.filter(Hand.hand_id == hand_id, Hand.card == card).one_or_none()
-    return temp
+    return Hand.query.filter(Hand.hand_id == hand_id, Hand.card == card).one_or_none()
 
 
-def query_player(player_id: str) -> Dict:
+def query_player(player_id: str) -> Player:
     """
     Retrieve information about the specified player.
 
@@ -83,22 +79,20 @@ def query_player(player_id: str) -> Dict:
     :return: [description]
     :rtype: Dict
     """
-    temp = Player.query.filter(Player.player_id == player_id).one_or_none()
-    return temp
+    return Player.query.filter(Player.player_id == player_id).one_or_none()
 
 
-def query_player_list() -> List[Dict]:
+def query_player_list() -> List[Player]:
     """
     Retrieve information about all the players.
 
     :return: [description]
     :rtype: List[Dict]
     """
-    temp = Player.query.order_by(Player.name).all()
-    return temp
+    return Player.query.order_by(Player.name).all()
 
 
-def query_round(round_id: str) -> Dict:
+def query_round(round_id: str) -> Round:
     """
     Retrieve information about the specified round.
 
@@ -107,11 +101,10 @@ def query_round(round_id: str) -> Dict:
     :return: [description]
     :rtype: Dict
     """
-    temp = Round.query.filter(Round.round_id == round_id).one_or_none()
-    return temp
+    return Round.query.filter(Round.round_id == round_id).one_or_none()
 
 
-def query_gameround(game_id: str, round_id: str) -> Dict:
+def query_gameround(game_id: str, round_id: str) -> GameRound:
     """
     Retrieve information about the specified game/round.
 
@@ -122,10 +115,9 @@ def query_gameround(game_id: str, round_id: str) -> Dict:
     :return: [description]
     :rtype: Dict
     """
-    temp = GameRound.query.filter(
+    return GameRound.query.filter(
         GameRound.game_id == game_id, GameRound.round_id == round_id
     ).one_or_none()
-    return temp
 
 
 def query_gameround_for_game(game_id: str) -> GameRound:
@@ -151,29 +143,27 @@ def query_gameround_for_game(game_id: str) -> GameRound:
     return temp
 
 
-def query_gameround_list() -> List[Dict]:
+def query_gameround_list() -> List[GameRound]:
     """
     Retrieve information about all game/round.
 
     :return: [description]
     :rtype: List[Dict]
     """
-    temp = GameRound.query.order_by(GameRound.timestamp).all()
-    return temp
+    return GameRound.query.order_by(GameRound.timestamp).all()
 
 
-def query_round_list() -> List[Dict]:
+def query_round_list() -> List[Round]:
     """
     Retrieve information about all rounds.
 
     :return: [description]
     :rtype: List[Dict]
     """
-    temp = Round.query.order_by(Round.timestamp).all()
-    return temp
+    return Round.query.order_by(Round.timestamp).all()
 
 
-def query_roundteam(round_id: str, team_id: str) -> Dict:
+def query_roundteam(round_id: str, team_id: str) -> RoundTeam:
     """
     Retrieve information about a specified round/team pair.
 
@@ -184,13 +174,12 @@ def query_roundteam(round_id: str, team_id: str) -> Dict:
     :return: [description]
     :rtype: List[Dict]
     """
-    temp = RoundTeam.query.filter(
+    return RoundTeam.query.filter(
         RoundTeam.round_id == round_id, RoundTeam.team_id == team_id
     ).one_or_none()
-    return temp
 
 
-def query_roundteam_list(round_id: str) -> List[Dict]:
+def query_roundteam_list(round_id: str) -> List[RoundTeam]:
     """
     Retrieve information about the specified roundteam.
 
@@ -199,11 +188,10 @@ def query_roundteam_list(round_id: str) -> List[Dict]:
     :return: [description]
     :rtype: List[Dict]
     """
-    temp = RoundTeam.query.filter(RoundTeam.round_id == round_id).all()
-    return temp
+    return RoundTeam.query.filter(RoundTeam.round_id == round_id).all()
 
 
-def query_roundteam_with_hand(round_id: str, team_id: str) -> Dict:
+def query_roundteam_with_hand(round_id: str, team_id: str) -> RoundTeam:
     """
     Retrieve information about the specified round/team pair.
 
@@ -214,15 +202,14 @@ def query_roundteam_with_hand(round_id: str, team_id: str) -> Dict:
     :return: [description]
     :rtype: Dict
     """
-    temp = RoundTeam.query.filter(
+    return RoundTeam.query.filter(
         RoundTeam.round_id == round_id,
         RoundTeam.team_id == team_id,
         RoundTeam.hand_id is not None,
     ).one_or_none()
-    return temp
 
 
-def query_teamplayer_list(team_id: str) -> List[Dict]:
+def query_teamplayer_list(team_id: str) -> List[TeamPlayers]:
     """
     Retrieve information about the specified teamplayers.
 
@@ -231,5 +218,4 @@ def query_teamplayer_list(team_id: str) -> List[Dict]:
     :return: [description]
     :rtype: List[Dict]
     """
-    temp = TeamPlayers.query.filter(TeamPlayers.team_id == team_id).all()
-    return temp
+    return TeamPlayers.query.filter(TeamPlayers.team_id == team_id).all()

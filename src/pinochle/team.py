@@ -3,6 +3,7 @@ This is the people module and supports all the REST actions for the
 people data
 """
 
+from typing import Dict
 import sqlalchemy
 from flask import abort, make_response
 
@@ -55,7 +56,7 @@ def read_one(team_id: str):
     abort(404, f"Team not found for Id: {team_id}")
 
 
-def create(team: str):
+def create(team: Dict):
     """
     This function creates a new team in the team structure
     based on the passed in team data
