@@ -174,10 +174,9 @@ def delete(game_id: str, round_id: str):
 
 def start(round_id: str):
     """
-    This function starts a game round if all the requirements are satisfied.
+    This function starts a round if all the requirements are satisfied.
 
-    :param game_id:    Id of the game where round belongs
-    :param round_id:   Id of the round to delete
+    :param round_id:   Id of the round to commence.
     :return:           200 on successful delete, 404 if not found,
                        409 if requirements are not satisfied.
     """
@@ -224,6 +223,7 @@ def start(round_id: str):
     # print(f"player_hand_ids: {list(player_hand_id.keys())}")
     # Time to deal the cards.
     play_pinochle.deal_pinochle(
+        # TODO: kitty_len needs to reflect the game setting.
         player_ids=list(player_hand_id.keys()), kitty_len=4, kitty_id=kitty
     )
 

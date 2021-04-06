@@ -429,7 +429,6 @@ def on_complete_set_playercookie(req: ajax.Ajax):
 
     request_tracker(-1)
     if req.status in [200, 0]:
-        put({}, f"/game/{g_game_id}?state=true", advance_mode_callback)
         get("/getcookie/player_id", on_complete_getcookie)
 
 
@@ -475,12 +474,16 @@ def on_complete_getcookie(req: ajax.Ajax):
             "on_complete_getcookie: Setting PLAYER_ID=%s", response_data["ident"]
         )
         get(f"/player/{g_player_id}/hand", on_complete_player_cards)
+        # FIXME: This is temporary. The server will decide when to advance the game state.
+        put({}, f"/game/{g_game_id}?state=false", advance_mode_initial_callback)
+        # FIXME: This is temporary. The server will decide when to advance the game state.
 
         # Set the TEAM_ID variable based on the player id chosen.
         for _temp in g_team_dict:
             mylog.warning("Key: %s Value: %r", _temp, g_team_dict[_temp]["player_ids"])
             if g_player_id in g_team_dict[_temp]["player_ids"]:
                 g_team_id = g_team_dict[_temp]["team_id"]
+
     display_game_options()
 
 
@@ -956,6 +959,10 @@ def update_display(event=None):  # pylint: disable=unused-argument
     mylog.error("Entering update_display. (mode=%s)", mode)
     calculate_dimensions()
 
+    # FIXME: This should not be needed.
+    if g_player_id != "" and not g_players_hand:
+        get(f"/player/{g_player_id}/hand", on_complete_player_cards)
+
     # Place the desired decks on the display.
     if not canvas.objectDict:
         if mode in ["game"] and g_game_id == "":  # Choose game, player
@@ -1048,10 +1055,11 @@ def clear_display(event=None):  # pylint: disable=unused-argument
     update_display()
 
     half_table = g_table_width / 2 - 35
-    # Update buttons
+    # Update/create buttons
     if g_game_mode > 0:  # Only display buttons when there are cards.
 
         # Button to call advance_mode on demand
+        # FIXME: This is temporary. The server will decide when to advance the game state.
         button_advance_mode = SVG.Button(
             position=(half_table - 80 * 3, -40),
             size=(70, 35),
@@ -1060,7 +1068,6 @@ def clear_display(event=None):  # pylint: disable=unused-argument
             fontsize=18,
             objid="button_advance_mode",
         )
-
         # Button to call update_display on demand
         button_refresh = SVG.Button(
             position=(half_table - 80 * 2, -40),
@@ -1173,10 +1180,13 @@ def advance_mode(event=None):  # pylint: disable=unused-argument
     :type event: [type], optional
     """
     mylog.error("advance_mode: Calling API (current mode=%s)", GAME_MODES[g_game_mode])
-    if g_game_id != "":
+    if g_game_id != "" and g_player_id != "":
         put({}, f"/game/{g_game_id}?state=true", advance_mode_callback, False)
+    else:
+        display_game_options()
 
 
+# FIXME: This is temporary. The server will decide when to advance the game state.
 def advance_mode_callback(req: ajax.Ajax):
     """
     Routine to capture the response of the server when advancing the game mode.
@@ -1229,7 +1239,9 @@ def advance_mode_initial_callback(req: ajax.Ajax):
         )
 
     request_tracker(-1)
-    if req.status not in [200, 0]:
+    # Handle a semi-corner case where in the middle of a round, a player loses / destroys
+    # a cookie and reloads the page.
+    if req.status not in [200, 0] or g_player_id == "":
         return
 
     mylog.warning("advance_mode_initial_callback: req.text=%s", req.text)
@@ -1243,6 +1255,7 @@ def advance_mode_initial_callback(req: ajax.Ajax):
     )
     clear_globals_for_round_change()
     clear_display()
+    # FIXME: This is temporary. The server will decide when to advance the game state.
 
 
 def sort_player_cards(event=None):  # pylint: disable=unused-argument
