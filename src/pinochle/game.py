@@ -91,9 +91,14 @@ def update(game_id: str, kitty_size=None, state=None):
         return _update_data(game_id, {"kitty_size": kitty_size})
     if state:
         game = utils.query_game(game_id=game_id)
+        if game is None:
+            abort(409)
         current_state = game.state
+        if current_state == 2 and game.kitty_size == 0:
+            current_state += 1  # advance past kitty reveal.
         new_state = current_state + 1
         if new_state < len(GAME_MODES):
+            # print(f"game.update: Returning game state(true): {game.state}")
             return _update_data(game_id, {"state": new_state})
 
         new_state = 0
@@ -103,7 +108,13 @@ def update(game_id: str, kitty_size=None, state=None):
         # Create and start a new round
         current_round = utils.query_gameround_for_game(game.game_id)
         # print(f"current_round is: {type(current_round)}")
+        # print("game.update: Returning new round state(true).")
         return round_.new_round(game_id, str(current_round.round_id))
+
+    # Send the current game state rather than advancing it.
+    game = utils.query_game(game_id=game_id)
+    # print(f"game.update: Returning game state(false): {game.state}")
+    return {"state": game.state}, 200
 
 
 def _update_data(game_id: str, data: dict):
