@@ -5,8 +5,8 @@ Module to provide constants.
 CARD_URL = "/static/playingcards.svg"
 
 # Intrinsic dimensions of the cards in the deck.
-card_width = 170  # pylint: disable=invalid-name
-card_height = 245  # pylint: disable=invalid-name
+CARD_WIDTH = 170  # pylint: disable=invalid-name
+CARD_HEIGHT = 245  # pylint: disable=invalid-name
 
 #                0      1        2           3        4       5
 GAME_MODES = ["game", "bid", "bidfinal", "reveal", "meld", "trick"]
