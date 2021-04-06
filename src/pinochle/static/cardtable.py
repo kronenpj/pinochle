@@ -4,19 +4,14 @@ In-browser script to handle the card-table user interface.
 import copy
 import json
 import logging
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import brySVG.dragcanvas as SVG  # pylint: disable=import-error
 from browser import ajax, document, html, window
+from browser.widgets.dialog import InfoDialog
 
-from constants import (
-    CARD_URL,
-    GAME_MODES,
-    OTHER_DECK_CONFIG,
-    PLAYER_DECK_CONFIG,
-    card_height,
-    card_width,
-)
+from constants import (CARD_URL, DECK_CONFIG, GAME_MODES, card_height,
+                       card_width)
 
 # pylint: disable=global-statement
 
@@ -37,7 +32,7 @@ mylog.setLevel(logging.ERROR)  # Function entry/exit
 # API "Constants"
 AJAX_URL_ENCODING = "application/x-www-form-urlencoded"
 GAME_ID = ""
-GAME_MODE = 0
+GAME_MODE: Optional[int] = None
 KITTY_SIZE = 0
 PLAYER_ID = ""
 PLAYERS = 4
@@ -52,6 +47,7 @@ players_hand: List[str] = []
 players_meld_deck: List[str] = []
 team_dict: Dict[str, str] = {}
 team_list: List[str] = []
+outstanding_requests: int = 0
 
 # Track whether this user is the round's bid winner.
 round_bid_winner = False  # pylint: disable=invalid-name
@@ -117,7 +113,7 @@ class PlayingCard(SVG.UseObject):
         :type event: Event(?), optional
         """
         mylog.error(
-            "PlayingCard.move_handler: %s, %s",
+            "Entering PlayingCard.move_handler: %s, %s",
             self.attrs["y"],
             self.style["transform"],
         )
@@ -224,7 +220,10 @@ class PlayingCard(SVG.UseObject):
         ][0]
 
         # Delete the original card's transparent hit target from the UI.
-        parent_canvas.deleteObject(self.hitTarget)
+        try:
+            parent_canvas.deleteObject(self.hitTarget)
+        except AttributeError:
+            pass
         # Delete the original card from the UI.
         parent_canvas.deleteObject(self)
         # Remove the original card from the player's hand and put it in the
@@ -279,7 +278,10 @@ def on_complete_games(req: ajax.Ajax):
     :param req: Request object from callback.
     :type req: [type]
     """
-    mylog.error("In on_complete_games.")
+    global outstanding_requests
+    mylog.error("Entering on_complete_games.")
+
+    outstanding_requests -= 1
 
     temp = on_complete_common(req)
     if temp is None:
@@ -302,9 +304,11 @@ def on_complete_rounds(req: ajax.Ajax):
     :param req: Request object from callback.
     :type req: [type]
     """
-    global ROUND_ID, team_list  # pylint: disable=invalid-name
+    global ROUND_ID, outstanding_requests, team_list  # pylint: disable=invalid-name
+    mylog.error("Entering on_complete_rounds.")
+
+    outstanding_requests -= 1
     team_list.clear()
-    mylog.error("In on_complete_rounds.")
 
     temp = on_complete_common(req)
     if temp is None:
@@ -324,9 +328,10 @@ def on_complete_teams(req: ajax.Ajax):
     :param req: Request object from callback.
     :type req: [type]
     """
-    global team_list  # pylint: disable=invalid-name
-    mylog.error("In on_complete_teams.")
+    global outstanding_requests, team_list  # pylint: disable=invalid-name
+    mylog.error("Entering on_complete_teams.")
 
+    outstanding_requests -= 1
     temp = on_complete_common(req)
     if temp is None:
         return
@@ -349,9 +354,10 @@ def on_complete_team_names(req: ajax.Ajax):
     :param req: Request object from callback.
     :type req: [type]
     """
-    global team_dict  # pylint: disable=invalid-name
-    mylog.error("In on_complete_team_names.")
+    global outstanding_requests, team_dict  # pylint: disable=invalid-name
+    mylog.error("Entering on_complete_team_names.")
 
+    outstanding_requests -= 1
     temp = on_complete_common(req)
     if temp is None:
         return
@@ -376,8 +382,10 @@ def on_complete_players(req: ajax.Ajax):
     :param req: Request object from callback.
     :type req: [type]
     """
-    mylog.error("In on_complete_players.")
+    global outstanding_requests
+    mylog.error("Entering on_complete_players.")
 
+    outstanding_requests -= 1
     temp = on_complete_common(req)
     if temp is None:
         return
@@ -395,8 +403,10 @@ def on_complete_set_gamecookie(req: ajax.Ajax):
     :param req: Request object from callback.
     :type req: [type]
     """
-    mylog.error("In on_complete_set_gamecookie.")
+    global outstanding_requests
+    mylog.error("Entering on_complete_set_gamecookie.")
 
+    outstanding_requests -= 1
     if req.status in [200, 0]:
         get("/getcookie/game_id", on_complete_getcookie)
 
@@ -408,9 +418,12 @@ def on_complete_set_playercookie(req: ajax.Ajax):
     :param req: Request object from callback.
     :type req: [type]
     """
-    mylog.error("In on_complete_set_playercookie.")
+    global outstanding_requests
+    mylog.error("Entering on_complete_set_playercookie.")
 
+    outstanding_requests -= 1
     if req.status in [200, 0]:
+        put({}, f"/game/{GAME_ID}?state=true", advance_mode_callback)
         get("/getcookie/player_id", on_complete_getcookie)
 
 
@@ -421,9 +434,10 @@ def on_complete_getcookie(req: ajax.Ajax):
     :param req: Request object from callback.
     :type req: [type]
     """
-    mylog.error("In on_complete_getcookie.")
-    global GAME_MODE, GAME_ID, PLAYER_ID, KITTY_SIZE, TEAM_ID, kitty_deck  # pylint: disable=invalid-name
+    mylog.error("Entering on_complete_getcookie.")
+    global GAME_MODE, GAME_ID, PLAYER_ID, KITTY_SIZE, TEAM_ID, kitty_deck, outstanding_requests  # pylint: disable=invalid-name
 
+    outstanding_requests -= 1
     if req.status != 200:
         return
     if req.text is None or req.text == "":
@@ -439,6 +453,8 @@ def on_complete_getcookie(req: ajax.Ajax):
         mylog.warning(
             "on_complete_getcookie: Setting GAME_ID=%s", response_data["ident"]
         )
+        put({}, f"/game/{GAME_ID}?state=false", advance_mode_initial_callback, False)
+
         try:
             KITTY_SIZE = int(game_dict[GAME_ID]["kitty_size"])
             mylog.warning("on_complete_getcookie: KITTY_SIZE=%s", KITTY_SIZE)
@@ -469,9 +485,10 @@ def on_complete_kitty(req: ajax.Ajax):
     :param req: Request object from callback.
     :type req: [type]
     """
-    global kitty_deck  # pylint: disable=invalid-name
-    mylog.error("In on_complete_kitty.")
+    global kitty_deck, outstanding_requests  # pylint: disable=invalid-name
+    mylog.error("Entering on_complete_kitty.")
 
+    outstanding_requests -= 1
     temp = on_complete_common(req)
     if temp is None:
         return
@@ -480,13 +497,6 @@ def on_complete_kitty(req: ajax.Ajax):
     kitty_deck.clear()
     kitty_deck = temp["cards"]
     mylog.warning("on_complete_kitty: kitty_deck=%s", kitty_deck)
-    if len(kitty_deck) == 0:
-        mylog.critical(
-            "on_complete_kitty: calling advance_mode twice. Current=%s",
-            GAME_MODES[GAME_MODE],
-        )
-        advance_mode()
-        advance_mode()
 
 
 def on_complete_player_cards(req: ajax.Ajax):
@@ -496,9 +506,10 @@ def on_complete_player_cards(req: ajax.Ajax):
     :param req: Request object from callback.
     :type req: [type]
     """
-    global players_hand, players_meld_deck  # pylint: disable=invalid-name
-    mylog.error("In on_complete_player_cards.")
+    global outstanding_requests, players_hand, players_meld_deck  # pylint: disable=invalid-name
+    mylog.error("Entering on_complete_player_cards.")
 
+    outstanding_requests -= 1
     temp = on_complete_common(req)
     if temp is None:
         return
@@ -510,7 +521,7 @@ def on_complete_player_cards(req: ajax.Ajax):
     mylog.warning("on_complete_player_cards: players_hand=%s", players_hand)
     players_meld_deck = copy.deepcopy(players_hand)  # Deep copy
 
-    update_display()
+    clear_display()
 
 
 def on_complete_get_meld_score(req: ajax.Ajax):
@@ -520,13 +531,22 @@ def on_complete_get_meld_score(req: ajax.Ajax):
     :param req: Request object from callback.
     :type req: [type]
     """
-    mylog.error("In on_complete_get_meld_score.")
+    global outstanding_requests
+    mylog.error("Entering on_complete_get_meld_score.")
 
+    outstanding_requests -= 1
     temp = on_complete_common(req)
     if temp is None:
         return
 
-    mylog.warning("on_complete_get_meld_score: score: %s", temp)
+    # TODO: Do something with the response.
+    if req.status in [200, 0]:
+        mylog.warning("on_complete_get_meld_score: req.text: %s", req.text)
+        temp = json.loads(req.text)
+        InfoDialog("Meld Score", f"Your meld score is {temp['score']}", remove_after=5)
+        return temp
+
+    mylog.warning("on_complete_get_meld_score: score: %r", req)
 
 
 def on_complete_common(req: ajax.Ajax):
@@ -538,14 +558,17 @@ def on_complete_common(req: ajax.Ajax):
     :return: Object returned in the request as decoded by JSON.
     :rtype: [type]
     """
-    mylog.error("In on_complete_common.")
+    global outstanding_requests
+    mylog.error("Entering on_complete_common.")
+
+    outstanding_requests -= 1
     if req.status in [200, 0]:
         return json.loads(req.text)
 
     mylog.warning("on_complete_common: req=%s", req)
 
 
-def get(url: str, callback=None):
+def get(url: str, callback=None, async_call=True):
     """
     Wrapper for the AJAX GET call.
 
@@ -554,16 +577,20 @@ def get(url: str, callback=None):
     :param callback: Function to be called when the AJAX request is complete.
     :type callback: function, optional
     """
+    global outstanding_requests
+
     req = ajax.Ajax()  # pylint: disable=no-value-for-parameter
     if callback is not None:
+        outstanding_requests += 1
         req.bind("complete", callback)
     mylog.warning("Calling GET /api%s", url)
-    req.open("GET", "/api" + url, True)
+    req.open("GET", "/api" + url, async_call)
     req.set_header("content-type", "application/x-www-form-urlencoded")
+
     req.send()
 
 
-def put(data: dict, url: str, callback=None):
+def put(data: dict, url: str, callback=None, async_call=True):
     """
     Wrapper for the AJAX PUT call.
 
@@ -574,17 +601,20 @@ def put(data: dict, url: str, callback=None):
     :param callback: Function to be called when the AJAX request is complete.
     :type callback: function, optional
     """
+    global outstanding_requests
+
     req = ajax.Ajax()  # pylint: disable=no-value-for-parameter
     if callback is not None:
+        outstanding_requests += 1
         req.bind("complete", callback)
     mylog.warning("Calling PUT /api%s with data: %r", url, data)
-    req.open("PUT", "/api" + url, True)
+    req.open("PUT", "/api" + url, async_call)
     req.set_header("content-type", AJAX_URL_ENCODING)
     # req.send({"a": a, "b":b})
     req.send(data)
 
 
-def post(data: dict, url: str, callback=None):
+def post(data: dict, url: str, callback=None, async_call=True):
     """
     Wrapper for the AJAX POST call.
 
@@ -595,16 +625,19 @@ def post(data: dict, url: str, callback=None):
     :param callback: Function to be called when the AJAX request is complete.
     :type callback: function, optional
     """
+    global outstanding_requests
+
     req = ajax.Ajax()  # pylint: disable=no-value-for-parameter
     if callback is not None:
+        outstanding_requests += 1
         req.bind("complete", callback)
     mylog.warning("Calling POST /api%s with data: %r", url, data)
-    req.open("POST", "/api" + url, True)
+    req.open("POST", "/api" + url, async_call)
     req.set_header("content-type", AJAX_URL_ENCODING)
     req.send(data)
 
 
-def delete(url: str, callback=None):
+def delete(url: str, callback=None, async_call=True):
     """
     Wrapper for the AJAX Data call.
 
@@ -613,11 +646,14 @@ def delete(url: str, callback=None):
     :param callback: Function to be called when the AJAX request is complete.
     :type callback: function, optional
     """
+    global outstanding_requests
+
     req = ajax.Ajax()  # pylint: disable=no-value-for-parameter
     if callback is not None:
+        outstanding_requests += 1
         req.bind("complete", callback)
     # pass the arguments in the query string
-    req.open("DELETE", "/api" + url)
+    req.open("DELETE", "/api" + url, async_call)
     req.set_header("content-type", AJAX_URL_ENCODING)
     req.send()
 
@@ -655,20 +691,13 @@ def populate_canvas(deck, target_canvas, deck_type="player"):
         flippable = False
         movable = True
         show_face = True
-        if "player" in deck_type and GAME_MODE >= 0:
-            flippable = PLAYER_DECK_CONFIG[GAME_MODE]["flippable"]
-            movable = PLAYER_DECK_CONFIG[GAME_MODE]["movable"]
-        elif "kitty" in deck_type and GAME_MODE >= 0:
-            show_face = OTHER_DECK_CONFIG[GAME_MODE]["show_face"]
-            flippable = round_bid_winner
-            movable = OTHER_DECK_CONFIG[GAME_MODE]["movable"]
-        elif ("meld" in deck_type or "trick" in deck_type) and GAME_MODE >= 0:
-            show_face = OTHER_DECK_CONFIG[GAME_MODE]["show_face"]
-            flippable = OTHER_DECK_CONFIG[GAME_MODE]["flippable"]
-            movable = OTHER_DECK_CONFIG[GAME_MODE]["movable"]
-        else:
-            # Throw exception of some species here.
-            pass
+        if GAME_MODE > 0:
+            flippable = DECK_CONFIG[deck_type][GAME_MODE]["flippable"]
+            movable = DECK_CONFIG[deck_type][GAME_MODE]["movable"]
+            show_face = DECK_CONFIG[deck_type][GAME_MODE]["show_face"]
+            if "kitty" in deck_type:
+                flippable = round_bid_winner
+
         # Add the card to the canvas.
         piece = PlayingCard(
             face_value=card_value,
@@ -735,13 +764,13 @@ def calculate_x(deck: list) -> Tuple[float, float]:
     """
     xincr = int(table_width / (len(deck) + 0.5))  # Spacing to cover entire width
     start_x = 0.0
-    mylog.warning("place_cards: Calculated: xincr=%f, start_x=%f", xincr, start_x)
+    mylog.warning("calculate_x: Calculated: xincr=%f, start_x=%f", xincr, start_x)
     if xincr > card_width:
         xincr = int(card_width)
         # Start deck/2 cards from table's midpoint horizontally
         start_x = int(table_width / 2 - xincr * (float(len(deck))) / 2)
         mylog.warning(
-            "place_cards: Reset to card_width: xincr=%f, start_x=%f", xincr, start_x
+            "calculate_x: Reset to card_width: xincr=%f, start_x=%f", xincr, start_x
         )
     if xincr < int(
         card_width / 20
@@ -906,14 +935,12 @@ def display_game_options():
         # Send the registration message.
         # send_registration()
 
-        if GAME_MODE == 0:
-            GAME_MODE = -1
-            mylog.critical("display_game_options: KITTY_SIZE=%d", KITTY_SIZE)
-            advance_mode()
-
+        clear_display()
     try:
         if added_button:
             canvas.fitContents()
+    except ZeroDivisionError:
+        pass
     except AttributeError:
         pass
 
@@ -941,7 +968,8 @@ def update_display(event=None):  # pylint: disable=unused-argument
             populate_canvas(players_hand, canvas, "player")
         if mode in ["bidfinal"]:  # Bid submitted
             # The kitty doesn't need to remain 'secret' now that the bidding is done.
-            get(f"/round/{ROUND_ID}/kitty", on_complete_kitty)
+            if ROUND_ID != "":
+                get(f"/round/{ROUND_ID}/kitty", on_complete_kitty)
         elif mode in ["reveal"]:  # Reveal
             # Ask the server for the cards in the kitty.
             populate_canvas(kitty_deck, canvas, "kitty")
@@ -985,12 +1013,26 @@ def clear_display(event=None):  # pylint: disable=unused-argument
     itself, then re-adding everything back. It also works for the initial creation and
     addition of the canvas to the overall DOM.
 
+    This is a fairly heavy routine, so call as infrequently as possible.
+
     :param event: The event object passed in during callback, defaults to None
     :type event: Event(?), optional
     """
-    global button_advance_mode, canvas  # pylint: disable=invalid-name
+    global GAME_MODE, button_advance_mode, canvas  # pylint: disable=invalid-name
+    mylog.error("Entering clear_display")
+
+    if GAME_MODE is None and not game_dict:
+        GAME_MODE = 0
+
+    if outstanding_requests > 0:
+        mylog.warning(
+            "There are %d outstanding requests. Skipping clear.", outstanding_requests
+        )
+        return
+
     mode = GAME_MODES[GAME_MODE]
-    mylog.error("Entering clear_display (mode=%s)", mode)
+    mylog.warning("Current mode=%s", mode)
+
     try:
         document.getElementById("canvas").remove()
     except AttributeError:
@@ -999,7 +1041,7 @@ def clear_display(event=None):  # pylint: disable=unused-argument
     canvas.deleteAll()
 
     # Create the base SVG object for the card table.
-    canvas = SVG.CanvasObject("95vw", "90vh", None, objid="canvas")
+    # canvas = SVG.CanvasObject("95vw", "90vh", None, objid="canvas")
     canvas.attrs["mode"] = mode
 
     # Attach the new canvas to the card_table div of the document.
@@ -1116,6 +1158,8 @@ def clear_display(event=None):  # pylint: disable=unused-argument
 
     try:
         canvas.fitContents()
+    except ZeroDivisionError:
+        pass
     except AttributeError:
         pass
     canvas.mouseMode = SVG.MouseMode.DRAG
@@ -1131,7 +1175,8 @@ def advance_mode(event=None):  # pylint: disable=unused-argument
     :type event: [type], optional
     """
     mylog.error("advance_mode: Calling API (current mode=%s)", GAME_MODES[GAME_MODE])
-    put({}, f"/game/{GAME_ID}?state=true", advance_mode_callback)
+    if GAME_ID != "":
+        put({}, f"/game/{GAME_ID}?state=true", advance_mode_callback, False)
 
 
 def advance_mode_callback(req: ajax.Ajax):
@@ -1141,30 +1186,63 @@ def advance_mode_callback(req: ajax.Ajax):
     :param req:   The request response passed in during callback
     :type req:    Request
     """
-    global GAME_MODE
+    global GAME_MODE, outstanding_requests
     mylog.error(
         "Entering advance_mode_callback (current mode=%s)", GAME_MODES[GAME_MODE]
     )
+
+    outstanding_requests -= 1
     if req.status not in [200, 0]:
         return
 
     if "Round" in req.text and "started" in req.text:
-        mylog.error("Starting new round.")
+        mylog.warning("advance_mode_callback: Starting new round.")
         GAME_MODE = 0
         clear_globals_for_round_change()
+        put({}, f"/game/{GAME_ID}?state=true", advance_mode_callback)
         get(f"/player/{PLAYER_ID}/hand", on_complete_player_cards)
 
         display_game_options()
         return
 
-    mylog.error("req.text=%s", req.text)
+    mylog.warning("advance_mode_callback: req.text=%s", req.text)
     data = json.loads(req.text)
-    mylog.error("data=%r", data)
+    mylog.warning("advance_mode_callback: data=%r", data)
     GAME_MODE = data["state"]
 
-    mylog.error(
+    mylog.warning(
         "Leaving advance_mode_callback (current mode=%s)", GAME_MODES[GAME_MODE]
     )
+    clear_display()
+
+
+def advance_mode_initial_callback(req: ajax.Ajax):
+    """
+    Routine to capture the response of the server when advancing the game mode.
+
+    :param req:   The request response passed in during callback
+    :type req:    Request
+    """
+    global GAME_MODE, outstanding_requests
+    if GAME_MODE is not None:
+        mylog.error(
+            "Entering advance_mode_initial_callback (current mode=%s)",
+            GAME_MODES[GAME_MODE],
+        )
+
+    outstanding_requests -= 1
+    if req.status not in [200, 0]:
+        return
+
+    mylog.warning("advance_mode_initial_callback: req.text=%s", req.text)
+    data = json.loads(req.text)
+    mylog.warning("advance_mode_initial_callback: data=%r", data)
+    GAME_MODE = data["state"]
+
+    mylog.warning(
+        "Leaving advance_mode_initial_callback (current mode=%s)", GAME_MODES[GAME_MODE]
+    )
+    clear_globals_for_round_change()
     clear_display()
 
 
@@ -1270,6 +1348,7 @@ document["card_definitions"].attach(SVG.Definitions(filename=CARD_URL))
 canvas = SVG.CanvasObject("95vw", "90vh", None, objid="canvas")
 calculate_dimensions()
 canvas.attrs["mode"] = "initial"
+clear_display()
 
 # See if some steps can be bypassed because we refreshed in the middle of the game.
 get("/game", on_complete_games)
