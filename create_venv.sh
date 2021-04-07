@@ -7,6 +7,7 @@ else
 fi
 
 /usr/bin/${PY} -m venv .venv --clear --prompt pinochle
-#source venv/bin/activate
+source .venv/bin/activate
+pip3 install poetry
 #pip install --use-feature=2020-resolver -r requirements.txt -r requirements-test.txt
 /usr/bin/poetry install --no-root
