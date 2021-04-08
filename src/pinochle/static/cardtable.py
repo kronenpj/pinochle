@@ -13,7 +13,9 @@ from browser.widgets.dialog import InfoDialog
 
 from constants import CARD_HEIGHT, CARD_URL, CARD_WIDTH, DECK_CONFIG, GAME_MODES
 
+# Disable some pylint complaints because this code is more like javascript than python.
 # pylint: disable=global-statement
+# pylint: disable=pointless-statement
 
 # Websocket holder
 g_websocket: Optional[websocket.WebSocket] = None
@@ -28,8 +30,8 @@ for _suit in ["spade", "diamond", "club", "heart"]:
         DECK_SORTED.append(f"{_suit}_{_card}")
 
 mylog = logging.getLogger("cardtable")
-mylog.setLevel(logging.CRITICAL)  # No output
-# mylog.setLevel(logging.ERROR)  # Function entry/exit
+# mylog.setLevel(logging.CRITICAL)  # No output
+mylog.setLevel(logging.ERROR)  # Function entry/exit
 # mylog.setLevel(logging.WARNING)  # Everything
 
 # API "Constants"
@@ -388,10 +390,18 @@ def on_ws_event(event=None):
 
 
 def display_player_meld(meld_data: str):
+    """
+    Display the meld hand submitted by a player in a pop-up.
+
+    :param meld_data: Data from the event as a JSON string.
+    :type meld_data: str
+    """
     data = json.loads(meld_data)
     player_name = g_player_dict[str(data["player_id"])]["name"]
     card_list = data["card_list"]
-    dialog = InfoDialog("Meld Score", f"{player_name}'s meld cards are:", ok=True)
+    dialog = InfoDialog(  # pylint: disable=assignment-from-no-return
+        "Meld Score", f"{player_name}'s meld cards are:", ok=True
+    )
     try:
         xpos = 0
         d_canvas = SVG.CanvasObject(objid="dialog_canvas")
@@ -399,7 +409,7 @@ def display_player_meld(meld_data: str):
         for card in card_list:
             d_canvas <= SVG.UseObject(href=f"#{card}", origin=(xpos, 0))
             xpos += CARD_WIDTH / 5.0
-    except Exception as e:
+    except Exception as e:  # pylint: disable=invalid-name,broad-except
         mylog.warning("display_player_meld: Caught exception: %r", e)
 
 
@@ -670,9 +680,6 @@ def on_complete_getcookie(req: ajax.Ajax):
             "on_complete_getcookie: Setting PLAYER_ID=%s", response_data["ident"]
         )
         get(f"/player/{g_player_id}/hand", on_complete_player_cards)
-        # FIXME: This is temporary. The server will decide when to advance the game state.
-        # put({}, f"/game/{g_game_id}?state=false", advance_mode_initial_callback)
-        # FIXME: This is temporary. The server will decide when to advance the game state.
 
         # Set the TEAM_ID variable based on the player id chosen.
         for _temp in g_team_dict:
@@ -771,6 +778,81 @@ def on_complete_common(req: ajax.Ajax):
     mylog.warning("on_complete_common: req=%s", req)
 
 
+# FIXME: This is temporary. The server will decide when to advance the game state.
+def advance_mode_callback(req: ajax.Ajax):
+    """
+    Routine to capture the response of the server when advancing the game mode.
+
+    :param req:   The request response passed in during callback
+    :type req:    Request
+    """
+    global g_game_mode  # pylint: disable=invalid-name
+    mylog.error(
+        "Entering advance_mode_callback (current mode=%s)", GAME_MODES[g_game_mode]
+    )
+
+    ajax_request_tracker(-1)
+    if req.status not in [200, 0]:
+        return
+
+    if "Round" in req.text and "started" in req.text:
+        mylog.warning("advance_mode_callback: Starting new round.")
+        g_game_mode = 0
+        clear_globals_for_round_change()
+
+        # display_game_options()
+        return
+
+    mylog.warning("advance_mode_callback: req.text=%s", req.text)
+    data = json.loads(req.text)
+    mylog.warning("advance_mode_callback: data=%r", data)
+    g_game_mode = data["state"]
+
+    mylog.warning(
+        "Leaving advance_mode_callback (current mode=%s)", GAME_MODES[g_game_mode]
+    )
+    display_game_options()
+    # FIXME: This is temporary. The server will decide when to advance the game state.
+
+
+def game_mode_query_callback(req: ajax.Ajax):
+    """
+    Routine to capture the response of the server when advancing the game mode.
+
+    :param req:   The request response passed in during callback
+    :type req:    Request
+    """
+    global g_game_mode  # pylint: disable=invalid-name
+    if g_game_mode is not None:
+        mylog.error(
+            "Entering game_mode_query_callback (current mode=%s)",
+            GAME_MODES[g_game_mode],
+        )
+
+    ajax_request_tracker(-1)
+    # TODO: Handle a semi-corner case where in the middle of a round, a player loses /
+    # destroys a cookie and reloads the page.
+    if req.status not in [200, 0]:
+        mylog.warning(
+            "game_mode_query_callback: Not setting game_mode - possibly because g_player_id is empty (%s).",
+            g_player_id,
+        )
+        return
+
+    mylog.warning("game_mode_query_callback: req.text=%s", req.text)
+    data = json.loads(req.text)
+    mylog.warning("game_mode_query_callback: data=%r", data)
+    g_game_mode = data["state"]
+
+    mylog.warning(
+        "Leaving game_mode_query_callback (current mode=%s)", GAME_MODES[g_game_mode],
+    )
+    if g_game_mode == 0:
+        clear_globals_for_round_change()
+    else:
+        display_game_options()
+
+
 def get(url: str, callback=None, async_call=True):
     """
     Wrapper for the AJAX GET call.
@@ -854,6 +936,9 @@ def delete(url: str, callback=None, async_call=True):
 
 
 def clear_globals_for_round_change():
+    """
+    Clear some global variables in preparation for a new round.
+    """
     global g_round_id, g_team_list, g_players_hand, g_players_meld_deck, g_meld_deck  # pylint: disable=invalid-name
     mylog.error("Entering clear_globals_for_round_change.")
 
@@ -1045,6 +1130,16 @@ def calculate_dimensions():
 
 
 def create_game_select_buttons(xpos, ypos) -> bool:
+    """
+    Create a list of buttons for the player to choose a game to join.
+
+    :param xpos:    Starting X position
+    :type xpos:     float
+    :param ypos:    Starting Y position
+    :type ypos:     float
+    :return:        Boolean value representing whether a button was added to the canvas.
+    :rtype:         bool
+    """
     mylog.error("Entering create_game_select_buttons")
     mylog.warning("create_game_select_buttons: game_dict=%s", g_game_dict)
     added_button = False
@@ -1082,6 +1177,16 @@ def create_game_select_buttons(xpos, ypos) -> bool:
 
 
 def create_player_select_buttons(xpos, ypos) -> bool:
+    """
+    Create a list of buttons for the player to identify themselves.
+
+    :param xpos:    Starting X position
+    :type xpos:     float
+    :param ypos:    Starting Y position
+    :type ypos:     float
+    :return:        Boolean value representing whether a button was added to the canvas.
+    :rtype:         bool
+    """
     added_button = False
     for item in g_player_dict:
         mylog.warning("player_dict[item]=%s", g_player_dict[item])
@@ -1123,81 +1228,6 @@ def advance_mode(event=None):  # pylint: disable=unused-argument
     mylog.error("advance_mode: Calling API (current mode=%s)", GAME_MODES[g_game_mode])
     if g_game_id != "" and g_player_id != "":
         put({}, f"/game/{g_game_id}?state=true", advance_mode_callback, False)
-    else:
-        display_game_options()
-
-
-# FIXME: This is temporary. The server will decide when to advance the game state.
-def advance_mode_callback(req: ajax.Ajax):
-    """
-    Routine to capture the response of the server when advancing the game mode.
-
-    :param req:   The request response passed in during callback
-    :type req:    Request
-    """
-    global g_game_mode  # pylint: disable=invalid-name
-    mylog.error(
-        "Entering advance_mode_callback (current mode=%s)", GAME_MODES[g_game_mode]
-    )
-
-    ajax_request_tracker(-1)
-    if req.status not in [200, 0]:
-        return
-
-    if "Round" in req.text and "started" in req.text:
-        mylog.warning("advance_mode_callback: Starting new round.")
-        g_game_mode = 0
-        clear_globals_for_round_change()
-
-        # display_game_options()
-        return
-
-    mylog.warning("advance_mode_callback: req.text=%s", req.text)
-    data = json.loads(req.text)
-    mylog.warning("advance_mode_callback: data=%r", data)
-    g_game_mode = data["state"]
-
-    mylog.warning(
-        "Leaving advance_mode_callback (current mode=%s)", GAME_MODES[g_game_mode]
-    )
-    display_game_options()
-    # FIXME: This is temporary. The server will decide when to advance the game state.
-
-
-def game_mode_query_callback(req: ajax.Ajax):
-    """
-    Routine to capture the response of the server when advancing the game mode.
-
-    :param req:   The request response passed in during callback
-    :type req:    Request
-    """
-    global g_game_mode  # pylint: disable=invalid-name
-    if g_game_mode is not None:
-        mylog.error(
-            "Entering game_mode_query_callback (current mode=%s)",
-            GAME_MODES[g_game_mode],
-        )
-
-    ajax_request_tracker(-1)
-    # TODO: Handle a semi-corner case where in the middle of a round, a player loses /
-    # destroys a cookie and reloads the page.
-    if req.status not in [200, 0]:
-        mylog.warning(
-            "game_mode_query_callback: Not setting game_mode - possibly because g_player_id is empty (%s).",
-            g_player_id,
-        )
-        return
-
-    mylog.warning("game_mode_query_callback: req.text=%s", req.text)
-    data = json.loads(req.text)
-    mylog.warning("game_mode_query_callback: data=%r", data)
-    g_game_mode = data["state"]
-
-    mylog.warning(
-        "Leaving game_mode_query_callback (current mode=%s)", GAME_MODES[g_game_mode],
-    )
-    if g_game_mode == 0:
-        clear_globals_for_round_change()
     else:
         display_game_options()
 
@@ -1575,7 +1605,7 @@ document["card_definitions"].attach(SVG.Definitions(filename=CARD_URL))
 
 # Create the base SVG object for the card table.
 g_canvas = SVG.CanvasObject("95vw", "90vh", None, objid="canvas")
-CardTable <= g_canvas  # pylint: disable=pointless-statement
+CardTable <= g_canvas
 calculate_dimensions()
 g_canvas.attrs["mode"] = "initial"
 
