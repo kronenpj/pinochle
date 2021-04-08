@@ -28,8 +28,8 @@ for _suit in ["spade", "diamond", "club", "heart"]:
         DECK_SORTED.append(f"{_suit}_{_card}")
 
 mylog = logging.getLogger("cardtable")
-# mylog.setLevel(logging.CRITICAL)  # No output
-mylog.setLevel(logging.ERROR)  # Function entry/exit
+mylog.setLevel(logging.CRITICAL)  # No output
+# mylog.setLevel(logging.ERROR)  # Function entry/exit
 # mylog.setLevel(logging.WARNING)  # Everything
 
 # API "Constants"
@@ -400,7 +400,7 @@ def display_player_meld(meld_data: str):
             d_canvas <= SVG.UseObject(href=f"#{card}", origin=(xpos, 0))
             xpos += CARD_WIDTH / 5.0
     except Exception as e:
-        mylog.critical("display_player_meld: Caught exception: %r", e)
+        mylog.warning("display_player_meld: Caught exception: %r", e)
 
 
 def update_player_names(player_data: str):

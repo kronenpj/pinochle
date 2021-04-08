@@ -47,7 +47,7 @@ class WebSocketMessenger:
         """
         mylog = custom_log.get_logger()
         mylog.setLevel(GLOBAL_LOG_LEVEL)
-        mylog.critical("Log level: %d", mylog.getEffectiveLevel())
+        mylog.error("Log level: %d", mylog.getEffectiveLevel())
 
         new_data = {"player_id": player_id, "ws": ws}
 
@@ -75,7 +75,7 @@ class WebSocketMessenger:
         """
         mylog = custom_log.get_logger()
         mylog.setLevel(GLOBAL_LOG_LEVEL)
-        mylog.critical("Log level: %d", mylog.getEffectiveLevel())
+        mylog.error("Log level: %d", mylog.getEffectiveLevel())
 
         # Send a message to each client registered to this game.
         joined_players = [x["player_id"] for x in self.client_sockets[game_id]]
@@ -101,9 +101,9 @@ class WebSocketMessenger:
         game_mode = utils.query_game(game_id).state
 
         # In order to make the decision of whether the game should start.
-        mylog.critical("Players: %d - Game mode: %d", num_players, game_mode)
+        mylog.warning("Players: %d - Game mode: %d", num_players, game_mode)
         if len(joined_players) == num_players and game_mode == 0:
-            mylog.critical("Enough players have joined. Start the game!")
+            mylog.warning("Enough players have joined. Start the game!")
 
             # FIXME: This should not use the game module directly.
             game.update(game_id, state=True)
@@ -125,7 +125,7 @@ class WebSocketMessenger:
         """
         mylog = custom_log.get_logger()
         mylog.setLevel(GLOBAL_LOG_LEVEL)
-        mylog.critical("Log level: %d", mylog.getEffectiveLevel())
+        mylog.error("Log level: %d", mylog.getEffectiveLevel())
 
         # If no registrations have occurred or none for the supplied game, continue.
         if not self.client_sockets or not self.client_sockets[game_id]:

@@ -31,7 +31,7 @@ def echo_socket(ws):
 def stream_socket(ws):
     mylog = custom_log.get_logger()
     mylog.setLevel(GLOBAL_LOG_LEVEL)
-    mylog.critical("Log level: %d", mylog.getEffectiveLevel())
+    mylog.error("Log level: %d", mylog.getEffectiveLevel())
 
     while True:
         try:
