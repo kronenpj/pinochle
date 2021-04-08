@@ -15,7 +15,7 @@ from pinochle.static.constants import GAME_MODES
 from werkzeug import exceptions
 
 import test_utils
-from random import choice, shuffle
+from random import choice
 
 # from pinochle.models.utils import dump_db
 
@@ -93,7 +93,7 @@ def test_game_update_kitty_size(app):
     assert new_kitty == db_response.get("kitty_size")
 
 
-def test_game_update_state(app):
+def test_game_update_state(app, patch_ws_messenger):
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/game/{game_id}?state' page is requested (PUT)
@@ -109,7 +109,7 @@ def test_game_update_state(app):
     state = initial_state + 1
 
     with app.test_client() as test_client:
-        # Attempt to access the delete game api
+        # Attempt to access the advance state game api
         response = test_client.put(f"/api/game/{game_id}?state=true")
         assert response.status == "200 OK"
 
@@ -120,7 +120,7 @@ def test_game_update_state(app):
     assert state == db_response.get("state")
 
 
-def test_game_update_state_wrap(app):
+def test_game_update_state_wrap(app, patch_ws_messenger):
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/game/{game_id}?state' page is requested (PUT)
@@ -164,7 +164,7 @@ def test_game_update_state_wrap(app):
     db_response = game.read_one(game_id)
     assert db_response is not None
     assert game_id == db_response.get("game_id")
-    assert db_response.get("state") == 0
+    assert db_response.get("state") == 1
 
 
 def test_game_update_invalid_game(app):
@@ -173,12 +173,12 @@ def test_game_update_invalid_game(app):
     WHEN the '/api/game/{game_id}' page is requested (PUT)
     THEN check that the response is a UUID
     """
-    new_kitty = 12
     # Create a new game
-    game_id = uuid.uuid4()
+    game_id = str(uuid.uuid4())
 
     with app.test_client() as test_client:
-        # Attempt to access the delete game api
+        new_kitty = 12
+        # Attempt to access the set kitty size game api
         response = test_client.put(f"/api/game/{game_id}?kitty_size={new_kitty}")
         assert response.status == "404 NOT FOUND"
 

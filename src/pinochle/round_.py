@@ -180,9 +180,13 @@ def start(round_id: str):
     :return:           200 on successful delete, 404 if not found,
                        409 if requirements are not satisfied.
     """
+    # TODO: Avoiding circular import until I find a different implementation.
+    from pinochle.ws_messenger import WebSocketMessenger as WSM
+
     # print(f"\nround_id={round_id}")
     # Get the round requested
     a_round: Round = utils.query_round(round_id)
+    a_gameround: GameRound = utils.query_gameround_for_round(round_id)
 
     # Did we find a round?
     if a_round is None or a_round == {}:
@@ -224,9 +228,16 @@ def start(round_id: str):
     # Time to deal the cards.
     play_pinochle.deal_pinochle(
         # TODO: kitty_len needs to reflect the game setting.
-        player_ids=list(player_hand_id.keys()), kitty_len=4, kitty_id=kitty
+        player_ids=list(player_hand_id.keys()),
+        kitty_len=4,
+        kitty_id=kitty,
     )
 
+    game_id = str(a_gameround.game_id)
+    temp_state = utils.query_game(game_id).state
+    message = {"action": "game_start", "game_id": game_id, "state": temp_state}
+    ws_mess = WSM.get_instance()
+    ws_mess.websocket_broadcast(game_id, message)
     return make_response(f"Round {round_id} started.", 200)
 
 
@@ -240,10 +251,14 @@ def score_hand_meld(round_id: str, player_id: str, cards: str):
     :return:           200 on successful scoring of cards, 404 if not found,
                        409 if scoring isn't successful.
     """
+    # TODO: Avoiding circular import until I find a different implementation.
+    from pinochle.ws_messenger import WebSocketMessenger as WSM
+
     # print(f"\nscore_hand_meld: round_id={round_id}")
     # Get the round requested
     a_round: Round = utils.query_round(round_id)
     a_player: Player = utils.query_player(player_id)
+    tmp_game: str = str(utils.query_gameround_for_round(round_id).game_id)
 
     # Did we find a round?
     if a_round is None or a_round == {}:
@@ -283,6 +298,16 @@ def score_hand_meld(round_id: str, player_id: str, cards: str):
 
     player.update(player_id=player_id, data={"meld_score": score})
 
+    # Send card list and meld score to other players via Websocket
+    message = {
+        "action": "meld_update",
+        "game_id": tmp_game,
+        "player_id": player_id,
+        "card_list": card_list,
+        "meld_score": score,
+    }
+    ws_mess = WSM.get_instance()
+    ws_mess.websocket_broadcast(tmp_game, message, player_id)
     # print(f"score_hand_meld: score={score}")
     return make_response(json.dumps({"score": score}), 200)
 
@@ -295,10 +320,10 @@ def new_round(game_id, current_round):
     # Create new round and gameround
     temp_gameround, __ = create(game_id)
     # Obtain the new round's ID.
-    _round_id = temp_gameround["round_id"]
+    temp_round_id = temp_gameround["round_id"]
     cur_roundteam: List[RoundTeam] = utils.query_roundteam_list(current_round)
     # Tie the current teams to the new round.
-    roundteams.create(_round_id, [str(t.team_id) for t in cur_roundteam])
+    roundteams.create(temp_round_id, [str(t.team_id) for t in cur_roundteam])
 
     # Start the new round.
-    return start(_round_id)
+    return start(temp_round_id)

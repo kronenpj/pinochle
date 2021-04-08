@@ -2,14 +2,59 @@
 
 import json
 
+import geventwebsocket
 from flask import abort, make_response, redirect, render_template, request
+from flask_sockets import Sockets
 
-from . import app_factory
+from pinochle.ws_messenger import WebSocketMessenger as WSM
+
+from . import GLOBAL_LOG_LEVEL, app_factory, custom_log
 from .models import utils
 
 application = app_factory.create_app()  # pragma: no cover
 app = application
+
+# Websockets
+sockets = Sockets(app)
+
 # Create non-blueprint-defined endpoints.
+@sockets.route("/echo")
+def echo_socket(ws):
+    while True:
+        message = ws.receive()
+        # ws.send(message[::-1])
+        # ws.send(message*2)
+        ws.send(message)
+
+
+@sockets.route("/stream")
+def stream_socket(ws):
+    mylog = custom_log.get_logger()
+    mylog.setLevel(GLOBAL_LOG_LEVEL)
+    mylog.critical("Log level: %d", mylog.getEffectiveLevel())
+
+    while True:
+        try:
+            message = ws.receive()
+        except geventwebsocket.exceptions.WebSocketError:
+            # Socket is closed.
+            return
+        mylog.info("stream_socket: Received message: %s", message)
+
+        if not message:
+            continue
+
+        # Extract the message into a data structure
+        message_data = json.loads(message)
+
+        # Dispatch an action
+        if "action" in message and "register_client" in message:
+            msg_game_id = str(message_data["game_id"])
+            msg_player_id = message_data["player_id"]
+            if msg_game_id == "" or msg_player_id == "":
+                continue
+            ws_mess = WSM.get_instance()
+            ws_mess.register_new_player(msg_game_id, msg_player_id, ws)
 
 
 @app.route("/api/setcookie/player_id/<ident>", methods=["GET"])

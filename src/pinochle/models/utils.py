@@ -143,6 +143,29 @@ def query_gameround_for_game(game_id: str) -> GameRound:
     return temp
 
 
+def query_gameround_for_round(round_id: str) -> GameRound:
+    """
+    Retrieve information about the active round for a given game.
+
+    :param game_id: [description]
+    :type game_id: str
+    :return: [description]
+    :rtype: GameRound
+    """
+    temp = GameRound.query.filter(
+        GameRound.round_id == round_id, GameRound.active_flag is True
+    ).one_or_none()
+
+    # Sqlite stores active_flag as 1 but doesn't compare favorably with True.
+    if temp is None:
+        temp = GameRound.query.filter(
+            GameRound.round_id == round_id, GameRound.active_flag == 1
+        ).one_or_none()
+
+    # print(f"gameround={temp}")
+    return temp
+
+
 def query_gameround_list() -> List[GameRound]:
     """
     Retrieve information about all game/round.

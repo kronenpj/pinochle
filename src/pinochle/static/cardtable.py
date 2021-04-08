@@ -4,15 +4,19 @@ In-browser script to handle the card-table user interface.
 import copy
 import json
 import logging
+import os
 from typing import Any, Dict, List, Optional, Tuple
 
 import brySVG.dragcanvas as SVG  # pylint: disable=import-error
-from browser import ajax, document, html, window
+from browser import ajax, document, html, websocket, window
 from browser.widgets.dialog import InfoDialog
 
-from constants import CARD_URL, DECK_CONFIG, GAME_MODES, CARD_HEIGHT, CARD_WIDTH
+from constants import CARD_HEIGHT, CARD_URL, CARD_WIDTH, DECK_CONFIG, GAME_MODES
 
 # pylint: disable=global-statement
+
+# Websocket holder
+g_websocket: Optional[websocket.WebSocket] = None
 
 # Programmatically create a pre-sorted deck to compare to when sorting decks of cards.
 # Importing a statically-defined list from constants doesn't work for some reason.
@@ -41,7 +45,7 @@ g_team_id: str = ""
 # Various state globals
 g_game_dict: Dict[str, Dict[str, Any]] = {}
 g_kitty_deck: List[str] = []
-g_outstanding_requests: int = 0
+g_ajax_outstanding_requests: int = 0
 g_player_dict: Dict[str, Dict[str, str]] = {}
 g_players_hand: List[str] = []
 g_players_meld_deck: List[str] = []
@@ -54,6 +58,7 @@ g_round_bid_winner = False  # pylint: disable=invalid-name
 g_table_width = 0  # pylint: disable=invalid-name
 g_table_height = 0  # pylint: disable=invalid-name
 button_advance_mode = None  # pylint: disable=invalid-name
+g_registered_with_server = False  # pylint: disable=invalid-name
 
 
 class PlayingCard(SVG.UseObject):
@@ -141,7 +146,9 @@ class PlayingCard(SVG.UseObject):
         if "touch" in event.type or "click" in event.type:
             new_y = float(self.attrs["y"])
             mylog.warning(
-                "PlayingCard.play_handler: Touch event: id=%s new_y=%f", self.id, new_y,
+                "PlayingCard.play_handler: Touch event: id=%4.2s new_y=%4.2f",
+                self.id,
+                new_y,
             )
 
         # Cope with the fact that the original Y coordinate is given rather than the
@@ -156,7 +163,9 @@ class PlayingCard(SVG.UseObject):
                 y_move = transform[y_coord:y_coord_end]
                 new_y = float(self.attrs["y"]) + float(y_move)
             mylog.warning(
-                "PlayingCard.play_handler: Mouse event: id=%s new_y=%f", self.id, new_y,
+                "PlayingCard.play_handler: Mouse event: id=%s new_y=%4.2f",
+                self.id,
+                new_y,
             )
 
         # Determine whether the card is now in a position to be considered thrown.
@@ -182,7 +191,7 @@ class PlayingCard(SVG.UseObject):
         if GAME_MODES[g_game_mode] in ["meld"]:  # Meld
             if True or "player" in self.id:
                 sending_deck = g_players_meld_deck  # Deep copy
-                receiving_deck = meld_deck  # Reference
+                receiving_deck = g_meld_deck  # Reference
             else:
                 add_only = True
                 card_tag = "player"
@@ -241,7 +250,7 @@ class PlayingCard(SVG.UseObject):
         # TODO: Call game API to notify server what card was added to meld or
         # thrown and by which player.
         self.face_update_dom()
-        update_display()
+        set_card_positions()
 
     def card_click_handler(self, event=None):
         """
@@ -270,16 +279,202 @@ class PlayingCard(SVG.UseObject):
                 self.play_handler(event)
 
 
-def request_tracker(direction: int = 0):
+def dump_globals() -> None:
+    variables = {
+        # "canvas": canvas,
+        # "g_game_id": g_game_id,
+        # "g_game_mode": g_game_mode,
+        # "g_round_id": g_round_id,
+        # "g_team_list": g_team_list,
+        # "g_player_id": g_player_id,
+        # "g_players_hand": g_players_hand,
+        # "g_game_dict": g_game_dict,
+        "g_kitty_size": g_kitty_size,
+        "g_kitty_deck": g_kitty_deck,
+    }
+    for var_name, value in variables.items():
+        if value is None:
+            print(f"dgo: {var_name} is None")
+        else:
+            print(f"dgo: {var_name}={value} ({type(value)})")
+
+
+def find_protocol_server():
     """
-    docstring
+    Gather information from the environment about the protocol and server name
+    from where we're being served.
+
+    :return: Tuple with strings representing protocol and server with port.
+    :rtype: (str, str)
     """
-    global g_outstanding_requests  # pylint: disable=invalid-name
+    start = os.environ["HOME"].find("//") + 2
+    end = os.environ["HOME"].find("/", start=start) + 1
+    proto = os.environ["HOME"][: start - 3]
+    if end <= start:
+        hostname = os.environ["HOME"][start:]
+    else:
+        hostname = os.environ["HOME"][start:end]
+
+    return (proto, hostname)
+
+
+def ws_open():
+    """
+    Open a websocket connection back to the originating server.
+    """
+    mylog.error("In ws_open.")
+    if not websocket.supported:
+        InfoDialog("websocket", "WebSocket is not supported by your browser")
+        return
+    global g_websocket  # pylint: disable=global-statement
+    # open a web socket
+    proto = PROTOCOL.replace("http", "ws")
+    g_websocket = websocket.WebSocket(f"{proto}://{SERVER}/stream")
+    # bind functions to web socket events
+    g_websocket.bind("open", on_ws_open)
+    g_websocket.bind("message", on_ws_event)
+    g_websocket.bind("close", on_ws_close)
+
+
+def on_ws_open(event=None):  # pylint: disable=unused-argument
+    """
+    Callback for Websocket open event.
+    """
+    mylog.error("on_ws_open: Connection is open")
+
+
+def on_ws_close(event=None):  # pylint: disable=unused-argument
+    """
+    Callback for Websocket close event.
+    """
+    mylog.error("on_ws_close: Connection has closed")
+    global g_websocket  # pylint: disable=global-statement
+    g_websocket = None
+    # set_timeout(ws_open, 1000)
+
+
+def on_ws_error(event=None):
+    """
+    Callback for Websocket error event.
+    """
+    mylog.error("on_ws_error: Connection has experienced an error")
+    mylog.warning("%r", event)
+
+
+def on_ws_event(event=None):
+    """
+    Callback for Websocket event from server.
+
+    :param evt: Event object from ws event.
+    :type evt: [type]
+    """
+    mylog.error("In on_ws_event.")
+    global g_game_mode  # pylint: disable=invalid-name
+
+    mylog.warning("on_ws_event: %s", event.data)
+
+    if "action" not in event.data:
+        return
+    if "game_start" in event.data:
+        clear_globals_for_round_change()
+        put({}, f"/game/{g_game_id}?state=false", game_mode_query_callback, False)
+    elif "notification_player_list" in event.data:
+        update_player_names(event.data)
+    elif "game_state" in event.data:
+        g_game_mode = json.loads(event.data)["state"]
+        display_game_options()
+    elif "meld_update" in event.data:
+        display_player_meld(event.data)
+
+
+def display_player_meld(meld_data: str):
+    data = json.loads(meld_data)
+    player_name = g_player_dict[str(data["player_id"])]["name"]
+    card_list = data["card_list"]
+    dialog = InfoDialog("Meld Score", f"{player_name}'s meld cards are:", ok=True)
+    try:
+        xpos = 0
+        d_canvas = SVG.CanvasObject(objid="dialog_canvas")
+        dialog.panel <= d_canvas
+        for card in card_list:
+            d_canvas <= SVG.UseObject(href=f"#{card}", origin=(xpos, 0))
+            xpos += CARD_WIDTH / 5.0
+    except Exception as e:
+        mylog.critical("display_player_meld: Caught exception: %r", e)
+
+
+def update_player_names(player_data: str):
+    """
+    Update the player names in the UI.
+
+    :param player_data: JSON-formatted message from the server.
+    :type player_data: str
+    """
+    global g_registered_with_server  # pylint: disable=invalid-name
+
+    data = json.loads(player_data)
+    my_player_list = data["player_ids"]
+    # Display the player's name in the UI
+    if my_player_list != [] and g_player_id in my_player_list:
+        mylog.warning("Players: %r", my_player_list)
+
+        g_registered_with_server = True
+        document.getElementById("player_name").clear()
+        document.getElementById("player_name").attach(
+            html.BIG(g_player_dict[g_player_id]["name"].capitalize())
+        )
+
+        # TODO: Do something more useful like a line of names with color change when
+        # the player's client registers.
+        document.getElementById("player_name").attach(html.BR())
+        document.getElementById("player_name").attach(
+            html.SMALL(
+                ", ".join(
+                    y["name"].capitalize()
+                    for y in [
+                        g_player_dict[x] for x in my_player_list if x != g_player_id
+                    ]
+                )
+            )
+        )
+
+
+def send_registration():
+    """
+    Send registration structure to server.
+    """
+    mylog.error("In send_registration")
+    if g_registered_with_server:
+        return
+
+    if g_websocket is None:
+        mylog.warning("send_registration: Opening WebSocket.")
+        ws_open()
+
+    g_websocket.send(
+        json.dumps(
+            {
+                "action": "register_client",
+                "game_id": str(g_game_id),
+                "player_id": str(g_player_id),
+            }
+        )
+    )
+
+
+def ajax_request_tracker(direction: int = 0):
+    """
+    Keep a tally of the currently outstanding AJAX requests.
+
+    :param direction: Whether to increase or decrease the counter, defaults to 0 which does not affect the counter.
+    :type direction: int, optional
+    """
+    global g_ajax_outstanding_requests  # pylint: disable=invalid-name
 
     if direction > 0:
-        g_outstanding_requests += 1
+        g_ajax_outstanding_requests += 1
     elif direction < 0:
-        g_outstanding_requests -= 1
+        g_ajax_outstanding_requests -= 1
 
 
 def on_complete_games(req: ajax.Ajax):
@@ -291,7 +486,7 @@ def on_complete_games(req: ajax.Ajax):
     """
     mylog.error("Entering on_complete_games.")
 
-    request_tracker(-1)
+    ajax_request_tracker(-1)
     temp = on_complete_common(req)
     if temp is None:
         return
@@ -316,7 +511,7 @@ def on_complete_rounds(req: ajax.Ajax):
     global g_round_id, g_team_list  # pylint: disable=invalid-name
     mylog.error("Entering on_complete_rounds.")
 
-    request_tracker(-1)
+    ajax_request_tracker(-1)
     g_team_list.clear()
 
     temp = on_complete_common(req)
@@ -340,7 +535,7 @@ def on_complete_teams(req: ajax.Ajax):
     global g_team_list  # pylint: disable=invalid-name
     mylog.error("Entering on_complete_teams.")
 
-    request_tracker(-1)
+    ajax_request_tracker(-1)
     temp = on_complete_common(req)
     if temp is None:
         return
@@ -366,7 +561,7 @@ def on_complete_team_names(req: ajax.Ajax):
     global g_team_dict  # pylint: disable=invalid-name
     mylog.error("Entering on_complete_team_names.")
 
-    request_tracker(-1)
+    ajax_request_tracker(-1)
     temp = on_complete_common(req)
     if temp is None:
         return
@@ -393,7 +588,7 @@ def on_complete_players(req: ajax.Ajax):
     """
     mylog.error("Entering on_complete_players.")
 
-    request_tracker(-1)
+    ajax_request_tracker(-1)
     temp = on_complete_common(req)
     if temp is None:
         return
@@ -413,7 +608,7 @@ def on_complete_set_gamecookie(req: ajax.Ajax):
     """
     mylog.error("Entering on_complete_set_gamecookie.")
 
-    request_tracker(-1)
+    ajax_request_tracker(-1)
     if req.status in [200, 0]:
         get("/getcookie/game_id", on_complete_getcookie)
 
@@ -427,7 +622,7 @@ def on_complete_set_playercookie(req: ajax.Ajax):
     """
     mylog.error("Entering on_complete_set_playercookie.")
 
-    request_tracker(-1)
+    ajax_request_tracker(-1)
     if req.status in [200, 0]:
         get("/getcookie/player_id", on_complete_getcookie)
 
@@ -442,7 +637,7 @@ def on_complete_getcookie(req: ajax.Ajax):
     mylog.error("Entering on_complete_getcookie.")
     global g_game_mode, g_game_id, g_player_id, g_kitty_size, g_team_id, g_kitty_deck  # pylint: disable=invalid-name
 
-    request_tracker(-1)
+    ajax_request_tracker(-1)
     if req.status != 200:
         return
     if req.text is None or req.text == "":
@@ -458,16 +653,17 @@ def on_complete_getcookie(req: ajax.Ajax):
         mylog.warning(
             "on_complete_getcookie: Setting GAME_ID=%s", response_data["ident"]
         )
-        put({}, f"/game/{g_game_id}?state=false", advance_mode_initial_callback, False)
+        # put({}, f"/game/{g_game_id}?state=false", advance_mode_initial_callback, False)
 
         try:
             g_kitty_size = int(g_game_dict[g_game_id]["kitty_size"])
             mylog.warning("on_complete_getcookie: KITTY_SIZE=%s", g_kitty_size)
             if g_kitty_size > 0:
                 g_kitty_deck = ["card-base" for _ in range(g_kitty_size)]
+            else:
+                g_kitty_deck.clear()
         except KeyError:
             pass
-        clear_display()
     elif "player_id" in response_data["kind"]:
         g_player_id = response_data["ident"]
         mylog.warning(
@@ -475,7 +671,7 @@ def on_complete_getcookie(req: ajax.Ajax):
         )
         get(f"/player/{g_player_id}/hand", on_complete_player_cards)
         # FIXME: This is temporary. The server will decide when to advance the game state.
-        put({}, f"/game/{g_game_id}?state=false", advance_mode_initial_callback)
+        # put({}, f"/game/{g_game_id}?state=false", advance_mode_initial_callback)
         # FIXME: This is temporary. The server will decide when to advance the game state.
 
         # Set the TEAM_ID variable based on the player id chosen.
@@ -497,7 +693,7 @@ def on_complete_kitty(req: ajax.Ajax):
     global g_kitty_deck  # pylint: disable=invalid-name
     mylog.error("Entering on_complete_kitty.")
 
-    request_tracker(-1)
+    ajax_request_tracker(-1)
     temp = on_complete_common(req)
     if temp is None:
         return
@@ -518,7 +714,7 @@ def on_complete_player_cards(req: ajax.Ajax):
     global g_players_hand, g_players_meld_deck  # pylint: disable=invalid-name
     mylog.error("Entering on_complete_player_cards.")
 
-    request_tracker(-1)
+    ajax_request_tracker(-1)
     temp = on_complete_common(req)
     if temp is None:
         return
@@ -530,7 +726,7 @@ def on_complete_player_cards(req: ajax.Ajax):
     mylog.warning("on_complete_player_cards: players_hand=%s", g_players_hand)
     g_players_meld_deck = copy.deepcopy(g_players_hand)  # Deep copy
 
-    clear_display()
+    display_game_options()
 
 
 def on_complete_get_meld_score(req: ajax.Ajax):
@@ -542,7 +738,7 @@ def on_complete_get_meld_score(req: ajax.Ajax):
     """
     mylog.error("Entering on_complete_get_meld_score.")
 
-    request_tracker(-1)
+    ajax_request_tracker(-1)
     temp = on_complete_common(req)
     if temp is None:
         return
@@ -568,7 +764,7 @@ def on_complete_common(req: ajax.Ajax):
     """
     mylog.error("Entering on_complete_common.")
 
-    request_tracker(-1)
+    ajax_request_tracker(-1)
     if req.status in [200, 0]:
         return json.loads(req.text)
 
@@ -586,7 +782,7 @@ def get(url: str, callback=None, async_call=True):
     """
     req = ajax.Ajax()
     if callback is not None:
-        request_tracker(1)
+        ajax_request_tracker(1)
         req.bind("complete", callback)
     mylog.warning("Calling GET /api%s", url)
     req.open("GET", "/api" + url, async_call)
@@ -608,7 +804,7 @@ def put(data: dict, url: str, callback=None, async_call=True):
     """
     req = ajax.Ajax()
     if callback is not None:
-        request_tracker(1)
+        ajax_request_tracker(1)
         req.bind("complete", callback)
     mylog.warning("Calling PUT /api%s with data: %r", url, data)
     req.open("PUT", "/api" + url, async_call)
@@ -630,7 +826,7 @@ def post(data: dict, url: str, callback=None, async_call=True):
     """
     req = ajax.Ajax()
     if callback is not None:
-        request_tracker(1)
+        ajax_request_tracker(1)
         req.bind("complete", callback)
     mylog.warning("Calling POST /api%s with data: %r", url, data)
     req.open("POST", "/api" + url, async_call)
@@ -649,7 +845,7 @@ def delete(url: str, callback=None, async_call=True):
     """
     req = ajax.Ajax()
     if callback is not None:
-        request_tracker(1)
+        ajax_request_tracker(1)
         req.bind("complete", callback)
     # pass the arguments in the query string
     req.open("DELETE", "/api" + url, async_call)
@@ -658,12 +854,14 @@ def delete(url: str, callback=None, async_call=True):
 
 
 def clear_globals_for_round_change():
-    global g_round_id, g_team_list, g_players_hand, g_players_meld_deck  # pylint: disable=invalid-name
+    global g_round_id, g_team_list, g_players_hand, g_players_meld_deck, g_meld_deck  # pylint: disable=invalid-name
+    mylog.error("Entering clear_globals_for_round_change.")
 
     g_round_id = ""
-    g_team_list.clear()
     g_players_hand.clear()
     g_players_meld_deck.clear()
+    g_meld_deck = ["card-base" for _ in range(HAND_SIZE)]
+    display_game_options()
 
 
 def populate_canvas(deck, target_canvas, deck_type="player"):
@@ -763,13 +961,15 @@ def calculate_x(deck: list) -> Tuple[float, float]:
     """
     xincr = int(g_table_width / (len(deck) + 0.5))  # Spacing to cover entire width
     start_x = 0.0
-    mylog.warning("calculate_x: Calculated: xincr=%f, start_x=%f", xincr, start_x)
+    mylog.warning("calculate_x: Calculated: xincr=%4.2f, start_x=%4.2f", xincr, start_x)
     if xincr > CARD_WIDTH:
         xincr = int(CARD_WIDTH)
         # Start deck/2 cards from table's midpoint horizontally
         start_x = int(g_table_width / 2 - xincr * (float(len(deck))) / 2)
         mylog.warning(
-            "calculate_x: Reset to CARD_WIDTH: xincr=%f, start_x=%f", xincr, start_x
+            "calculate_x: Reset to CARD_WIDTH: xincr=%4.2f, start_x=%4.2f",
+            xincr,
+            start_x,
         )
     if xincr < int(
         CARD_WIDTH / 20
@@ -800,7 +1000,7 @@ def place_cards(deck, target_canvas, location="top", deck_type="player"):
     # Set the initial position
     xpos = start_x
     ypos = start_y
-    mylog.warning("place_cards: Start position: (%f, %f)", xpos, ypos)
+    mylog.warning("place_cards: Start position: (%4.2f, %4.2f)", xpos, ypos)
 
     # Iterate over canvas's child nodes and move any node
     # where deck_type matches the node's id
@@ -811,7 +1011,10 @@ def place_cards(deck, target_canvas, location="top", deck_type="player"):
             continue
 
         mylog.warning(
-            "place_cards: Processing node %s. (xpos=%f, ypos=%f)", node.id, xpos, ypos
+            "place_cards: Processing node %s. (xpos=%4.2f, ypos=%4.2f)",
+            node.id,
+            xpos,
+            ypos,
         )
 
         # Move the node into the new position.
@@ -823,7 +1026,10 @@ def place_cards(deck, target_canvas, location="top", deck_type="player"):
         if xpos > g_table_width - xincr:
             mylog.warning("place_cards: Exceeded x.max, resetting position. ")
             mylog.warning(
-                "    (xpos=%f, table_width=%f, xincr=%f", xpos, g_table_width, xincr,
+                "    (xpos=%4.2f, table_width=%4.2f, xincr=%4.2f",
+                xpos,
+                g_table_width,
+                xincr,
             )
             xpos = xincr
             ypos += yincr
@@ -835,13 +1041,15 @@ def calculate_dimensions():
     """
     global g_table_width, g_table_height  # pylint: disable=invalid-name
     # Gather information about the display environment
-    (g_table_width, g_table_height) = canvas.setDimensions()
+    (g_table_width, g_table_height) = g_canvas.setDimensions()
 
 
 def create_game_select_buttons(xpos, ypos) -> bool:
+    mylog.error("Entering create_game_select_buttons")
     mylog.warning("create_game_select_buttons: game_dict=%s", g_game_dict)
     added_button = False
     if g_game_dict == {}:
+        mylog.warning("cgsb: In g_game_dict={}")
         no_game_button = SVG.Button(
             position=(xpos, ypos),
             size=(450, 35),
@@ -850,23 +1058,26 @@ def create_game_select_buttons(xpos, ypos) -> bool:
             fontsize=18,
             objid="nogame",
         )
-        canvas.attach(no_game_button)
+        g_canvas.attach(no_game_button)
         added_button = True
     else:
-        canvas.deleteAll()
-    for item in g_game_dict:
+        mylog.warning("cgsb: Clearing canvas (%r)", g_canvas)
+        g_canvas.deleteAll()
+    mylog.warning("cgsb: Enumerating games for buttons (%d).", len(g_game_dict))
+    for item, temp_dict in g_game_dict.items():
         mylog.warning("create_game_select_buttons: game_dict item: item=%s", item)
         game_button = SVG.Button(
             position=(xpos, ypos),
             size=(450, 35),
-            text=f"Game: {g_game_dict[item]['timestamp'].replace('T',' ')}",
+            text=f"Game: {temp_dict['timestamp'].replace('T',' ')}",
             onclick=choose_game,
             fontsize=18,
             objid=item,
         )
-        canvas.attach(game_button)
+        g_canvas.attach(game_button)
         added_button = True
         ypos += 40
+    mylog.warning("Exiting create_game_select_buttons")
     return added_button
 
 
@@ -883,291 +1094,21 @@ def create_player_select_buttons(xpos, ypos) -> bool:
             objid=g_player_dict[item]["player_id"],
         )
         mylog.warning("create_player_select_buttons: player_dict item: item=%s", item)
-        canvas.attach(player_button)
+        g_canvas.attach(player_button)
         ypos += 40
         added_button = True
     return added_button
 
 
-def display_game_options():
+def remove_dialogs():
     """
-    Conditional ladder for early game data selection. This needs to be done better and
-    have new game/team/player capability.
+    Remove dialog boxes.
     """
-    global g_game_mode
-    added_button = False
-    xpos = 10
-    ypos = 0
-    # Grab the game_id, team_ids, and players. Display and allow player to choose.
-    if g_game_id == "":
-        added_button = create_game_select_buttons(xpos, ypos)
-    elif g_round_id == "":
-        # Open the websocket if needed.
-        # if WEBSOCKET is None:
-        #     ws_open()
-
-        get(f"/game/{g_game_id}/round", on_complete_rounds)
-    elif g_team_list == []:
-        get(f"/round/{g_round_id}/teams", on_complete_teams)
-    elif g_player_id == "":
-        added_button = create_player_select_buttons(xpos, ypos)
-    else:
-        # Display the player's name in the UI
-        if g_player_dict != {} and g_player_id in g_player_dict:
-            mylog.warning("Players: %r", g_player_dict)
-
-            document.getElementById("player_name").clear()
-            document.getElementById("player_name").attach(
-                html.BIG(g_player_dict[g_player_id]["name"].capitalize())
-            )
-            # TODO: Do something more useful like a line of names with color change when
-            # the player's client registers.
-            document.getElementById("player_name").attach(html.BR())
-            document.getElementById("player_name").attach(
-                html.SMALL(
-                    ", ".join(
-                        y["name"].capitalize()
-                        for y in [
-                            g_player_dict[x] for x in g_player_dict if x != g_player_id
-                        ]
-                    )
-                )
-            )
-        # Send the registration message.
-        # send_registration()
-
-        clear_display()
-    try:
-        if added_button:
-            canvas.fitContents()
-    except ZeroDivisionError:
-        pass
-    except AttributeError:
-        pass
-
-
-def update_display(event=None):  # pylint: disable=unused-argument
-    """
-    Populate and place cards based on the game's current mode. This needs a little more
-    work to support more aspects of the game.
-
-    :param event: The event object passed in during callback, defaults to None
-    :type event: [type], optional
-    """
-    global g_game_mode
-    mode = GAME_MODES[g_game_mode]
-    mylog.error("Entering update_display. (mode=%s)", mode)
-    calculate_dimensions()
-
-    # FIXME: This should not be needed.
-    if g_player_id != "" and not g_players_hand:
-        get(f"/player/{g_player_id}/hand", on_complete_player_cards)
-
-    # Place the desired decks on the display.
-    if not canvas.objectDict:
-        if mode in ["game"] and g_game_id == "":  # Choose game, player
-            display_game_options()
-        if mode in ["bid", "bidfinal"]:  # Bid
-            # Use empty deck to prevent peeking at the kitty.
-            populate_canvas(g_kitty_deck, canvas, "kitty")
-            populate_canvas(g_players_hand, canvas, "player")
-        if mode in ["bidfinal"]:  # Bid submitted
-            # The kitty doesn't need to remain 'secret' now that the bidding is done.
-            if g_round_id != "":
-                get(f"/round/{g_round_id}/kitty", on_complete_kitty)
-        elif mode in ["reveal"]:  # Reveal
-            # Ask the server for the cards in the kitty.
-            populate_canvas(g_kitty_deck, canvas, "kitty")
-            populate_canvas(g_players_hand, canvas, "player")
-        elif mode in ["meld"]:  # Meld
-            # TODO: IF bid winner, need way to select trump & communicate with other players - BEFORE they have the chance to choose / submit their meld.
-            # TODO: Add a score meld button to submit temporary deck and retrieve and display a numerical score, taking into account trump.
-            populate_canvas(meld_deck, canvas, GAME_MODES[g_game_mode])
-            populate_canvas(g_players_meld_deck, canvas, "player")
-        elif mode in ["trick"]:  # Trick
-            populate_canvas(discard_deck, canvas, GAME_MODES[g_game_mode])
-            populate_canvas(g_players_hand, canvas, "player")
-
-    # Last-drawn are on top (z-index wise)
-    # TODO: Add buttons/input for this player's meld.
-    # TODO: Figure out how to convey the bidding process across the players.
-    # TODO: Retrieve events from API to show kitty cards when they are flipped over.
-    if mode in ["bid", "bidfinal", "reveal"]:  # Bid & Reveal
-        place_cards(g_kitty_deck, canvas, location="top", deck_type="kitty")
-        place_cards(g_players_hand, canvas, location="bottom", deck_type="player")
-    elif mode in ["meld"]:  # Meld
-        # TODO: Expand display to show all four players.
-        # TODO: Retrieve events from API to show other player's meld.
-        place_cards(meld_deck, canvas, location="top", deck_type=mode)
-        place_cards(g_players_meld_deck, canvas, location="bottom", deck_type="player")
-    elif mode in ["trick"]:  # Trick
-        # TODO: Retrieve/send events from API to show cards as they are played.
-        place_cards(discard_deck, canvas, location="top", deck_type=mode)
-        place_cards(g_players_hand, canvas, location="bottom", deck_type="player")
-
-    # try:
-    #     canvas.fitContents()
-    # except AttributeError:
-    #     pass
-    canvas.mouseMode = SVG.MouseMode.DRAG
-
-
-def clear_display(event=None):  # pylint: disable=unused-argument
-    """
-    Clear the display by removing everything from the canvas object, the canvas object
-    itself, then re-adding everything back. It also works for the initial creation and
-    addition of the canvas to the overall DOM.
-
-    This is a fairly heavy routine, so call as infrequently as possible.
-
-    :param event: The event object passed in during callback, defaults to None
-    :type event: Event(?), optional
-    """
-    global g_game_mode, button_advance_mode, canvas  # pylint: disable=invalid-name
-    mylog.error("Entering clear_display")
-
-    if g_game_mode is None and not g_game_dict:
-        g_game_mode = 0
-
-    if g_outstanding_requests > 0:
-        mylog.warning(
-            "There are %d outstanding requests. Skipping clear.", g_outstanding_requests
-        )
-        return
-
-    mode = GAME_MODES[g_game_mode]
-    mylog.warning("Current mode=%s", mode)
-
-    try:
-        document.getElementById("canvas").remove()
-    except AttributeError:
-        pass
-    mylog.warning("Destroying canvas with mode: %s", canvas.attrs["mode"])
-    canvas.deleteAll()
-
-    # Create the base SVG object for the card table.
-    # canvas = SVG.CanvasObject("95vw", "90vh", None, objid="canvas")
-    canvas.attrs["mode"] = mode
-
-    # Attach the new canvas to the card_table div of the document.
-    CardTable <= canvas  # pylint: disable=pointless-statement
-    calculate_dimensions()
-    update_display()
-
-    half_table = g_table_width / 2 - 35
-    # Update/create buttons
-    if g_game_mode > 0:  # Only display buttons when there are cards.
-
-        # Button to call advance_mode on demand
-        # FIXME: This is temporary. The server will decide when to advance the game state.
-        button_advance_mode = SVG.Button(
-            position=(half_table - 80 * 3, -40),
-            size=(70, 35),
-            text=GAME_MODES[g_game_mode].capitalize(),
-            onclick=advance_mode,
-            fontsize=18,
-            objid="button_advance_mode",
-        )
-        # Button to call update_display on demand
-        button_refresh = SVG.Button(
-            position=(half_table - 80 * 2, -40),
-            size=(70, 35),
-            text="Refresh",
-            onclick=update_display,
-            fontsize=18,
-            objid="button_refresh",
-        )
-
-        # Button to call clear_display on demand
-        button_clear = SVG.Button(
-            position=(half_table - 80 * 1, -40),
-            size=(70, 35),
-            text="Clear",
-            onclick=clear_display,
-            fontsize=18,
-            objid="button_clear",
-        )
-
-        # Button to call clear_game on demand
-        button_clear_game = SVG.Button(
-            position=(half_table + 80 * 1, -40),
-            size=(70, 35),
-            text="Clear\nGame",
-            onclick=clear_game,
-            fontsize=16,
-            objid="button_clear_game",
-        )
-
-        # Button to call clear_player on demand
-        button_clear_player = SVG.Button(
-            position=(half_table + 80 * 2, -40),
-            size=(70, 35),
-            text="Clear\nPlayer",
-            onclick=clear_player,
-            fontsize=16,
-            objid="button_clear_player",
-        )
-
-        # Button to call window reload on demand
-        button_reload_page = SVG.Button(
-            position=(half_table + 80 * 3, -40),
-            size=(70, 35),
-            text="Reload",
-            onclick=window.location.reload,  # pylint: disable=no-member
-            fontsize=16,
-            objid="button_reload_page",
-        )
-
-        start_y, yincr = calculate_y(location="bottom")
-        # Button to call sort_player_cards on demand
-        button_sort_player = SVG.Button(
-            position=(half_table, start_y - yincr * 0.75),
-            size=(70, 35),
-            text="Sort",
-            onclick=sort_player_cards,
-            fontsize=18,
-            objid="button_sort_player",
-        )
-
-        canvas.addObject(button_sort_player)
-
-        for item in [
-            button_clear,
-            button_refresh,
-            button_advance_mode,
-            button_clear_game,
-            button_clear_player,
-            button_reload_page,
-        ]:
-            canvas.addObject(item)
-
-        # canvas.translateObject(button_clear, (half_table - 80 * 1, -40))
-        # canvas.translateObject(button_refresh, (half_table - 80 * 2, -40))
-        # canvas.translateObject(button_advance_mode, (half_table - 80 * 3, -40))
-        # canvas.translateObject(button_clear_game, (half_table + 80 * 1, -40))
-        # canvas.translateObject(button_clear_player, (half_table + 80 * 2, -40))
-        # canvas.translateObject(button_reload_page, (half_table + 80 * 3, -40))
-    if GAME_MODES[g_game_mode] in ["meld"]:
-        # Button to call submit_meld on demand
-        button_send_meld = SVG.Button(
-            position=(half_table, -40),
-            size=(70, 35),
-            text="Send\nMeld",
-            onclick=send_meld,
-            fontsize=16,
-            objid="button_send_meld",
-        )
-
-        canvas.addObject(button_send_meld)
-        # canvas.translateObject(button_send_meld, (table_width / 2 - 35, -40))
-
-    try:
-        canvas.fitContents()
-    except ZeroDivisionError:
-        pass
-    except AttributeError:
-        pass
-    canvas.mouseMode = SVG.MouseMode.DRAG
+    mylog.error("Entering remove_dialogs.")
+    dialogs = document.getElementsByClassName("brython-dialog-main")
+    for item in dialogs:
+        mylog.warning("Removing dialog item=%r", item)
+        item.remove()
 
 
 def advance_mode(event=None):  # pylint: disable=unused-argument
@@ -1194,12 +1135,12 @@ def advance_mode_callback(req: ajax.Ajax):
     :param req:   The request response passed in during callback
     :type req:    Request
     """
-    global g_game_mode
+    global g_game_mode  # pylint: disable=invalid-name
     mylog.error(
         "Entering advance_mode_callback (current mode=%s)", GAME_MODES[g_game_mode]
     )
 
-    request_tracker(-1)
+    ajax_request_tracker(-1)
     if req.status not in [200, 0]:
         return
 
@@ -1207,10 +1148,8 @@ def advance_mode_callback(req: ajax.Ajax):
         mylog.warning("advance_mode_callback: Starting new round.")
         g_game_mode = 0
         clear_globals_for_round_change()
-        put({}, f"/game/{g_game_id}?state=true", advance_mode_callback)
-        get(f"/player/{g_player_id}/hand", on_complete_player_cards)
 
-        display_game_options()
+        # display_game_options()
         return
 
     mylog.warning("advance_mode_callback: req.text=%s", req.text)
@@ -1221,41 +1160,46 @@ def advance_mode_callback(req: ajax.Ajax):
     mylog.warning(
         "Leaving advance_mode_callback (current mode=%s)", GAME_MODES[g_game_mode]
     )
-    clear_display()
+    display_game_options()
+    # FIXME: This is temporary. The server will decide when to advance the game state.
 
 
-def advance_mode_initial_callback(req: ajax.Ajax):
+def game_mode_query_callback(req: ajax.Ajax):
     """
     Routine to capture the response of the server when advancing the game mode.
 
     :param req:   The request response passed in during callback
     :type req:    Request
     """
-    global g_game_mode
+    global g_game_mode  # pylint: disable=invalid-name
     if g_game_mode is not None:
         mylog.error(
-            "Entering advance_mode_initial_callback (current mode=%s)",
+            "Entering game_mode_query_callback (current mode=%s)",
             GAME_MODES[g_game_mode],
         )
 
-    request_tracker(-1)
-    # Handle a semi-corner case where in the middle of a round, a player loses / destroys
-    # a cookie and reloads the page.
-    if req.status not in [200, 0] or g_player_id == "":
+    ajax_request_tracker(-1)
+    # TODO: Handle a semi-corner case where in the middle of a round, a player loses /
+    # destroys a cookie and reloads the page.
+    if req.status not in [200, 0]:
+        mylog.warning(
+            "game_mode_query_callback: Not setting game_mode - possibly because g_player_id is empty (%s).",
+            g_player_id,
+        )
         return
 
-    mylog.warning("advance_mode_initial_callback: req.text=%s", req.text)
+    mylog.warning("game_mode_query_callback: req.text=%s", req.text)
     data = json.loads(req.text)
-    mylog.warning("advance_mode_initial_callback: data=%r", data)
+    mylog.warning("game_mode_query_callback: data=%r", data)
     g_game_mode = data["state"]
 
     mylog.warning(
-        "Leaving advance_mode_initial_callback (current mode=%s)",
-        GAME_MODES[g_game_mode],
+        "Leaving game_mode_query_callback (current mode=%s)", GAME_MODES[g_game_mode],
     )
-    clear_globals_for_round_change()
-    clear_display()
-    # FIXME: This is temporary. The server will decide when to advance the game state.
+    if g_game_mode == 0:
+        clear_globals_for_round_change()
+    else:
+        display_game_options()
 
 
 def sort_player_cards(event=None):  # pylint: disable=unused-argument
@@ -1271,7 +1215,7 @@ def sort_player_cards(event=None):  # pylint: disable=unused-argument
     g_players_meld_deck.sort(
         key=lambda x: DECK_SORTED.index(x)  # pylint: disable=unnecessary-lambda
     )
-    clear_display()
+    display_game_options()
 
 
 def send_meld(event=None):  # pylint: disable=unused-argument
@@ -1281,10 +1225,10 @@ def send_meld(event=None):  # pylint: disable=unused-argument
     :param event: The event object passed in during callback, defaults to None
     :type event: Event(?), optional
     """
-    card_string = ",".join(x for x in meld_deck if x != "card-base")
+    card_string = ",".join(x for x in g_meld_deck if x != "card-base")
 
     mylog.warning(
-        "/round/%s/score_meld?player_id=%s&cards=%s",
+        "send_meld: /round/%s/score_meld?player_id=%s&cards=%s",
         g_round_id,
         g_player_id,
         card_string,
@@ -1329,6 +1273,7 @@ def choose_game(event=None):
         get(f"/setcookie/game_id/{game_to_be}", on_complete_set_gamecookie)
         mylog.warning("choose_game: GAME_ID will be %s", game_to_be)
     except AttributeError:
+        mylog.warning("choose_game: Caught AttributeError.")
         return
 
 
@@ -1345,13 +1290,282 @@ def choose_player(event=None):
         get(f"/player/{player_to_be}/hand", on_complete_player_cards)
         mylog.warning("choose_player: PLAYER_ID will be %s", player_to_be)
     except AttributeError:
+        mylog.warning("choose_player: Caught AttributeError.")
         return
+
+
+def display_game_options():
+    """
+    Conditional ladder for early game data selection. This needs to be done better and
+    have new game/team/player capability.
+    """
+    global g_game_mode  # pylint: disable=invalid-name
+    dump_globals()
+
+    added_button = False
+    xpos = 10
+    ypos = 0
+
+    # Grab the game_id, team_ids, and players. Display and allow player to choose.
+    if g_game_id == "":
+        mylog.warning("dso: In g_game_id=''")
+        added_button = create_game_select_buttons(xpos, ypos)
+    elif g_game_mode is None:
+        mylog.warning("dso: In g_game_mode is None")
+        get(f"/game/{g_game_id}?state=false", game_mode_query_callback)
+    elif g_round_id == "":
+        mylog.warning("dso: In g_round_id=''")
+        # Open the websocket if needed.
+        if g_websocket is None:
+            ws_open()
+
+        get(f"/game/{g_game_id}/round", on_complete_rounds)
+    elif g_team_list == []:
+        mylog.warning("dso: In g_team_list=[]")
+        get(f"/round/{g_round_id}/teams", on_complete_teams)
+    elif g_player_id == "":
+        mylog.warning("dso: In g_player_id=''")
+        added_button = create_player_select_buttons(xpos, ypos)
+    elif g_players_hand == []:
+        mylog.warning("dso: In g_players_hand=[]")
+        get(f"/player/{g_player_id}/hand", on_complete_player_cards)
+    else:
+        mylog.warning("dso: In else clause")
+        # Send the registration message.
+        send_registration()
+
+        rebuild_display()
+
+    mylog.warning("dso: Considering fitCanvas (added_button=%r)", added_button)
+    try:
+        if added_button:
+            calculate_dimensions()
+            g_canvas.fitContents()
+    except ZeroDivisionError as e1:
+        mylog.warning("dso: Caught ZeroDivisionError from fitContents. %s", e1)
+    except AttributeError as e2:
+        mylog.warning("dso: Caught AttributeError from fitContents. %s", e2)
+    mylog.error("Leaving display_game_options()")
+
+
+def rebuild_display(event=None):  # pylint: disable=unused-argument
+    """
+    Clear the display by removing everything from the canvas object, then re-add 
+    everything back. It also works for the initial creation and addition of the canvas to 
+    the overall DOM.
+
+    :param event: The event object passed in during callback, defaults to None
+    :type event: Event(?), optional
+    """
+    global g_game_mode, button_advance_mode, g_canvas  # pylint: disable=invalid-name
+    mylog.error("Entering clear_display")
+
+    if g_game_mode is None and not g_game_dict:
+        g_game_mode = 0
+
+    if g_ajax_outstanding_requests > 0:
+        mylog.warning(
+            "There are %d outstanding requests. Skipping clear.",
+            g_ajax_outstanding_requests,
+        )
+        return
+
+    mode = GAME_MODES[g_game_mode]
+    mylog.warning("Current mode=%s", mode)
+
+    mylog.warning("Destroying canvas contents with mode: %s", g_canvas.attrs["mode"])
+    g_canvas.deleteAll()
+
+    # Set the current game mode in the canvas.
+    g_canvas.attrs["mode"] = mode
+
+    # Get the dimensions of the canvas and update the display.
+    calculate_dimensions()
+    set_card_positions()
+
+    half_table = g_table_width / 2 - 35
+
+    # Update/create buttons
+    # Button to call advance_mode on demand
+    # FIXME: This is temporary. The server will decide when to advance the game state.
+    button_advance_mode = SVG.Button(
+        position=(half_table - 80 * 3, -40),
+        size=(70, 35),
+        text=GAME_MODES[g_game_mode].capitalize(),
+        onclick=advance_mode,
+        fontsize=18,
+        objid="button_advance_mode",
+    )
+    # Button to call update_display on demand
+    button_refresh = SVG.Button(
+        position=(half_table - 80 * 2, -40),
+        size=(70, 35),
+        text="Refresh",
+        onclick=set_card_positions,
+        fontsize=18,
+        objid="button_refresh",
+    )
+
+    # Button to call clear_display on demand
+    button_clear = SVG.Button(
+        position=(half_table - 80 * 1, -40),
+        size=(70, 35),
+        text="Clear",
+        onclick=rebuild_display,
+        fontsize=18,
+        objid="button_clear",
+    )
+
+    # Button to call clear_game on demand
+    button_clear_game = SVG.Button(
+        position=(half_table + 80 * 1, -40),
+        size=(70, 35),
+        text="Clear\nGame",
+        onclick=clear_game,
+        fontsize=16,
+        objid="button_clear_game",
+    )
+
+    # Button to call clear_player on demand
+    button_clear_player = SVG.Button(
+        position=(half_table + 80 * 2, -40),
+        size=(70, 35),
+        text="Clear\nPlayer",
+        onclick=clear_player,
+        fontsize=16,
+        objid="button_clear_player",
+    )
+
+    # Button to call window reload on demand
+    button_reload_page = SVG.Button(
+        position=(half_table + 80 * 3, -40),
+        size=(70, 35),
+        text="Reload",
+        onclick=window.location.reload,  # pylint: disable=no-member
+        fontsize=16,
+        objid="button_reload_page",
+    )
+
+    start_y, yincr = calculate_y(location="bottom")
+    # Button to call sort_player_cards on demand
+    button_sort_player = SVG.Button(
+        position=(half_table, start_y - yincr * 0.75),
+        size=(70, 35),
+        text="Sort",
+        onclick=sort_player_cards,
+        fontsize=18,
+        objid="button_sort_player",
+    )
+
+    for item in [
+        button_clear,
+        button_refresh,
+        button_advance_mode,
+        button_clear_game,
+        button_clear_player,
+        button_reload_page,
+        button_sort_player,
+    ]:
+        g_canvas.addObject(item)
+
+    # TODO: Add buttons & display to facilitate bidding. Tie into API.
+
+    if GAME_MODES[g_game_mode] in ["meld"]:
+        # Button to call submit_meld on demand
+        button_send_meld = SVG.Button(
+            position=(half_table, -40),
+            size=(70, 35),
+            text="Send\nMeld",
+            onclick=send_meld,
+            fontsize=16,
+            objid="button_send_meld",
+        )
+        g_canvas.addObject(button_send_meld)
+
+    try:
+        g_canvas.fitContents()
+    except ZeroDivisionError:
+        pass
+    except AttributeError:
+        pass
+    g_canvas.mouseMode = SVG.MouseMode.DRAG
+    mylog.warning("Leaving clear_display")
+
+
+def set_card_positions(event=None):  # pylint: disable=unused-argument
+    """
+    Populate and place cards based on the game's current mode. This needs a little more
+    work to support more aspects of the game.
+
+    :param event: The event object passed in during callback, defaults to None
+    :type event: [type], optional
+    """
+    global g_game_mode  # pylint: disable=invalid-name
+    mode = GAME_MODES[g_game_mode]
+    mylog.error("Entering update_display. (mode=%s)", mode)
+    calculate_dimensions()
+
+    # FIXME: I don't think this should be needed.
+    if g_player_id != "" and not g_players_hand:
+        get(f"/player/{g_player_id}/hand", on_complete_player_cards)
+        return
+
+    # Place the desired decks on the display.
+    if not g_canvas.objectDict:
+        if mode in ["game"] and g_game_id == "":  # Choose game, player
+            display_game_options()
+        if mode in ["bid", "bidfinal"]:  # Bid
+            # Use empty deck to prevent peeking at the kitty.
+            populate_canvas(g_kitty_deck, g_canvas, "kitty")
+            populate_canvas(g_players_hand, g_canvas, "player")
+        if mode in ["bidfinal"]:  # Bid submitted
+            # The kitty doesn't need to remain 'secret' now that the bidding is done.
+            if g_round_id != "":
+                get(f"/round/{g_round_id}/kitty", on_complete_kitty)
+        elif mode in ["reveal"]:  # Reveal
+            # Ask the server for the cards in the kitty.
+            populate_canvas(g_kitty_deck, g_canvas, "kitty")
+            populate_canvas(g_players_hand, g_canvas, "player")
+        elif mode in ["meld"]:  # Meld
+            # TODO: IF bid winner, need way to select trump & communicate with other players - BEFORE they have the chance to choose / submit their meld.
+            # TODO: Add a score meld button to submit temporary deck and retrieve and display a numerical score, taking into account trump.
+            populate_canvas(g_meld_deck, g_canvas, GAME_MODES[g_game_mode])
+            populate_canvas(g_players_meld_deck, g_canvas, "player")
+        elif mode in ["trick"]:  # Trick
+            populate_canvas(discard_deck, g_canvas, GAME_MODES[g_game_mode])
+            populate_canvas(g_players_hand, g_canvas, "player")
+
+    # Last-drawn are on top (z-index wise)
+    # TODO: Add buttons/input for this player's meld.
+    # TODO: Figure out how to convey the bidding process across the players.
+    # TODO: Retrieve events from API to show kitty cards when they are flipped over.
+    if mode in ["bid", "bidfinal", "reveal"]:  # Bid & Reveal
+        place_cards(g_kitty_deck, g_canvas, location="top", deck_type="kitty")
+        place_cards(g_players_hand, g_canvas, location="bottom", deck_type="player")
+    elif mode in ["meld"]:  # Meld
+        # TODO: Expand display to show all four players.
+        # TODO: Retrieve events from API to show other player's meld.
+        place_cards(g_meld_deck, g_canvas, location="top", deck_type=mode)
+        place_cards(
+            g_players_meld_deck, g_canvas, location="bottom", deck_type="player"
+        )
+    elif mode in ["trick"]:  # Trick
+        # Remove any dialogs from the meld phase.
+        remove_dialogs()
+        # TODO: Retrieve/send events from API to show cards as they are played.
+        place_cards(discard_deck, g_canvas, location="top", deck_type=mode)
+        place_cards(g_players_hand, g_canvas, location="bottom", deck_type="player")
+
+    g_canvas.mouseMode = SVG.MouseMode.DRAG
 
 
 ## END Function definitions.
 
+# Gather information about where we're coming from.
+(PROTOCOL, SERVER) = find_protocol_server()
+
 # Make the clear_display function easily available to plain javascript code.
-window.clear_display = clear_display
+window.rebuild_display = rebuild_display
 
 # Locate the card table in the HTML document.
 CardTable = document["card_table"]
@@ -1360,24 +1574,22 @@ CardTable = document["card_table"]
 document["card_definitions"].attach(SVG.Definitions(filename=CARD_URL))
 
 # Create the base SVG object for the card table.
-canvas = SVG.CanvasObject("95vw", "90vh", None, objid="canvas")
+g_canvas = SVG.CanvasObject("95vw", "90vh", None, objid="canvas")
+CardTable <= g_canvas  # pylint: disable=pointless-statement
 calculate_dimensions()
-canvas.attrs["mode"] = "initial"
-clear_display()
+g_canvas.attrs["mode"] = "initial"
+
+# Declare temporary decks
+discard_deck = ["card-base" for _ in range(g_players)]
+
+# TODO: Figure out how better to calculate HAND_SIZE.
+HAND_SIZE = int(48 / g_players)
+g_meld_deck = ["card-base" for _ in range(HAND_SIZE)]
+
+document.getElementById("please_wait").remove()
+display_game_options()
 
 # See if some steps can be bypassed because we refreshed in the middle of the game.
 get("/game", on_complete_games)
 get("/getcookie/game_id", on_complete_getcookie)
 get("/getcookie/player_id", on_complete_getcookie)
-
-# TODO: Add buttons & display to facilitate bidding. Tie into API.
-
-# Collect cards into discard, kitty and player's hand
-discard_deck = ["card-base" for _ in range(g_players)]
-
-# TODO: Figure out how better to calculate HAND_SIZE.
-HAND_SIZE = int(48 / g_players)
-meld_deck = ["card-base" for _ in range(HAND_SIZE)]
-
-document.getElementById("please_wait").remove()
-clear_display()

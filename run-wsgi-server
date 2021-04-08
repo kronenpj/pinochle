@@ -1,3 +1,4 @@
 #!/bin/sh
 
-poetry run gunicorn --bind 0.0.0.0:9876 "pinochle.wsgi:application"
+poetry run gunicorn --bind 0.0.0.0:9876 --workers 4 --threads 100 \
+    -k flask_sockets.worker "pinochle.wsgi:application"

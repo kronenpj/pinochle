@@ -87,9 +87,13 @@ def update(game_id: str, kitty_size=None, state=None):
     :type state:        boolean
     :return:            Updated / new record.
     """
+    from pinochle.ws_messenger import WebSocketMessenger as WSM
+
     if kitty_size:
         return _update_data(game_id, {"kitty_size": kitty_size})
     if state:
+        # TODO: Avoiding circular import until I find a different implementation.
+
         game = utils.query_game(game_id=game_id)
         if game is None:
             abort(409)
@@ -97,11 +101,15 @@ def update(game_id: str, kitty_size=None, state=None):
         if current_state == 2 and game.kitty_size == 0:
             current_state += 1  # advance past kitty reveal.
         new_state = current_state + 1
+        # print(f"game.update: mode: {new_state}, array length: {len(GAME_MODES)}")
         if new_state < len(GAME_MODES):
             # print(f"game.update: Returning game state(true): {game.state}")
+            message = {"action": "game_state", "game_id": game_id, "state": new_state}
+            ws_mess = WSM.get_instance()
+            ws_mess.websocket_broadcast(game_id, message)
             return _update_data(game_id, {"state": new_state})
 
-        new_state = 0
+        new_state = 1
         # Reset the game state
         _update_data(game_id, {"state": new_state})
 
@@ -113,6 +121,9 @@ def update(game_id: str, kitty_size=None, state=None):
 
     # Send the current game state rather than advancing it.
     game = utils.query_game(game_id=game_id)
+    message = {"action": "game_state", "game_id": game_id, "state": game.state}
+    ws_mess = WSM.get_instance()
+    ws_mess.websocket_broadcast(game_id, message)
     # print(f"game.update: Returning game state(false): {game.state}")
     return {"state": game.state}, 200
 

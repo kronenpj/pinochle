@@ -21,7 +21,7 @@ import test_utils
 # from pinochle.models.utils import dump_db
 
 
-def test_game_round_start(app):
+def test_game_round_start(app, patch_ws_messenger):
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/round/{round_id}/start' page is requested (POST)
@@ -75,7 +75,7 @@ def test_game_round_start(app):
     # print(f"db_response={db_response}")
 
 
-def test_round_score_meld_hand_no_trump(app):
+def test_round_score_meld_hand_no_trump(app, patch_ws_messenger):
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/round/{round_id}/score_hand_meld' page is requested (POST)
@@ -117,10 +117,7 @@ def test_round_score_meld_hand_no_trump(app):
     round_.start(round_id=round_id)
     player_id = choice(player_ids)
     hand_id = test_utils.query_player_hand_id(player_id=player_id)
-    temp_cards = []
-    for item in utils.query_hand_list(hand_id):
-        temp_cards.append(item.card)
-
+    temp_cards = [item.card for item in utils.query_hand_list(hand_id)]
     print(f"round_id={round_id}, player_id={player_id}")
     print(f"player_cards={temp_cards}")
     print(f"temp_cards= {','.join(temp_cards)}")
@@ -144,7 +141,7 @@ def test_round_score_meld_hand_no_trump(app):
     assert updated_player.meld_score == score
 
 
-def test_round_score_meld_hand_with_trump(app):
+def test_round_score_meld_hand_with_trump(app, patch_ws_messenger):
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/round/{round_id}/score_hand_meld' page is requested (POST)
@@ -187,10 +184,7 @@ def test_round_score_meld_hand_with_trump(app):
     player_id = choice(player_ids)
     round_.update(round_id, {"bid_winner": player_id})
     hand_id = test_utils.query_player_hand_id(player_id=player_id)
-    temp_cards = []
-    for item in utils.query_hand_list(hand_id):
-        temp_cards.append(item.card)
-
+    temp_cards = [item.card for item in utils.query_hand_list(hand_id)]
     print(f"round_id={round_id}, player_id={player_id}")
     print(f"player_cards={temp_cards}")
     print(f"temp_cards= {','.join(temp_cards)}")
@@ -520,7 +514,7 @@ def test_round_read_one_missing(app):
     THEN check that the response is a UUID and contains the expected information
     """
     # Create a new round
-    round_id = uuid.uuid4()
+    round_id = str(uuid.uuid4())
 
     with app.test_client() as test_client:
         # Attempt to access the create round api
@@ -575,7 +569,7 @@ def test_game_round_create_invalid(app):
         gameround.create(game_id, {"round_id": round_id})
 
 
-def test_round_score_meld_bad_hand(app):
+def test_round_score_meld_bad_hand(app, patch_ws_messenger):
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/round/{round_id}/score_hand_meld' page is requested (POST)
@@ -619,10 +613,7 @@ def test_round_score_meld_bad_hand(app):
     # Choose another player so that the cards don't match exactly.
     temp_player_id = choice([x for x in player_ids if x != player_id])
     hand_id = test_utils.query_player_hand_id(player_id=temp_player_id)
-    temp_cards = []
-    for item in utils.query_hand_list(hand_id):
-        temp_cards.append(item.card)
-
+    temp_cards = [item.card for item in utils.query_hand_list(hand_id)]
     print(f"round_id={round_id}, player_id={player_id}")
     print(f"player_cards={temp_cards}")
     print(f"temp_cards= {','.join(temp_cards)}")
