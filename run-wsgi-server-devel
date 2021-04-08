@@ -1,6 +1,6 @@
 #!/bin/sh
 
-export PYTHONHOME=$(pwd)/src
+export PYTHONPATH=$(pwd)/src
 
 poetry run gunicorn --bind 0.0.0.0:5000 \
     --graceful-timeout 5 \
