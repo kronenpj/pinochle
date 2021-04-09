@@ -250,9 +250,6 @@ def score_hand_meld(round_id: str, player_id: str, cards: str):
     :return:           200 on successful scoring of cards, 404 if not found,
                        409 if scoring isn't successful.
     """
-    # TODO: Avoiding circular import until I find a different implementation.
-    from pinochle.ws_messenger import WebSocketMessenger as WSM
-
     # print(f"\nscore_hand_meld: round_id={round_id}")
     # Get the round requested
     a_round: Round = utils.query_round(round_id)
