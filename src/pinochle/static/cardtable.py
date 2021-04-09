@@ -57,8 +57,6 @@ g_team_list: List[str] = []
 # Track whether this user is the round's bid winner.
 g_round_bid_winner = False  # pylint: disable=invalid-name
 
-g_table_width = 0  # pylint: disable=invalid-name
-g_table_height = 0  # pylint: disable=invalid-name
 button_advance_mode = None  # pylint: disable=invalid-name
 g_registered_with_server = False  # pylint: disable=invalid-name
 
@@ -142,7 +140,7 @@ class PlayingCard(SVG.UseObject):
         :param event: The event object passed in during callback, defaults to None
         :type event: Event(?), optional
         """
-        new_y = g_table_height
+        new_y = CARD_HEIGHT * 1.25
 
         # The object already has the correct 'Y' value from the move.
         if "touch" in event.type or "click" in event.type:
@@ -214,7 +212,7 @@ class PlayingCard(SVG.UseObject):
             "PlayingCard.play_handler: Locating %s%s\nPlayingCard.play_handler: %s: %s",
             card_tag,
             placement,
-            parent_canvas.attrs["mode"],
+            parent_canvas.mode,
             [objid for (objid, _) in parent_canvas.objectDict.items()],
         )
         # Locate the ID of the target card in the DOM.
@@ -282,6 +280,9 @@ class PlayingCard(SVG.UseObject):
 
 
 def dump_globals() -> None:
+    """
+    Debugging assistant to output the value of selected globals.
+    """
     variables = {
         # "canvas": canvas,
         # "g_game_id": g_game_id,
@@ -1004,66 +1005,6 @@ def populate_canvas(deck, target_canvas, deck_type="player"):
         counter += 1
 
 
-def calculate_y(location: str) -> Tuple[float, float]:
-    """
-    Calculate how far to move each card vertically then based on that,
-    calculate the starting vertical position.
-
-    :param location: Text description of the location of the cards being
-                    placed: top, bottom, or something else for middle.
-    :type location: str
-    :return: A tuple containing the Y-starting position and Y-increment.
-    :rtype: tuple(float, float)
-    """
-    # Calculate relative vertical overlap for cards, if needed.
-    yincr = int(CARD_HEIGHT / 4)
-
-    # Where to vertically place first card on the table
-    if location.lower() == "top":
-        start_y = 0.0
-    elif location.lower() == "bottom":
-        # Place cards one card height above the bottom, plus "a bit."
-        start_y = g_table_height - CARD_HEIGHT * 1.25
-        # Keep the decks relatively close together.
-        if start_y > CARD_HEIGHT * 2.5:
-            start_y = CARD_HEIGHT * 2.5 + CARD_HEIGHT / 20
-    else:
-        # Place cards in the middle.
-        start_y = g_table_height / 2 - CARD_HEIGHT / 2
-        start_y = min(start_y, CARD_HEIGHT * 2)
-    return start_y, yincr
-
-
-def calculate_x(deck: list) -> Tuple[float, float]:
-    """
-    Calculate how far to move each card horizontally then based on that,
-    calculate the starting horizontal position.
-
-    :param deck: card names in the format that svg-cards.svg wants.
-    :type deck: list
-    :return: A tuple containing the Y-starting position and Y-increment.
-    :rtype: tuple(float, float)
-    """
-    xincr = int(g_table_width / (len(deck) + 0.5))  # Spacing to cover entire width
-    start_x = 0.0
-    mylog.warning("calculate_x: Calculated: xincr=%4.2f, start_x=%4.2f", xincr, start_x)
-    if xincr > CARD_WIDTH:
-        xincr = int(CARD_WIDTH)
-        # Start deck/2 cards from table's midpoint horizontally
-        start_x = int(g_table_width / 2 - xincr * (float(len(deck))) / 2)
-        mylog.warning(
-            "calculate_x: Reset to CARD_WIDTH: xincr=%4.2f, start_x=%4.2f",
-            xincr,
-            start_x,
-        )
-    if xincr < int(
-        CARD_WIDTH / 20
-    ):  # Make sure at least the value of the card is visible.
-        xincr = int(CARD_WIDTH / 20)
-
-    return start_x, xincr
-
-
 def place_cards(deck, target_canvas, location="top", deck_type="player"):
     """
     Place the supplied deck / list of cards in the correct position on the display.
@@ -1079,8 +1020,11 @@ def place_cards(deck, target_canvas, location="top", deck_type="player"):
     mylog.error("Entering place_cards(deck=%s, deck_type=%s).", deck, deck_type)
 
     # Determine the starting point and step size for the location and deck being placed.
-    start_y, yincr = calculate_y(location=location)
-    start_x, xincr = calculate_x(deck)
+    start_y = 0 if location.lower() == "top" else 1.25 * CARD_HEIGHT
+    xincr = CARD_WIDTH / 2 if len(deck) > 4 else CARD_WIDTH
+    start_x = (
+        -xincr * (len(deck) / 2 + 0.5) if len(deck) > 4 else -xincr * len(deck) / 2
+    )
 
     # Set the initial position
     xpos = start_x
@@ -1108,28 +1052,9 @@ def place_cards(deck, target_canvas, location="top", deck_type="player"):
 
         # Each time through the loop, move the next card's starting position.
         xpos += xincr
-        if xpos > g_table_width - xincr:
-            mylog.warning("place_cards: Exceeded x.max, resetting position. ")
-            mylog.warning(
-                "    (xpos=%4.2f, table_width=%4.2f, xincr=%4.2f",
-                xpos,
-                g_table_width,
-                xincr,
-            )
-            xpos = xincr
-            ypos += yincr
 
 
-def calculate_dimensions():
-    """
-    Run setDimensions and set global variables on demand.
-    """
-    global g_table_width, g_table_height  # pylint: disable=invalid-name
-    # Gather information about the display environment
-    (g_table_width, g_table_height) = g_canvas.setDimensions()
-
-
-def create_game_select_buttons(xpos, ypos) -> bool:
+def create_game_select_buttons(xpos, ypos) -> None:
     """
     Create a list of buttons for the player to choose a game to join.
 
@@ -1137,8 +1062,6 @@ def create_game_select_buttons(xpos, ypos) -> bool:
     :type xpos:     float
     :param ypos:    Starting Y position
     :type ypos:     float
-    :return:        Boolean value representing whether a button was added to the canvas.
-    :rtype:         bool
     """
     mylog.error("Entering create_game_select_buttons")
     mylog.warning("create_game_select_buttons: game_dict=%s", g_game_dict)
@@ -1172,11 +1095,12 @@ def create_game_select_buttons(xpos, ypos) -> bool:
         g_canvas.attach(game_button)
         added_button = True
         ypos += 40
+    if added_button:
+        g_canvas.fitContents()
     mylog.warning("Exiting create_game_select_buttons")
-    return added_button
 
 
-def create_player_select_buttons(xpos, ypos) -> bool:
+def create_player_select_buttons(xpos, ypos) -> None:
     """
     Create a list of buttons for the player to identify themselves.
 
@@ -1184,8 +1108,6 @@ def create_player_select_buttons(xpos, ypos) -> bool:
     :type xpos:     float
     :param ypos:    Starting Y position
     :type ypos:     float
-    :return:        Boolean value representing whether a button was added to the canvas.
-    :rtype:         bool
     """
     added_button = False
     for item in g_player_dict:
@@ -1202,7 +1124,9 @@ def create_player_select_buttons(xpos, ypos) -> bool:
         g_canvas.attach(player_button)
         ypos += 40
         added_button = True
-    return added_button
+    if added_button:
+        g_canvas.fitContents()
+    mylog.warning("Exiting create_player_select_buttons")
 
 
 def remove_dialogs():
@@ -1330,16 +1254,14 @@ def display_game_options():
     have new game/team/player capability.
     """
     global g_game_mode  # pylint: disable=invalid-name
-    dump_globals()
 
-    added_button = False
     xpos = 10
     ypos = 0
 
     # Grab the game_id, team_ids, and players. Display and allow player to choose.
     if g_game_id == "":
         mylog.warning("dso: In g_game_id=''")
-        added_button = create_game_select_buttons(xpos, ypos)
+        create_game_select_buttons(xpos, ypos)
     elif g_game_mode is None:
         mylog.warning("dso: In g_game_mode is None")
         get(f"/game/{g_game_id}?state=false", game_mode_query_callback)
@@ -1355,7 +1277,7 @@ def display_game_options():
         get(f"/round/{g_round_id}/teams", on_complete_teams)
     elif g_player_id == "":
         mylog.warning("dso: In g_player_id=''")
-        added_button = create_player_select_buttons(xpos, ypos)
+        create_player_select_buttons(xpos, ypos)
     elif g_players_hand == []:
         mylog.warning("dso: In g_players_hand=[]")
         get(f"/player/{g_player_id}/hand", on_complete_player_cards)
@@ -1365,17 +1287,6 @@ def display_game_options():
         send_registration()
 
         rebuild_display()
-
-    mylog.warning("dso: Considering fitCanvas (added_button=%r)", added_button)
-    try:
-        if added_button:
-            calculate_dimensions()
-            g_canvas.fitContents()
-    except ZeroDivisionError as e1:
-        mylog.warning("dso: Caught ZeroDivisionError from fitContents. %s", e1)
-    except AttributeError as e2:
-        mylog.warning("dso: Caught AttributeError from fitContents. %s", e2)
-    mylog.error("Leaving display_game_options()")
 
 
 def rebuild_display(event=None):  # pylint: disable=unused-argument
@@ -1403,23 +1314,20 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
     mode = GAME_MODES[g_game_mode]
     mylog.warning("Current mode=%s", mode)
 
-    mylog.warning("Destroying canvas contents with mode: %s", g_canvas.attrs["mode"])
+    mylog.warning("Destroying canvas contents with mode: %s", g_canvas.mode)
     g_canvas.deleteAll()
 
     # Set the current game mode in the canvas.
-    g_canvas.attrs["mode"] = mode
+    g_canvas.mode = mode
 
     # Get the dimensions of the canvas and update the display.
-    calculate_dimensions()
     set_card_positions()
-
-    half_table = g_table_width / 2 - 35
 
     # Update/create buttons
     # Button to call advance_mode on demand
     # FIXME: This is temporary. The server will decide when to advance the game state.
     button_advance_mode = SVG.Button(
-        position=(half_table - 80 * 3, -40),
+        position=(-80 * 3.5, -40),
         size=(70, 35),
         text=GAME_MODES[g_game_mode].capitalize(),
         onclick=advance_mode,
@@ -1428,7 +1336,7 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
     )
     # Button to call update_display on demand
     button_refresh = SVG.Button(
-        position=(half_table - 80 * 2, -40),
+        position=(-80 * 2.5, -40),
         size=(70, 35),
         text="Refresh",
         onclick=set_card_positions,
@@ -1438,7 +1346,7 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
 
     # Button to call clear_display on demand
     button_clear = SVG.Button(
-        position=(half_table - 80 * 1, -40),
+        position=(-80 * 1.5, -40),
         size=(70, 35),
         text="Clear",
         onclick=rebuild_display,
@@ -1448,7 +1356,7 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
 
     # Button to call clear_game on demand
     button_clear_game = SVG.Button(
-        position=(half_table + 80 * 1, -40),
+        position=(80 * 0.5, -40),
         size=(70, 35),
         text="Clear\nGame",
         onclick=clear_game,
@@ -1458,7 +1366,7 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
 
     # Button to call clear_player on demand
     button_clear_player = SVG.Button(
-        position=(half_table + 80 * 2, -40),
+        position=(80 * 1.5, -40),
         size=(70, 35),
         text="Clear\nPlayer",
         onclick=clear_player,
@@ -1468,7 +1376,7 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
 
     # Button to call window reload on demand
     button_reload_page = SVG.Button(
-        position=(half_table + 80 * 3, -40),
+        position=(80 * 2.5, -40),
         size=(70, 35),
         text="Reload",
         onclick=window.location.reload,  # pylint: disable=no-member
@@ -1476,10 +1384,9 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
         objid="button_reload_page",
     )
 
-    start_y, yincr = calculate_y(location="bottom")
     # Button to call sort_player_cards on demand
     button_sort_player = SVG.Button(
-        position=(half_table, start_y - yincr * 0.75),
+        position=(-80 * 0.5, CARD_HEIGHT * 1.1),
         size=(70, 35),
         text="Sort",
         onclick=sort_player_cards,
@@ -1503,7 +1410,7 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
     if GAME_MODES[g_game_mode] in ["meld"]:
         # Button to call submit_meld on demand
         button_send_meld = SVG.Button(
-            position=(half_table, -40),
+            position=(-80 * 0.5, -40),
             size=(70, 35),
             text="Send\nMeld",
             onclick=send_meld,
@@ -1533,7 +1440,6 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
     global g_game_mode  # pylint: disable=invalid-name
     mode = GAME_MODES[g_game_mode]
     mylog.error("Entering update_display. (mode=%s)", mode)
-    calculate_dimensions()
 
     # FIXME: I don't think this should be needed.
     if g_player_id != "" and not g_players_hand:
@@ -1589,13 +1495,25 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
     g_canvas.mouseMode = SVG.MouseMode.DRAG
 
 
+def resize_canvas(event=None):
+    """
+    Resize the canvas to make use of available screen space.
+    :param event: The event object passed in during callback, defaults to None
+    """
+    mylog.error("Entering resize_canvas")
+    h = 0.95 * window.innerHeight - document["player_name"].offsetHeight
+    g_canvas.style.height = f"{h}px"
+    g_canvas.fitContents()
+
+
 ## END Function definitions.
 
 # Gather information about where we're coming from.
 (PROTOCOL, SERVER) = find_protocol_server()
 
 # Make the clear_display function easily available to plain javascript code.
-window.rebuild_display = rebuild_display
+# window.clear_display = clear_display No longer needed I think?
+window.bind("resize", resize_canvas)
 
 # Locate the card table in the HTML document.
 CardTable = document["card_table"]
@@ -1606,8 +1524,7 @@ document["card_definitions"].attach(SVG.Definitions(filename=CARD_URL))
 # Create the base SVG object for the card table.
 g_canvas = SVG.CanvasObject("95vw", "90vh", None, objid="canvas")
 CardTable <= g_canvas
-calculate_dimensions()
-g_canvas.attrs["mode"] = "initial"
+g_canvas.mode = "initial"
 
 # Declare temporary decks
 discard_deck = ["card-base" for _ in range(g_players)]
@@ -1617,9 +1534,8 @@ HAND_SIZE = int(48 / g_players)
 g_meld_deck = ["card-base" for _ in range(HAND_SIZE)]
 
 document.getElementById("please_wait").remove()
-display_game_options()
 
-# See if some steps can be bypassed because we refreshed in the middle of the game.
+# Pre-populate some data. Each of these calls display_game_options.
 get("/game", on_complete_games)
 get("/getcookie/game_id", on_complete_getcookie)
 get("/getcookie/player_id", on_complete_getcookie)
