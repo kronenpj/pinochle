@@ -1,8 +1,10 @@
+"""
+Encapsulates websocket message routines and tracks attached clients.
+"""
 import json
 from typing import Optional
 
 import geventwebsocket
-from browser import websocket
 
 from . import GLOBAL_LOG_LEVEL, custom_log
 from .models import utils
@@ -27,11 +29,16 @@ class WebSocketMessenger:
         """ Virtually private constructor. """
         if WebSocketMessenger.__instance is not None:
             raise Exception("This class is a singleton!")
-        else:
-            WebSocketMessenger.__instance = self
+
+        WebSocketMessenger.__instance = self
+
+        self.mylog = custom_log.get_logger()
+        self.mylog.setLevel(GLOBAL_LOG_LEVEL)
+        self.mylog.info("Log level: %d", self.mylog.getEffectiveLevel())
 
     @property
     def game_update(self):
+        """ Return stored function pointing to game.update """
         return self._game_update
 
     @game_update.setter
@@ -40,7 +47,7 @@ class WebSocketMessenger:
         self._game_update = ext_game_update
 
     def register_new_player(
-        self, game_id: str, player_id: str, ws: websocket.WebSocket
+        self, game_id: str, player_id: str, ws: geventwebsocket.websocket.WebSocket
     ) -> None:
         """
         Handle new player registrations.
@@ -52,10 +59,6 @@ class WebSocketMessenger:
         :param ws: Websocket corresponding to the registered player.
         :type ws: websocket.WebSocket
         """
-        mylog = custom_log.get_logger()
-        mylog.setLevel(GLOBAL_LOG_LEVEL)
-        mylog.error("Log level: %d", mylog.getEffectiveLevel())
-
         new_data = {"player_id": player_id, "ws": ws}
 
         try:
@@ -63,7 +66,7 @@ class WebSocketMessenger:
             self.client_sockets[game_id] = [
                 x for x in self.client_sockets[game_id] if x["player_id"] != player_id
             ]
-            mylog.info("Appending new_data.")
+            self.mylog.info("Appending new_data.")
             self.client_sockets[game_id].append(new_data)
         except KeyError:
             self.client_sockets[game_id] = [new_data]
@@ -80,10 +83,6 @@ class WebSocketMessenger:
         :param game_id: Game ID to distribute player list.
         :type game_id: [type]
         """
-        mylog = custom_log.get_logger()
-        mylog.setLevel(GLOBAL_LOG_LEVEL)
-        mylog.error("Log level: %d", mylog.getEffectiveLevel())
-
         # Send a message to each client registered to this game.
         joined_players = [x["player_id"] for x in self.client_sockets[game_id]]
         if not joined_players:
@@ -108,15 +107,15 @@ class WebSocketMessenger:
         game_mode = utils.query_game(game_id).state
 
         # In order to make the decision of whether the game should start.
-        mylog.warning("Players: %d - Game mode: %d", num_players, game_mode)
+        self.mylog.info("Players: %d - Game mode: %d", num_players, game_mode)
         if len(joined_players) == num_players and game_mode == 0:
-            mylog.warning("Enough players have joined. Start the game!")
-
-            # FIXME: This should not use the game module directly.
-            # Possible solutions:
-            # Use: request.get(f'/api/game/{game_id}?state=true')
-            # Inject game by passing it in with a setter function.
-            self._game_update(game_id, state=True)
+            self.mylog.info("Enough players have joined. Start the game!")
+            try:
+                self._game_update(game_id, state=True)
+            except AttributeError:
+                self.mylog.error(
+                    "WebSocketMessenger: game_update was not set before use."
+                )
             self.websocket_broadcast(game_id, {"action": "game_start"})
 
     def websocket_broadcast(
@@ -133,10 +132,6 @@ class WebSocketMessenger:
         :param exclude: Player ID to exclude from broadcast.
         :type exclude:  str, optional
         """
-        mylog = custom_log.get_logger()
-        mylog.setLevel(GLOBAL_LOG_LEVEL)
-        mylog.error("Log level: %d", mylog.getEffectiveLevel())
-
         # If no registrations have occurred or none for the supplied game, continue.
         if not self.client_sockets or not self.client_sockets[game_id]:
             return
@@ -146,9 +141,9 @@ class WebSocketMessenger:
             if exclude and exclude in item["player_id"]:
                 continue
             try:
-                mylog.info("Sending message to client %r", cli_ws)
+                self.mylog.info("Sending message to client %r", cli_ws)
                 cli_ws.send(json.dumps(message))
             except geventwebsocket.exceptions.WebSocketError:
-                mylog.info(
+                self.mylog.info(
                     "stream_socket: gevent WebSocketError: Client's websocket is closed."
                 )
