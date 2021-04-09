@@ -12,7 +12,6 @@ from pinochle.models.game import Game
 from . import (
     gameround,
     hand,
-    play_pinochle,
     player,
     round_,
     roundteams,
@@ -175,7 +174,7 @@ def start(round_id: str):
 
     # print(f"player_hand_ids: {list(player_hand_id.keys())}")
     # Time to deal the cards.
-    play_pinochle.deal_pinochle(
+    deal_pinochle(
         player_ids=list(player_hand_id.keys()),
         kitty_len=a_game.kitty_size,
         kitty_id=kitty,

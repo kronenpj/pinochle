@@ -3,23 +3,14 @@ This is the round module and supports all the REST actions for the
 round data
 """
 
-import json
-import uuid
 from typing import List
 
 from flask import abort, make_response
 
-from . import gameround, play_pinochle, player, roundteams, score_meld, score_tricks
-from .cards import utils as card_utils
-from .cards.const import SUITS
-from .cards.deck import PinochleDeck
+from . import gameround
 from .models import utils
 from .models.core import db
-from .models.gameround import GameRound
-from .models.player import Player
 from .models.round_ import Round, RoundSchema
-from .models.roundteam import RoundTeam
-from .ws_messenger import WebSocketMessenger as WSM
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member
@@ -171,4 +162,3 @@ def delete(game_id: str, round_id: str):
     db_session.delete(local_object)
     db_session.commit()
     return make_response(f"Round {round_id} deleted", 200)
-
