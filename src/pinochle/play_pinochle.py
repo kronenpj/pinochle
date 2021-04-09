@@ -1,12 +1,34 @@
 """
 This is the module that handles Pinochle game play.
 """
-from flask import abort
+import json
+import uuid
+from typing import List
 
-from . import hand, round_
+from flask import abort, make_response
+
+from pinochle.models.game import Game
+
+from . import (
+    gameround,
+    hand,
+    play_pinochle,
+    player,
+    round_,
+    roundteams,
+    score_meld,
+    score_tricks,
+)
+from .cards import utils as card_utils
 from .cards.const import SUITS
+from .cards.deck import PinochleDeck
 from .cards.utils import convert_to_svg_names, deal_hands
-from .models import utils, Round, Player
+from .models import utils
+from .models.gameround import GameRound
+from .models.player import Player
+from .models.round_ import Round
+from .models.roundteam import RoundTeam
+from .ws_messenger import WebSocketMessenger as WSM
 
 
 def deal_pinochle(player_ids: list, kitty_len: int = 0, kitty_id: str = None) -> None:
@@ -43,14 +65,14 @@ def submit_bid(round_id: str, player_id: str, bid: int):
     # print(f"\nround_id={round_id}, player_id={player_id}")
     # Get the round requested
     a_round: Round = utils.query_round(str(round_id))
-    player: Player = utils.query_player(str(player_id))
+    a_player: Player = utils.query_player(str(player_id))
 
     # Did we find a round?
     if a_round is None or a_round == {}:
         abort(404, f"Round {round_id} not found.")
 
     # Did we find a player?
-    if player is None or player == {}:
+    if a_player is None or a_player == {}:
         abort(404, f"Player {player_id} not found.")
 
     # New bid must be higher than current bid.
@@ -72,14 +94,14 @@ def set_trump(round_id: str, player_id: str, trump: str):
     # print(f"\nround_id={round_id}, player_id={player_id}")
     # Get the round requested
     a_round: Round = utils.query_round(str(round_id))
-    player: Player = utils.query_player(str(player_id))
+    a_player: Player = utils.query_player(str(player_id))
 
     # Did we find a round?
     if a_round is None or a_round == {}:
         abort(404, f"Round {round_id} not found.")
 
     # Did we find a player?
-    if player is None or player == {}:
+    if a_player is None or a_player == {}:
         abort(404, f"Player {player_id} not found.")
 
     # New trump must not be already be set.
@@ -92,3 +114,161 @@ def set_trump(round_id: str, player_id: str, trump: str):
         abort(409, f"Trump suit must be one of {SUITS}.")
 
     return round_.update(round_id, {"trump": trump})
+
+
+def start(round_id: str):
+    """
+    This function starts a round if all the requirements are satisfied.
+
+    :param round_id:   Id of the round to commence.
+    :return:           200 on successful delete, 404 if not found,
+                       409 if requirements are not satisfied.
+    """
+
+    # print(f"\nround_id={round_id}")
+    # Get the round requested
+    a_round: Round = utils.query_round(round_id)
+    a_gameround: GameRound = utils.query_gameround_for_round(round_id)
+
+    # Did we find a round?
+    if a_round is None or a_round == {}:
+        abort(404, f"Round {round_id} not found.")
+
+    # Retrieve the information for the round and teams.
+    round_t: list = utils.query_roundteam_list(round_id)
+
+    # Did we find one or more round-team entries?
+    if round_t is None or round_t == []:
+        abort(409, f"No teams found for round {round_id}.")
+
+    # Retrueve the infromation for the associated game.
+    a_game: Game = utils.query_game(str(a_gameround.game_id))
+
+    # Did we find a game?
+    if a_game is None:
+        abort(409, f"No game found for round {round_id}.")
+
+    # Retrieve the hand_id for the kitty.
+    kitty = str(a_round.hand_id)
+
+    # Gather a list of teams and associate the team with the correct hand_id.
+    teams = []
+    team_hand_id = {}
+    for _id in round_t:
+        temp_team = str(_id.team_id)
+        teams.append(temp_team)
+        team_hand_id[temp_team] = str(_id.hand_id)
+
+    # Collect the individual players.
+    player_hand_id = {}
+    for team_id in teams:
+        team_temp: list = utils.query_teamplayer_list(team_id)
+        for team_info in team_temp:
+            # Generate new hand IDs.
+            new_hand_id = str(uuid.uuid4())
+            player_hand_id[str(team_info.player_id)] = new_hand_id
+            player.update(team_info.player_id, {"hand_id": new_hand_id})
+
+    # print(f"kitty={kitty}")
+    # print(f"team_hand_id={team_hand_id}")
+    # print(f"player_hand_id={player_hand_id}\n")
+
+    # print(f"player_hand_ids: {list(player_hand_id.keys())}")
+    # Time to deal the cards.
+    play_pinochle.deal_pinochle(
+        player_ids=list(player_hand_id.keys()),
+        kitty_len=a_game.kitty_size,
+        kitty_id=kitty,
+    )
+
+    game_id = str(a_gameround.game_id)
+    temp_state = utils.query_game(game_id).state
+    message = {"action": "game_start", "game_id": game_id, "state": temp_state}
+    ws_mess = WSM.get_instance()
+    ws_mess.websocket_broadcast(game_id, message)
+    return make_response(f"Round {round_id} started.", 200)
+
+
+def score_hand_meld(round_id: str, player_id: str, cards: str):
+    """
+    This function scores a player's meld hand given the list of cards.
+
+    :param round_id:   Id of the round to delete
+    :param player_id:  Id of the player
+    :param cards:      Comma separated list of cards submitted for meld.
+    :return:           200 on successful scoring of cards, 404 if not found,
+                       409 if scoring isn't successful.
+    """
+    # print(f"\nscore_hand_meld: round_id={round_id}")
+    # Get the round requested
+    a_round: Round = utils.query_round(round_id)
+    a_player: Player = utils.query_player(player_id)
+    game_id: str = str(utils.query_gameround_for_round(round_id).game_id)
+
+    # Did we find a round?
+    if a_round is None or a_round == {}:
+        abort(404, f"Round {round_id} not found.")
+
+    # Did we find the player?
+    if a_player is None or a_player == {}:
+        abort(409, f"No player found for {player_id}.")
+
+    # Associate the player with that player's hand.
+    player_temp: Player = utils.query_player(player_id=player_id)
+    player_hand_id = str(player_temp.hand_id)
+    player_hand = utils.query_hand_list(player_hand_id)
+    player_hand_list = [x.card for x in player_hand]
+    card_list = cards.split(",")
+
+    # print(f"score_hand_meld: player_hand={player_hand_list}")
+    # print(f"score_hand_meld: card_list={card_list}")
+
+    for item in card_list:
+        if item not in player_hand_list:
+            abort(409, f"Card {item} not in player's hand.")
+
+    # Convert from list of SVG card names to PinochleDeck list.
+    cardclass_list = card_utils.convert_from_svg_names(card_list)
+
+    # Set trump, if it's been declared (and recorded in the datatbase)
+    temp_trump: str = a_round.trump
+    provided_deck = PinochleDeck(cards=cardclass_list)
+
+    # Set trump on the newly created deck, if it's been declared
+    if temp_trump.capitalize() in SUITS:
+        card_utils.set_trump(temp_trump, provided_deck)
+
+    # Score the deck supplied.
+    score = score_meld.score(provided_deck)
+
+    player.update(player_id=player_id, data={"meld_score": score})
+
+    # Send card list and meld score to other players via Websocket
+    message = {
+        "action": "meld_update",
+        "game_id": game_id,
+        "player_id": player_id,
+        "card_list": card_list,
+        "meld_score": score,
+    }
+    ws_mess = WSM.get_instance()
+    ws_mess.websocket_broadcast(game_id, message, player_id)
+    # print(f"score_hand_meld: score={score}")
+    return make_response(json.dumps({"score": score}), 200)
+
+
+def new_round(game_id, current_round):
+    # Deactivate soon-to-be previous round.
+    prev_gameround: GameRound = utils.query_gameround(game_id, current_round)
+    gameround.update(game_id, prev_gameround.round_id, {"active_flag": False})
+
+    # Create new round and gameround
+    temp_gameround, __ = round_.create(game_id)
+    # Obtain the new round's ID.
+    temp_round_id = temp_gameround["round_id"]
+    cur_roundteam: List[RoundTeam] = utils.query_roundteam_list(current_round)
+    # Tie the current teams to the new round.
+    roundteams.create(temp_round_id, [str(t.team_id) for t in cur_roundteam])
+
+    # Start the new round.
+    return start(temp_round_id)

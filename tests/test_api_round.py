@@ -21,7 +21,7 @@ import test_utils
 # from pinochle.models.utils import dump_db
 
 
-def test_game_round_start(app, patch_ws_messenger):
+def test_game_round_start(app, patch_ws_messenger):  # pylint: disable=unused-argument
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/round/{round_id}/start' page is requested (POST)
@@ -75,7 +75,9 @@ def test_game_round_start(app, patch_ws_messenger):
     # print(f"db_response={db_response}")
 
 
-def test_round_score_meld_hand_no_trump(app, patch_ws_messenger):
+def test_round_score_meld_hand_no_trump(
+    app, patch_ws_messenger
+):  # pylint: disable=unused-argument
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/round/{round_id}/score_hand_meld' page is requested (POST)
@@ -114,7 +116,7 @@ def test_round_score_meld_hand_no_trump(app, patch_ws_messenger):
     # Create the roundteam association for the teams.
     roundteams.create(round_id=round_id, teams=team_ids)
 
-    round_.start(round_id=round_id)
+    play_pinochle.start(round_id=round_id)
     player_id = choice(player_ids)
     hand_id = test_utils.query_player_hand_id(player_id=player_id)
     temp_cards = [item.card for item in utils.query_hand_list(hand_id)]
@@ -141,7 +143,9 @@ def test_round_score_meld_hand_no_trump(app, patch_ws_messenger):
     assert updated_player.meld_score == score
 
 
-def test_round_score_meld_hand_with_trump(app, patch_ws_messenger):
+def test_round_score_meld_hand_with_trump(
+    app, patch_ws_messenger
+):  # pylint: disable=unused-argument
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/round/{round_id}/score_hand_meld' page is requested (POST)
@@ -180,7 +184,7 @@ def test_round_score_meld_hand_with_trump(app, patch_ws_messenger):
     # Create the roundteam association for the teams.
     roundteams.create(round_id=round_id, teams=team_ids)
 
-    round_.start(round_id=round_id)
+    play_pinochle.start(round_id=round_id)
     player_id = choice(player_ids)
     round_.update(round_id, {"bid_winner": player_id})
     hand_id = test_utils.query_player_hand_id(player_id=player_id)
@@ -386,12 +390,12 @@ def test_round_read_all(app):
 
     game_ids = []
     round_ids = []
-    for __ in range(create_games):
+    for _ in range(create_games):
         # Create a new game
         game_id = test_utils.create_game(4)
         game_ids.append(game_id)
 
-        for __ in range(create_games):
+        for _ in range(create_games):
             # Create a new round
             round_id = test_utils.create_round(game_id)
             round_ids.append(round_id)
@@ -526,7 +530,7 @@ def test_round_read_one_missing(app):
         round_.read_one(round_id)
 
 
-def test_game_round_delete_missing2(app):
+def test_game_round_delete_missing2(app):  # pylint: disable=unused-argument
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/game/{game_id}/{round_id}' page is requested (DELETE)
@@ -543,7 +547,7 @@ def test_game_round_delete_missing2(app):
         gameround.delete(game_id, round_id)
 
 
-def test_game_round_create_invalid(app):
+def test_game_round_create_invalid(app):  # pylint: disable=unused-argument
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/game/{game_id}/{round_id}' page is requested (POST)
@@ -569,7 +573,9 @@ def test_game_round_create_invalid(app):
         gameround.create(game_id, {"round_id": round_id})
 
 
-def test_round_score_meld_bad_hand(app, patch_ws_messenger):
+def test_round_score_meld_bad_hand(
+    app, patch_ws_messenger
+):  # pylint: disable=unused-argument
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/round/{round_id}/score_hand_meld' page is requested (POST)
@@ -608,7 +614,7 @@ def test_round_score_meld_bad_hand(app, patch_ws_messenger):
     # Create the roundteam association for the teams.
     roundteams.create(round_id=round_id, teams=team_ids)
 
-    round_.start(round_id=round_id)
+    play_pinochle.start(round_id=round_id)
     player_id = choice(player_ids)
     # Choose another player so that the cards don't match exactly.
     temp_player_id = choice([x for x in player_ids if x != player_id])

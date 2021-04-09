@@ -272,10 +272,10 @@ def test_roundteam_delcard_missing(app):
     THEN check that the response contains the expected information
     """
     # Create a new round
-    round_id = uuid.uuid4()
+    round_id = str(uuid.uuid4())
 
     # Create a new teams
-    team_id = uuid.uuid4()
+    team_id = str(uuid.uuid4())
 
     # Create the roundteam association for the teams.
     with pytest.raises(exceptions.Conflict):

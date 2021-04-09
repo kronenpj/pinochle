@@ -386,7 +386,7 @@ paths:
 
   /round/{round_id}/start:
     post:
-      operationId: pinochle.round_.start
+      operationId: pinochle.play_pinochle.start
       tags:
         - Rounds
       summary: Start the round, deal cards, etc.
@@ -407,7 +407,7 @@ paths:
 
   /round/{round_id}/score_meld:
     get:
-      operationId: pinochle.round_.score_hand_meld
+      operationId: pinochle.play_pinochle.score_hand_meld
       tags:
         - Rounds
       summary: Score a player's meld and record.

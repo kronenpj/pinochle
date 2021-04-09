@@ -4,6 +4,8 @@ game data
 """
 from flask import abort, make_response
 
+from pinochle import play_pinochle
+
 from . import round_
 from .models import utils
 from .models.core import db
@@ -115,7 +117,7 @@ def update(game_id: str, kitty_size=None, state=None):
         current_round = utils.query_gameround_for_game(game.game_id)
         # print(f"current_round is: {type(current_round)}")
         # print("game.update: Returning new round state(true).")
-        return round_.new_round(game_id, str(current_round.round_id))
+        return play_pinochle.new_round(game_id, str(current_round.round_id))
 
     # Send the current game state rather than advancing it.
     game = utils.query_game(game_id=game_id)

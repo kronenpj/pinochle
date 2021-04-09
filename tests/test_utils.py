@@ -3,11 +3,10 @@ Routines commonly used in tests
 
 """
 import regex
-from pinochle import game, gameround, player, round_, team, teamplayers
+from pinochle import game, player, round_, team, teamplayers
 from pinochle.models.game import Game
 from pinochle.models.player import Player
 from pinochle.models.roundteam import RoundTeam
-from pinochle.models.game import Game
 
 UUID_REGEX_TEXT = r"^([a-f\d]{8}(-[a-f\d]{4}){3}-[a-f\d]{12}?)$"
 UUID_REGEX = regex.compile(UUID_REGEX_TEXT)
@@ -50,7 +49,7 @@ def set_game_state(game_id: str, state=0):
     """
     # Create a new game
     game._update_data(game_id, {"state": state})  # pylint: disable=protected-access
-    game_ = query_game_data(game_id)
+    game_: Game = query_game_data(game_id)
     assert game_.state == state
 
 
@@ -127,7 +126,7 @@ def query_team_hand_id(round_id: str, team_id: str) -> str:
     ).one_or_none()
 
     if rt_data is None:
-        return None
+        return ""
 
     # Extract the properly formatted UUID.
     hand_id = str(rt_data.hand_id)
@@ -142,14 +141,15 @@ def query_player_hand_id(player_id: str) -> str:
     ).one_or_none()
 
     if rt_data is None:
-        return None
+        return ""
+
     # Extract the properly formatted UUID.
     hand_id = str(rt_data.hand_id)
 
     return hand_id
 
 
-def query_game_data(game_id: str) -> str:
+def query_game_data(game_id: str) -> Game:
     # Build the query to extract the hand_id
     rt_data = Game.query.filter(Game.game_id == game_id).one_or_none()
 

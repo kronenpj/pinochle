@@ -37,6 +37,10 @@ def read_one(hand_id: str):
     :param hand_id:     Id of round to find
     :return:            List of cards from specified hand or None
     """
+    # Make sure hand_id has something in it.
+    if not hand_id:
+        return None
+
     # Build the initial query
     a_hand = utils.query_hand_list(hand_id=hand_id)
 

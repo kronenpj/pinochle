@@ -7,7 +7,7 @@ import json
 import uuid
 
 import pytest
-from pinochle import game, gameround, roundteams
+from pinochle import game, roundteams
 from pinochle.models.core import db
 from pinochle.static.constants import GAME_MODES
 
@@ -93,7 +93,7 @@ def test_game_update_kitty_size(app):
     assert new_kitty == db_response.get("kitty_size")
 
 
-def test_game_update_state(app, patch_ws_messenger):
+def test_game_update_state(app, patch_ws_messenger):  # pylint: disable=unused-argument
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/game/{game_id}?state' page is requested (PUT)
@@ -120,7 +120,9 @@ def test_game_update_state(app, patch_ws_messenger):
     assert state == db_response.get("state")
 
 
-def test_game_update_state_wrap(app, patch_ws_messenger):
+def test_game_update_state_wrap(
+    app, patch_ws_messenger
+):  # pylint: disable=unused-argument
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/game/{game_id}?state' page is requested (PUT)
