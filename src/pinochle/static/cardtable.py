@@ -5,7 +5,7 @@ import copy
 import json
 import logging
 import os
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import brySVG.dragcanvas as SVG  # pylint: disable=import-error
 from browser import ajax, document, html, websocket, window
@@ -1323,87 +1323,88 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
     # Get the dimensions of the canvas and update the display.
     set_card_positions()
 
-    # Update/create buttons
-    # Button to call advance_mode on demand
-    # FIXME: This is temporary. The server will decide when to advance the game state.
-    button_advance_mode = SVG.Button(
-        position=(-80 * 3.5, -40),
-        size=(70, 35),
-        text=GAME_MODES[g_game_mode].capitalize(),
-        onclick=advance_mode,
-        fontsize=18,
-        objid="button_advance_mode",
-    )
-    # Button to call update_display on demand
-    button_refresh = SVG.Button(
-        position=(-80 * 2.5, -40),
-        size=(70, 35),
-        text="Refresh",
-        onclick=set_card_positions,
-        fontsize=18,
-        objid="button_refresh",
-    )
+    if g_game_mode >= 0:
+        # Update/create buttons
+        # Button to call advance_mode on demand
+        # FIXME: This is temporary. The server will decide when to advance the game state.
+        button_advance_mode = SVG.Button(
+            position=(-80 * 3.5, -40),
+            size=(70, 35),
+            text=GAME_MODES[g_game_mode].capitalize(),
+            onclick=advance_mode,
+            fontsize=18,
+            objid="button_advance_mode",
+        )
+        # Button to call update_display on demand
+        button_refresh = SVG.Button(
+            position=(-80 * 2.5, -40),
+            size=(70, 35),
+            text="Refresh",
+            onclick=set_card_positions,
+            fontsize=18,
+            objid="button_refresh",
+        )
 
-    # Button to call clear_display on demand
-    button_clear = SVG.Button(
-        position=(-80 * 1.5, -40),
-        size=(70, 35),
-        text="Clear",
-        onclick=rebuild_display,
-        fontsize=18,
-        objid="button_clear",
-    )
+        # Button to call clear_display on demand
+        button_clear = SVG.Button(
+            position=(-80 * 1.5, -40),
+            size=(70, 35),
+            text="Clear",
+            onclick=rebuild_display,
+            fontsize=18,
+            objid="button_clear",
+        )
 
-    # Button to call clear_game on demand
-    button_clear_game = SVG.Button(
-        position=(80 * 0.5, -40),
-        size=(70, 35),
-        text="Clear\nGame",
-        onclick=clear_game,
-        fontsize=16,
-        objid="button_clear_game",
-    )
+        # Button to call clear_game on demand
+        button_clear_game = SVG.Button(
+            position=(80 * 0.5, -40),
+            size=(70, 35),
+            text="Clear\nGame",
+            onclick=clear_game,
+            fontsize=16,
+            objid="button_clear_game",
+        )
 
-    # Button to call clear_player on demand
-    button_clear_player = SVG.Button(
-        position=(80 * 1.5, -40),
-        size=(70, 35),
-        text="Clear\nPlayer",
-        onclick=clear_player,
-        fontsize=16,
-        objid="button_clear_player",
-    )
+        # Button to call clear_player on demand
+        button_clear_player = SVG.Button(
+            position=(80 * 1.5, -40),
+            size=(70, 35),
+            text="Clear\nPlayer",
+            onclick=clear_player,
+            fontsize=16,
+            objid="button_clear_player",
+        )
 
-    # Button to call window reload on demand
-    button_reload_page = SVG.Button(
-        position=(80 * 2.5, -40),
-        size=(70, 35),
-        text="Reload",
-        onclick=window.location.reload,  # pylint: disable=no-member
-        fontsize=16,
-        objid="button_reload_page",
-    )
+        # Button to call window reload on demand
+        button_reload_page = SVG.Button(
+            position=(80 * 2.5, -40),
+            size=(70, 35),
+            text="Reload",
+            onclick=window.location.reload,  # pylint: disable=no-member
+            fontsize=16,
+            objid="button_reload_page",
+        )
 
-    # Button to call sort_player_cards on demand
-    button_sort_player = SVG.Button(
-        position=(-80 * 0.5, CARD_HEIGHT * 1.1),
-        size=(70, 35),
-        text="Sort",
-        onclick=sort_player_cards,
-        fontsize=18,
-        objid="button_sort_player",
-    )
+        # Button to call sort_player_cards on demand
+        button_sort_player = SVG.Button(
+            position=(-80 * 0.5, CARD_HEIGHT * 1.1),
+            size=(70, 35),
+            text="Sort",
+            onclick=sort_player_cards,
+            fontsize=18,
+            objid="button_sort_player",
+        )
 
-    for item in [
-        button_clear,
-        button_refresh,
-        button_advance_mode,
-        button_clear_game,
-        button_clear_player,
-        button_reload_page,
-        button_sort_player,
-    ]:
-        g_canvas.addObject(item)
+        for item in [
+            button_clear,
+            button_refresh,
+            button_advance_mode,
+            button_clear_game,
+            button_clear_player,
+            button_reload_page,
+            button_sort_player,
+        ]:
+            g_canvas.addObject(item)
 
     # TODO: Add buttons & display to facilitate bidding. Tie into API.
 
