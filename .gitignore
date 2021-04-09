@@ -4,6 +4,7 @@ classes_Pinochle.svg
 container-compose.yml
 curl_inserts.sh
 dragdrop-refinements-fail.patch
+echo.html
 geckodriver
 geckodriver-v0.29.0-linux64.tar.gz
 html2-documentation-generated.zip
@@ -24,6 +25,7 @@ sqlite_clear_contents.sh
 start_database.sh
 temp.py
 TODO
+w3.css
 ### TEMPORARY UNTIL I CAN SEE IF I WANT THESE IN GIT
 
 instance
