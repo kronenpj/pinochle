@@ -19,6 +19,7 @@ from .models.gameround import GameRound
 from .models.player import Player
 from .models.round_ import Round, RoundSchema
 from .models.roundteam import RoundTeam
+from .ws_messenger import WebSocketMessenger as WSM
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member
@@ -180,8 +181,6 @@ def start(round_id: str):
     :return:           200 on successful delete, 404 if not found,
                        409 if requirements are not satisfied.
     """
-    # TODO: Avoiding circular import until I find a different implementation.
-    from pinochle.ws_messenger import WebSocketMessenger as WSM
 
     # print(f"\nround_id={round_id}")
     # Get the round requested

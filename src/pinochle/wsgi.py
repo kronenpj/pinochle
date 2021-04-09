@@ -6,10 +6,9 @@ import geventwebsocket
 from flask import abort, make_response, redirect, render_template, request
 from flask_sockets import Sockets
 
-from pinochle.ws_messenger import WebSocketMessenger as WSM
-
-from . import GLOBAL_LOG_LEVEL, app_factory, custom_log
+from . import GLOBAL_LOG_LEVEL, app_factory, custom_log, game
 from .models import utils
+from .ws_messenger import WebSocketMessenger as WSM
 
 application = app_factory.create_app()  # pragma: no cover
 app = application
@@ -54,6 +53,7 @@ def stream_socket(ws):
             if msg_game_id == "" or msg_player_id == "":
                 continue
             ws_mess = WSM.get_instance()
+            ws_mess.game_update = game.update
             ws_mess.register_new_player(msg_game_id, msg_player_id, ws)
 
 

@@ -4,8 +4,6 @@ from typing import Optional
 import geventwebsocket
 from browser import websocket
 
-from pinochle import game
-
 from . import GLOBAL_LOG_LEVEL, custom_log
 from .models import utils
 
@@ -31,6 +29,15 @@ class WebSocketMessenger:
             raise Exception("This class is a singleton!")
         else:
             WebSocketMessenger.__instance = self
+
+    @property
+    def game_update(self):
+        return self._game_update
+
+    @game_update.setter
+    def game_update(self, ext_game_update):
+        assert callable(ext_game_update)
+        self._game_update = ext_game_update
 
     def register_new_player(
         self, game_id: str, player_id: str, ws: websocket.WebSocket
@@ -106,7 +113,10 @@ class WebSocketMessenger:
             mylog.warning("Enough players have joined. Start the game!")
 
             # FIXME: This should not use the game module directly.
-            game.update(game_id, state=True)
+            # Possible solutions:
+            # Use: request.get(f'/api/game/{game_id}?state=true')
+            # Inject game by passing it in with a setter function.
+            self._game_update(game_id, state=True)
             self.websocket_broadcast(game_id, {"action": "game_start"})
 
     def websocket_broadcast(

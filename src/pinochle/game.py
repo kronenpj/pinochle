@@ -9,6 +9,7 @@ from .models import utils
 from .models.core import db
 from .models.game import GameSchema
 from .static.constants import GAME_MODES
+from .ws_messenger import WebSocketMessenger as WSM
 
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member
@@ -87,13 +88,9 @@ def update(game_id: str, kitty_size=None, state=None):
     :type state:        boolean
     :return:            Updated / new record.
     """
-    from pinochle.ws_messenger import WebSocketMessenger as WSM
-
     if kitty_size:
         return _update_data(game_id, {"kitty_size": kitty_size})
     if state:
-        # TODO: Avoiding circular import until I find a different implementation.
-
         game = utils.query_game(game_id=game_id)
         if game is None:
             abort(409)
@@ -106,6 +103,7 @@ def update(game_id: str, kitty_size=None, state=None):
             # print(f"game.update: Returning game state(true): {game.state}")
             message = {"action": "game_state", "game_id": game_id, "state": new_state}
             ws_mess = WSM.get_instance()
+            ws_mess.game_update = update
             ws_mess.websocket_broadcast(game_id, message)
             return _update_data(game_id, {"state": new_state})
 
@@ -123,6 +121,7 @@ def update(game_id: str, kitty_size=None, state=None):
     game = utils.query_game(game_id=game_id)
     message = {"action": "game_state", "game_id": game_id, "state": game.state}
     ws_mess = WSM.get_instance()
+    ws_mess.game_update = update # Yes, this module.
     ws_mess.websocket_broadcast(game_id, message)
     # print(f"game.update: Returning game state(false): {game.state}")
     return {"state": game.state}, 200
