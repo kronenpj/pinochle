@@ -6,7 +6,7 @@ from typing import Optional
 
 import geventwebsocket
 
-from . import GLOBAL_LOG_LEVEL, custom_log
+from . import GLOBAL_LOG_LEVEL, custom_log, play_pinochle, roundteams
 from .models import utils
 
 
@@ -88,12 +88,15 @@ class WebSocketMessenger:
         if not joined_players:
             return
 
+        round_id = str(utils.query_gameround_for_game(game_id).round_id)
+        ordered_player_list = roundteams.create_ordered_player_list(round_id)
         self.websocket_broadcast(
             game_id,
             {
                 "action": "notification_player_list",
                 "game_id": game_id,
                 "player_ids": joined_players,
+                "player_order": ordered_player_list,
             },
         )
 
@@ -116,7 +119,8 @@ class WebSocketMessenger:
                 self.mylog.error(
                     "WebSocketMessenger: game_update was not set before use."
                 )
-            self.websocket_broadcast(game_id, {"action": "game_start"})
+            # TODO: This should be abstracted to be any kind of game.
+            play_pinochle.start(str(temp_round))
 
     def websocket_broadcast(
         self, game_id: str, message: dict, exclude: Optional[str] = None

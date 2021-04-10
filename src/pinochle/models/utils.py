@@ -211,7 +211,11 @@ def query_roundteam_list(round_id: str) -> List[RoundTeam]:
     :return: [description]
     :rtype: List[Dict]
     """
-    return RoundTeam.query.filter(RoundTeam.round_id == round_id).all()
+    return (
+        RoundTeam.query.filter(RoundTeam.round_id == round_id)
+        .order_by(RoundTeam.team_order)
+        .all()
+    )
 
 
 def query_roundteam_with_hand(round_id: str, team_id: str) -> RoundTeam:
@@ -241,4 +245,8 @@ def query_teamplayer_list(team_id: str) -> List[TeamPlayers]:
     :return: [description]
     :rtype: List[Dict]
     """
-    return TeamPlayers.query.filter(TeamPlayers.team_id == team_id).all()
+    return (
+        TeamPlayers.query.filter(TeamPlayers.team_id == team_id)
+        .order_by(TeamPlayers.player_order)
+        .all()
+    )

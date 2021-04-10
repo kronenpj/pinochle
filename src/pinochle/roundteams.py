@@ -2,6 +2,8 @@
 This is the roundplayer module and supports all the REST actions roundplayer data
 """
 
+from typing import List
+
 import sqlalchemy
 from flask import abort, make_response
 
@@ -11,6 +13,7 @@ from .models.hand import Hand, HandSchema
 from .models.round_ import Round
 from .models.roundteam import RoundTeam, RoundTeamSchema
 from .models.team import Team
+from .models.teamplayers import TeamPlayers
 
 # pylint: disable=unused-import
 # from pinochle.models.utils import dump_db
@@ -44,7 +47,11 @@ def read_one(round_id: str):
     :return:            list of team IDs playing in the specified round
     """
     # Build the initial query
-    a_round = RoundTeam.query.filter(RoundTeam.round_id == round_id).all()
+    a_round = (
+        RoundTeam.query.filter(RoundTeam.round_id == round_id)
+        .order_by(RoundTeam.team_order)
+        .all()
+    )
 
     # Did we find a round?
     if a_round is not None:
@@ -184,24 +191,28 @@ def create(round_id: str, teams: list):
     for t_id in teams:
         existing_round = Round.query.filter(Round.round_id == round_id).one_or_none()
         existing_team = Team.query.filter(Team.team_id == t_id).one_or_none()
-        team_on_round = RoundTeam.query.filter(
-            RoundTeam.round_id == round_id, RoundTeam.team_id == t_id
-        ).one_or_none()
+        teams_on_round = RoundTeam.query.filter(RoundTeam.round_id == round_id).all()
 
         # Can we insert this round?
         if existing_round is None:
             abort(409, f"Round {round_id} doesn't already exist.")
         if existing_team is None:
             abort(409, f"Team {t_id} doesn't already exist.")
-        if team_on_round is not None:
+        if t_id in teams_on_round:
             abort(409, f"Team {t_id} is already associated with Round {round_id}.")
 
         # Create a round instance using the schema and the passed in round
         schema = RoundTeamSchema()
         new_roundteam = schema.load(
-            {"round_id": round_id, "team_id": t_id}, session=db.session
+            {
+                "round_id": round_id,
+                "team_id": t_id,
+                "team_order": len(teams_on_round) + 1,
+            },
+            session=db.session,
         )
 
+        # print(f"roundteams.create: Adding to database: {new_roundteam}")
         # Add the round to the database
         db.session.add(new_roundteam)
 
@@ -284,3 +295,25 @@ def delete(round_id: str, team_id: str):
 
     # Otherwise, nope, didn't find that round
     abort(404, f"Team {team_id} not found for round: {round_id}")
+
+
+def create_ordered_player_list(round_id: str) -> List[str]:
+    """
+    Generate a list of players to represent the order of play.
+
+    :param round_id: Round against which the player list is generated.
+    :type round_id:  str
+    :return:         List of player ids.
+    :rtype:          List[str]
+    """
+    round_t: list = utils.query_roundteam_list(round_id)
+    teams = [str(x.team_id) for x in round_t]
+
+    teamplayer_list = []
+    for t_team_id in teams:
+        t_teamplayer_list: List[TeamPlayers] = utils.query_teamplayer_list(t_team_id)
+        teamplayer_list += [str(x.player_id) for x in t_teamplayer_list]
+
+    # Create a ordered list of players alternating by team.  This assumes two teams,
+    # which for pinochle is appropriate.
+    return teamplayer_list[::2] + teamplayer_list[1::2]

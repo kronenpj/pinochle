@@ -134,27 +134,26 @@ def addcard(player_id: str, card: dict):
     return hand.addcard(hand_id, s_card)
 
 
-def deletecard(player_id: str, card: dict):
+def deletecard(player_id: str, card: str):
     """
     This function responds to internal (non-API) database access requests
     by deleting the specified card from the given hand_id.
 
-    :param hand_id:    Id of the hand to receive the new card
-    :param card:       String of the card to add to the collection.
+    :param player_id:  Id of the hand to receive the new card
+    :param card:       String of the card to delete to the collection.
     :return:           None.
     """
     # Build the initial query
     player = utils.query_player(player_id=player_id)
 
     # Did we find a player?
-    if player is None:
+    if player is None or player.hand_id is None and card is None:
         return
 
-    if player.hand_id is not None and card is not None:
-        hand_id = str(player.hand_id)
+    hand_id = str(player.hand_id)
 
-        # Delete the card from the selected hand in the database.
-        return hand.deletecard(hand_id, card)
+    # Delete the card from the selected hand in the database.
+    return hand.deletecard(hand_id, card)
 
 
 def update(player_id: str, data: dict):

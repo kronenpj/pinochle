@@ -33,6 +33,7 @@ class RoundTeam(db.Model):
         nullable=True,
         index=False,
     )
+    team_order = db.Column(db.Integer)
     timestamp = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
@@ -42,6 +43,7 @@ class RoundTeam(db.Model):
         output += "round_id=%r, " % self.round_id
         output += "team_id=%r, " % self.team_id
         output += "hand_id=%r, " % self.hand_id
+        output += "team_order=%r, " % self.team_order
         output += ">"
         return output
 

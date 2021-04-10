@@ -49,6 +49,7 @@ g_game_dict: Dict[str, Dict[str, Any]] = {}
 g_kitty_deck: List[str] = []
 g_ajax_outstanding_requests: int = 0
 g_player_dict: Dict[str, Dict[str, str]] = {}
+g_player_list: List[str] = []
 g_players_hand: List[str] = []
 g_players_meld_deck: List[str] = []
 g_team_dict: Dict[str, Dict[str, str]] = {}
@@ -290,6 +291,7 @@ def dump_globals() -> None:
         # "g_round_id": g_round_id,
         # "g_team_list": g_team_list,
         # "g_player_id": g_player_id,
+        # "g_player_list": g_player_list,
         # "g_players_hand": g_players_hand,
         # "g_game_dict": g_game_dict,
         "g_kitty_size": g_kitty_size,
@@ -372,15 +374,17 @@ def on_ws_event(event=None):
     :type evt: [type]
     """
     mylog.error("In on_ws_event.")
-    global g_game_mode  # pylint: disable=invalid-name
+    global g_game_mode, g_player_list  # pylint: disable=invalid-name
 
     mylog.warning("on_ws_event: %s", event.data)
 
     if "action" not in event.data:
         return
     if "game_start" in event.data:
+        data = json.loads(event.data)
+        g_game_mode = data["state"]
+        mylog.warning("on_ws_event: game_start: g_player_list=%r", g_player_list)
         clear_globals_for_round_change()
-        put({}, f"/game/{g_game_id}?state=false", game_mode_query_callback, False)
     elif "notification_player_list" in event.data:
         update_player_names(event.data)
     elif "game_state" in event.data:
@@ -421,9 +425,10 @@ def update_player_names(player_data: str):
     :param player_data: JSON-formatted message from the server.
     :type player_data: str
     """
-    global g_registered_with_server  # pylint: disable=invalid-name
+    global g_registered_with_server, g_player_list  # pylint: disable=invalid-name
 
     data = json.loads(player_data)
+    g_player_list = data["player_order"]
     my_player_list = data["player_ids"]
     # Display the player's name in the UI
     if my_player_list != [] and g_player_id in my_player_list:
@@ -850,8 +855,8 @@ def game_mode_query_callback(req: ajax.Ajax):
     )
     if g_game_mode == 0:
         clear_globals_for_round_change()
-    else:
-        display_game_options()
+
+    display_game_options()
 
 
 def get(url: str, callback=None, async_call=True):

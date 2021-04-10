@@ -41,7 +41,11 @@ def read_one(team_id: str):
     :return:            team matching id
     """
     # Build the initial query
-    team = TeamPlayers.query.filter(TeamPlayers.team_id == team_id).all()
+    team = (
+        TeamPlayers.query.filter(TeamPlayers.team_id == team_id)
+        .order_by(TeamPlayers.player_order)
+        .all()
+    )
     team_info = Team.query.filter(Team.team_id == team_id).one_or_none()
 
     # Did we find a team?
@@ -70,24 +74,28 @@ def create(team_id: str, player_id: dict):
 
     existing_team = Team.query.filter(Team.team_id == team_id).one_or_none()
     existing_player = Player.query.filter(Player.player_id == p_id).one_or_none()
-    player_on_team = TeamPlayers.query.filter(
-        TeamPlayers.team_id == team_id, TeamPlayers.player_id == p_id
-    ).one_or_none()
+    players_on_team = TeamPlayers.query.filter(TeamPlayers.team_id == team_id).all()
 
     # Can we insert this team?
     if existing_team is None:
         abort(409, f"Team {team_id} doesn't already exist.")
     if existing_player is None:
         abort(409, f"Player {p_id} doesn't already exist.")
-    if player_on_team is not None:
+    if p_id in players_on_team:
         abort(409, f"Player {p_id} is already on Team {team_id}.")
 
     # Create a team instance using the schema and the passed in team
     schema = TeamPlayersSchema()
     new_teamplayer = schema.load(
-        {"team_id": team_id, "player_id": p_id}, session=db.session
+        {
+            "team_id": team_id,
+            "player_id": p_id,
+            "player_order": len(players_on_team) + 1,
+        },
+        session=db.session,
     )
 
+    # print(f"teamplayers.create: Adding to database: {new_teamplayer}")
     # Add the team to the database
     db.session.add(new_teamplayer)
     db.session.commit()

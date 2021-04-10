@@ -6,27 +6,20 @@ import uuid
 from typing import List
 
 from flask import abort, make_response
+from flask.wrappers import Response
 
-from pinochle.models.game import Game
-
-from . import (
-    gameround,
-    hand,
-    player,
-    round_,
-    roundteams,
-    score_meld,
-    score_tricks,
-)
+from . import gameround, hand, player, round_, roundteams, score_meld, score_tricks
 from .cards import utils as card_utils
 from .cards.const import SUITS
 from .cards.deck import PinochleDeck
 from .cards.utils import convert_to_svg_names, deal_hands
 from .models import utils
+from .models.game import Game
 from .models.gameround import GameRound
 from .models.player import Player
 from .models.round_ import Round
 from .models.roundteam import RoundTeam
+from .models.teamplayers import TeamPlayers
 from .ws_messenger import WebSocketMessenger as WSM
 
 
@@ -123,7 +116,6 @@ def start(round_id: str):
     :return:           200 on successful delete, 404 if not found,
                        409 if requirements are not satisfied.
     """
-
     # print(f"\nround_id={round_id}")
     # Get the round requested
     a_round: Round = utils.query_round(round_id)
@@ -140,7 +132,7 @@ def start(round_id: str):
     if round_t is None or round_t == []:
         abort(409, f"No teams found for round {round_id}.")
 
-    # Retrueve the infromation for the associated game.
+    # Retrieve the information for the associated game.
     a_game: Game = utils.query_game(str(a_gameround.game_id))
 
     # Did we find a game?
@@ -149,30 +141,25 @@ def start(round_id: str):
 
     # Retrieve the hand_id for the kitty.
     kitty = str(a_round.hand_id)
+    # Clear the kitty before dealing cards into that hand.
+    hand.deleteallcards(kitty)
 
-    # Gather a list of teams and associate the team with the correct hand_id.
-    teams = []
-    team_hand_id = {}
-    for _id in round_t:
-        temp_team = str(_id.team_id)
-        teams.append(temp_team)
-        team_hand_id[temp_team] = str(_id.hand_id)
-
-    # Collect the individual players.
+    # Collect the individual players from the round's teams.
     player_hand_id = {}
-    for team_id in teams:
-        team_temp: list = utils.query_teamplayer_list(team_id)
-        for team_info in team_temp:
+    for t_team_id in [str(x.team_id) for x in round_t]:
+        t_teamplayer_list: List[TeamPlayers] = utils.query_teamplayer_list(t_team_id)
+        for team_info in t_teamplayer_list:
             # Generate new hand IDs.
             new_hand_id = str(uuid.uuid4())
             player_hand_id[str(team_info.player_id)] = new_hand_id
             player.update(team_info.player_id, {"hand_id": new_hand_id})
 
     # print(f"kitty={kitty}")
-    # print(f"team_hand_id={team_hand_id}")
-    # print(f"player_hand_id={player_hand_id}\n")
-
+    # print(f"player_hand_id={player_hand_id}")
     # print(f"player_hand_ids: {list(player_hand_id.keys())}")
+    # print(f"player_list_ordered={player_list_ordered}")
+    # print(f"player_list_ordered={[utils.query_player(x).name for x in player_list_ordered]}")
+
     # Time to deal the cards.
     deal_pinochle(
         player_ids=list(player_hand_id.keys()),
@@ -182,7 +169,11 @@ def start(round_id: str):
 
     game_id = str(a_gameround.game_id)
     temp_state = utils.query_game(game_id).state
-    message = {"action": "game_start", "game_id": game_id, "state": temp_state}
+    message = {
+        "action": "game_start",
+        "game_id": game_id,
+        "state": temp_state,
+    }
     ws_mess = WSM.get_instance()
     ws_mess.websocket_broadcast(game_id, message)
     return make_response(f"Round {round_id} started.", 200)
@@ -256,7 +247,17 @@ def score_hand_meld(round_id: str, player_id: str, cards: str):
     return make_response(json.dumps({"score": score}), 200)
 
 
-def new_round(game_id, current_round):
+def new_round(game_id:str, current_round:str)-> Response:
+    """
+    Cycle the game to a new round.
+
+    :param game_id:       The game receiving a new round.
+    :type game_id:        str
+    :param current_round: The round being retired.
+    :type current_round:  str
+    :return:              Response to the web request originating the request.
+    :rtype:               Response
+    """
     # Deactivate soon-to-be previous round.
     prev_gameround: GameRound = utils.query_gameround(game_id, current_round)
     gameround.update(game_id, prev_gameround.round_id, {"active_flag": False})

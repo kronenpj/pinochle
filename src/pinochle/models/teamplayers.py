@@ -25,6 +25,7 @@ class TeamPlayers(db.Model):
         nullable=False,
         index=True,
     )
+    player_order = db.Column(db.Integer)
     timestamp = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
@@ -33,6 +34,7 @@ class TeamPlayers(db.Model):
         output = "<TeamPlayers: "
         output += "team_id=%r, " % self.team_id
         output += "player_id=%r, " % self.player_id
+        output += "player_order=%r, " % self.player_order
         output += ">"
         return output
 
