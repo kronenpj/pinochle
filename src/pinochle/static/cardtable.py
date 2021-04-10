@@ -30,8 +30,8 @@ for _suit in ["spade", "diamond", "club", "heart"]:
         DECK_SORTED.append(f"{_suit}_{_card}")
 
 mylog = logging.getLogger("cardtable")
-# mylog.setLevel(logging.CRITICAL)  # No output
-mylog.setLevel(logging.ERROR)  # Function entry/exit
+mylog.setLevel(logging.CRITICAL)  # No output
+# mylog.setLevel(logging.ERROR)  # Function entry/exit
 # mylog.setLevel(logging.WARNING)  # Everything
 
 # API "Constants"
@@ -62,6 +62,44 @@ button_advance_mode = None  # pylint: disable=invalid-name
 g_registered_with_server = False  # pylint: disable=invalid-name
 
 
+class CardTable(SVG.CanvasObject):
+    """
+    CardTable class to encapsulate aspects of the card table.
+    """
+
+    def __init__(self):
+        super().__init__("95vw", "90vh", "none", objid="canvas")
+        self.mode = "initial"
+        self.bind("mouseup", self.move_handler)
+        self.bind("touchend", self.move_handler)
+
+    def move_handler(self, event=None):
+        """
+        Inspect the object's attributes and determine whether additional action needs to
+        be taken during a move action.
+
+        :param event: The event object passed in during callback, defaults to None
+        :type event: Event(?), optional
+        """
+        selected_card = self.getSelectedObject(event.target.id)
+        mylog.error("Entering CardTable.move_handler")
+
+        # Moving a card within a CARD_HEIGHT of the top "throws" that card.
+        if (
+            selected_card
+            and selected_card.id.startswith(
+                "player"
+            )  # Only play cards from player's hand
+            and selected_card.show_face  # Only throw cards that are face-up
+        ):
+            currentcoords = self.getSVGcoords(event)
+            offset = currentcoords - self.dragStartCoords
+            if offset == (0, 0):  # We have a click, not a drag
+                selected_card.card_click_handler()
+            else:  # It's a drag
+                selected_card.play_handler(event_type="drag")
+
+
 class PlayingCard(SVG.UseObject):
     """
     PlayingCard class to hold additional attributes than available from UseObject,
@@ -72,13 +110,7 @@ class PlayingCard(SVG.UseObject):
     """
 
     def __init__(
-        self,
-        href=None,
-        objid=None,
-        face_value="back",
-        show_face=True,
-        flippable=False,
-        movable=True,
+        self, href=None, objid=None, face_value="back", show_face=True, flippable=False,
     ):
         # Set the initial face to be shown.
         if href is None:
@@ -87,11 +119,6 @@ class PlayingCard(SVG.UseObject):
         self.show_face = show_face
         SVG.UseObject.__init__(self, href=href, objid=objid)
         self.flippable = flippable
-        self.bind("click", self.card_click_handler)
-        if movable:
-            self.bind("mouseup", self.move_handler)
-            self.bind("touchend", self.move_handler)
-            # self.bind("click", self.move_handler)
         self.face_update_dom()
 
     def face_update_dom(self):
@@ -109,68 +136,19 @@ class PlayingCard(SVG.UseObject):
             self.attrs["href"] = "#back"
             self.style["fill"] = "crimson"  # darkblue also looks "right"
 
-    def move_handler(self, event=None):
-        """
-        Inspect the object's attributes and determine whether additional action needs to
-        be taken during a move action.
-
-        :param event: The event object passed in during callback, defaults to None
-        :type event: Event(?), optional
-        """
-        mylog.error(
-            "Entering PlayingCard.move_handler: %s, %s",
-            self.attrs["y"],
-            self.style["transform"],
-        )
-
-        # Moving a card within a CARD_HEIGHT of the top "throws" that card.
-        if (
-            event
-            and self.id.startswith("player")  # Only play cards from player's hand
-            and self.show_face  # Only throw cards that are face-up
-            and self.style["transform"] != ""  # Empty when not moving
-        ):
-            self.play_handler(event)
-
-    def play_handler(self, event=None):
+    def play_handler(self, event_type):
         """
         Handler for when a card is "played." This can mean one of two things.
         1. The card is chosen as meld either by moving or clicking on the card.
         2. The card is 'thrown' during trick play.
 
-        :param event: The event object passed in during callback, defaults to None
-        :type event: Event(?), optional
+        :param event_type: Whether the event is a click or a drag
+        :type event: string
         """
-        new_y = CARD_HEIGHT * 1.25
-
-        # The object already has the correct 'Y' value from the move.
-        if "touch" in event.type or "click" in event.type:
-            new_y = float(self.attrs["y"])
-            mylog.warning(
-                "PlayingCard.play_handler: Touch event: id=%4.2s new_y=%4.2f",
-                self.id,
-                new_y,
-            )
-
-        # Cope with the fact that the original Y coordinate is given rather than the
-        # new one. And that the style element is a string...
-        if "mouse" in event.type:
-            # TODO: See if there's a better way to do this.
-            transform = self.style["transform"]
-            starting_point = transform.find("translate(")
-            if starting_point >= 0:
-                y_coord = transform.find("px,", starting_point) + 4
-                y_coord_end = transform.find("px", y_coord)
-                y_move = transform[y_coord:y_coord_end]
-                new_y = float(self.attrs["y"]) + float(y_move)
-            mylog.warning(
-                "PlayingCard.play_handler: Mouse event: id=%s new_y=%4.2f",
-                self.id,
-                new_y,
-            )
+        (__, new_y) = self.origin
 
         # Determine whether the card is now in a position to be considered thrown.
-        if new_y >= CARD_HEIGHT and "click" not in event.type:
+        if new_y >= CARD_HEIGHT and event_type == "drag":
             # New Y is greater than one CARD_HEIGHT from the top.
             return  # Not thrown.
 
@@ -253,31 +231,27 @@ class PlayingCard(SVG.UseObject):
         self.face_update_dom()
         set_card_positions()
 
-    def card_click_handler(self, event=None):
+    def card_click_handler(self):
         """
         Click handler for the playing card. The action depends on the game mode.
         Since the only time this is done is during the meld process, also call the API to
         notify it that a kitty card has been flipped over and which card that is.
-
-        :param event: The event object passed in during callback, defaults to None
-        :type event: Event(?), optional
         """
         global g_players_hand, g_players_meld_deck  # pylint: disable=invalid-name
         mylog.error("Entering PlayingCard.card_click_handler()")
-        if event and "click" in event.type:
-            if GAME_MODES[g_game_mode] in ["reveal"] and self.flippable:
-                mylog.warning(
-                    "PlayingCard.card_click_handler: flippable=%r", self.flippable
-                )
-                self.show_face = not self.show_face
-                self.flippable = False
-                # TODO: Call API to notify the other players this particular card was
-                # flipped over and add it to the player's hand.
-                g_players_hand.append(self.face_value)
-                g_players_meld_deck.append(self.face_value)
-                self.face_update_dom()
-            if GAME_MODES[g_game_mode] in ["meld"]:
-                self.play_handler(event)
+        if GAME_MODES[g_game_mode] in ["reveal"] and self.flippable:
+            mylog.warning(
+                "PlayingCard.card_click_handler: flippable=%r", self.flippable
+            )
+            self.show_face = not self.show_face
+            self.flippable = False
+            # TODO: Call API to notify the other players this particular card was
+            # flipped over and add it to the player's hand.
+            g_players_hand.append(self.face_value)
+            g_players_meld_deck.append(self.face_value)
+            self.face_update_dom()
+        if GAME_MODES[g_game_mode] in ["meld"]:
+            self.play_handler(event_type="click")
 
 
 def dump_globals() -> None:
@@ -453,6 +427,7 @@ def update_player_names(player_data: str):
                 )
             )
         )
+        resize_canvas()
 
 
 def send_registration():
@@ -707,6 +682,7 @@ def on_complete_kitty(req: ajax.Ajax):
     mylog.error("Entering on_complete_kitty.")
 
     ajax_request_tracker(-1)
+    mylog.warning("on_complete_kitty: req.text=%r", req.text)
     temp = on_complete_common(req)
     if temp is None:
         return
@@ -964,8 +940,10 @@ def populate_canvas(deck, target_canvas, deck_type="player"):
     :param target_canvas: [description]
     :type target_canvas: [type]
     """
-    mylog.error(
-        "Entering populate_canvas(deck=%s target_canvas=%s deck_type=%s).",
+    mylog.error("Entering populate_canvas.")
+
+    mylog.warning(
+        "populate_canvas(deck=%s target_canvas=%s deck_type=%s).",
         deck,
         target_canvas,
         deck_type,
@@ -992,7 +970,7 @@ def populate_canvas(deck, target_canvas, deck_type="player"):
             objid=f"{deck_type}{counter}",
             show_face=show_face,
             flippable=flippable,
-            movable=movable,
+            # movable=movable,
         )
         target_canvas.addObject(piece, fixed=not movable)
         if "player" not in deck_type:
@@ -1498,6 +1476,7 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
         place_cards(discard_deck, g_canvas, location="top", deck_type=mode)
         place_cards(g_players_hand, g_canvas, location="bottom", deck_type="player")
 
+    g_canvas.mouseMode = SVG.MouseMode.NONE
     g_canvas.mouseMode = SVG.MouseMode.DRAG
 
 
@@ -1521,16 +1500,12 @@ def resize_canvas(event=None):
 # window.clear_display = clear_display No longer needed I think?
 window.bind("resize", resize_canvas)
 
-# Locate the card table in the HTML document.
-CardTable = document["card_table"]
-
 # Attach the card graphics file
 document["card_definitions"].attach(SVG.Definitions(filename=CARD_URL))
 
 # Create the base SVG object for the card table.
-g_canvas = SVG.CanvasObject("95vw", "90vh", None, objid="canvas")
-CardTable <= g_canvas
-g_canvas.mode = "initial"
+g_canvas = CardTable()
+document["card_table"] <= g_canvas
 
 # Declare temporary decks
 discard_deck = ["card-base" for _ in range(g_players)]

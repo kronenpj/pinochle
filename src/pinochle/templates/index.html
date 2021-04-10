@@ -7,10 +7,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.9.0/brython.min.js">
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.9.0/brython_stdlib.min.js">
-    <script src="https://cdn.jsdelivr.net/gh/andy31lewis/brySVG@0.4.0/brySVG.brython.js"></script>
     </script>
+    <script src="https://cdn.jsdelivr.net/gh/andy31lewis/brySVG@0.5.0/brySVG.brython.js"></script>
     -->
-    <script type="text/javascript">function rebuild_display() { window.location.reload(); }</script>
     <script type="text/javascript" src="/static/brython.min.js"></script>
     <script type="text/javascript" src="/static/brython_stdlib.js"></script>
     <!-- Retrieve and compile brySVG's dragdrop.py instead of using the JS file for now.
@@ -19,7 +18,7 @@
     <script type="text/python" src="../static/cardtable.py"></script>
     <link rel="stylesheet" href="/static/standard.css" type="text/css" />
   </head>
-  <body onload="brython(1)" onresize="rebuild_display()">
+  <body onload="brython(1)">
     <div style="text-align:center; overflow:hidden;" id='player_name'></div>
     <div style="text-align:center; overflow:hidden;" id='top_container'>
       <div id='card_definitions' style = "position:relative; display:inline-block; width:0; height:0; padding:0;"></div>
