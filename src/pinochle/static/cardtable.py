@@ -219,7 +219,7 @@ class PlayingCard(SVG.UseObject):
         receiving_deck[placement] = self.face_value
         # Replace the discard face with that of the original, moved card.
         discard_object.face_value = self.face_value
-        discard_object.href.baseVal = self.href.baseVal
+        discard_object.attrs["href"] = self.attrs["href"]
 
         # TODO: Remove this when taking meld back is implemented above.
         discard_object.movable = False
@@ -1274,8 +1274,8 @@ def display_game_options():
 
 def rebuild_display(event=None):  # pylint: disable=unused-argument
     """
-    Clear the display by removing everything from the canvas object, then re-add 
-    everything back. It also works for the initial creation and addition of the canvas to 
+    Clear the display by removing everything from the canvas object, then re-add
+    everything back. It also works for the initial creation and addition of the canvas to
     the overall DOM.
 
     :param event: The event object passed in during callback, defaults to None
