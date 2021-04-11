@@ -6,7 +6,7 @@ curl_inserts.sh
 dragdrop-refinements-fail.patch
 echo.html
 geckodriver
-geckodriver-v0.29.0-linux64.tar.gz
+geckodriver-*-linux64.tar.gz
 html2-documentation-generated.zip
 nginx/
 openapi3.yml
