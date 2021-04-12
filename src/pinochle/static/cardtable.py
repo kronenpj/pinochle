@@ -1487,7 +1487,8 @@ def resize_canvas(event=None):
     mylog.error("Entering resize_canvas")
     h = 0.95 * window.innerHeight - document["player_name"].height
     g_canvas.style.height = f"{h}px"
-    g_canvas.fitContents()
+    if len(g_canvas.objectDict) > 0:
+        g_canvas.fitContents()
 
 
 ## END Function definitions.
