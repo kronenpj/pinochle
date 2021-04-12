@@ -195,16 +195,7 @@ class PlayingCard(SVG.UseObject):
             [objid for (objid, _) in parent_canvas.objectDict.items()],
         )
         # Locate the ID of the target card in the DOM.
-        # Tried:
-        #    discard_object = parent_canvas.getElementById(f"{card_tag}{placement}")
-        #       only returns the DOM object.
-        #    discard_object = parent_canvas[f"{card_tag}{placement}"]
-        #       wrong access method
-        discard_object = [
-            x
-            for (objid, x) in parent_canvas.objectDict.items()
-            if f"{card_tag}{placement}" in objid
-        ][0]
+        discard_object = parent_canvas.objectDict[f"{card_tag}{placement}"]
 
         # Delete the original card from the UI.
         parent_canvas.deleteObject(self)
@@ -1010,25 +1001,20 @@ def place_cards(deck, target_canvas, location="top", deck_type="player"):
 
     # Iterate over canvas's child nodes and move any node
     # where deck_type matches the node's id
-    for node in [
-        x for (objid, x) in target_canvas.objectDict.items() if deck_type in objid
-    ]:
-        if not isinstance(node, SVG.UseObject):
-            continue
+    for (objid, node) in target_canvas.objectDict.items():
+        if isinstance(node, SVG.UseObject) and deck_type in objid:
+            # NOTE: setPosition takes a tuple, so the double parenthesis are necessary.
+            node.setPosition((xpos, ypos))
 
-        mylog.warning(
-            "place_cards: Processing node %s. (xpos=%4.2f, ypos=%4.2f)",
-            node.id,
-            xpos,
-            ypos,
-        )
+            mylog.warning(
+                "place_cards: Processing node %s. (xpos=%4.2f, ypos=%4.2f)",
+                node.id,
+                xpos,
+                ypos,
+            )
 
-        # Move the node into the new position.
-        # NOTE: setPosition takes a tuple, so the double parenthesis are necessary.
-        node.setPosition((xpos, ypos))
-
-        # Each time through the loop, move the next card's starting position.
-        xpos += xincr
+            # Each time through the loop, move the next card's starting position.
+            xpos += xincr
 
 
 def create_game_select_buttons(xpos, ypos) -> None:
