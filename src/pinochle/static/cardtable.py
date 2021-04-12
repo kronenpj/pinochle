@@ -427,7 +427,6 @@ def update_player_names(player_data: str):
                 )
             )
         )
-        resize_canvas()
 
 
 def send_registration():
@@ -1486,7 +1485,7 @@ def resize_canvas(event=None):
     :param event: The event object passed in during callback, defaults to None
     """
     mylog.error("Entering resize_canvas")
-    h = 0.95 * window.innerHeight - document["player_name"].offsetHeight
+    h = 0.95 * window.innerHeight - document["player_name"].height
     g_canvas.style.height = f"{h}px"
     g_canvas.fitContents()
 
@@ -1500,12 +1499,16 @@ def resize_canvas(event=None):
 # window.clear_display = clear_display No longer needed I think?
 window.bind("resize", resize_canvas)
 
+#Fix the height of the space for player names by using dummy names
+document["player_name"].height = document["player_name"].offsetHeight
+
 # Attach the card graphics file
 document["card_definitions"].attach(SVG.Definitions(filename=CARD_URL))
 
 # Create the base SVG object for the card table.
 g_canvas = CardTable()
 document["card_table"] <= g_canvas
+resize_canvas()
 
 # Declare temporary decks
 discard_deck = ["card-base" for _ in range(g_players)]
