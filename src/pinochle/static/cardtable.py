@@ -195,22 +195,8 @@ class PlayingCard(SVG.UseObject):
             [objid for (objid, _) in parent_canvas.objectDict.items()],
         )
         # Locate the ID of the target card in the DOM.
-        # Tried:
-        #    discard_object = parent_canvas.getElementById(f"{card_tag}{placement}")
-        #       only returns the DOM object.
-        #    discard_object = parent_canvas[f"{card_tag}{placement}"]
-        #       wrong access method
-        discard_object = [
-            x
-            for (objid, x) in parent_canvas.objectDict.items()
-            if f"{card_tag}{placement}" in objid
-        ][0]
+        discard_object = parent_canvas.objectDict[f"{card_tag}{placement}"]
 
-        # Delete the original card's transparent hit target from the UI.
-        try:
-            parent_canvas.deleteObject(self.hitTarget)
-        except AttributeError:
-            pass
         # Delete the original card from the UI.
         parent_canvas.deleteObject(self)
         # Remove the original card from the player's hand and put it in the
@@ -427,7 +413,6 @@ def update_player_names(player_data: str):
                 )
             )
         )
-        resize_canvas()
 
 
 def send_registration():
@@ -1016,25 +1001,20 @@ def place_cards(deck, target_canvas, location="top", deck_type="player"):
 
     # Iterate over canvas's child nodes and move any node
     # where deck_type matches the node's id
-    for node in [
-        x for (objid, x) in target_canvas.objectDict.items() if deck_type in objid
-    ]:
-        if not isinstance(node, SVG.UseObject):
-            continue
+    for (objid, node) in target_canvas.objectDict.items():
+        if isinstance(node, SVG.UseObject) and deck_type in objid:
+            # NOTE: setPosition takes a tuple, so the double parenthesis are necessary.
+            node.setPosition((xpos, ypos))
 
-        mylog.warning(
-            "place_cards: Processing node %s. (xpos=%4.2f, ypos=%4.2f)",
-            node.id,
-            xpos,
-            ypos,
-        )
+            mylog.warning(
+                "place_cards: Processing node %s. (xpos=%4.2f, ypos=%4.2f)",
+                node.id,
+                xpos,
+                ypos,
+            )
 
-        # Move the node into the new position.
-        # NOTE: setPosition takes a tuple, so the double parenthesis are necessary.
-        node.setPosition((xpos, ypos))
-
-        # Each time through the loop, move the next card's starting position.
-        xpos += xincr
+            # Each time through the loop, move the next card's starting position.
+            xpos += xincr
 
 
 def create_game_select_buttons(xpos, ypos) -> None:
@@ -1048,7 +1028,7 @@ def create_game_select_buttons(xpos, ypos) -> None:
     """
     mylog.error("Entering create_game_select_buttons")
     mylog.warning("create_game_select_buttons: game_dict=%s", g_game_dict)
-    added_button = False
+    #added_button = False
     if g_game_dict == {}:
         mylog.warning("cgsb: In g_game_dict={}")
         no_game_button = SVG.Button(
@@ -1060,7 +1040,7 @@ def create_game_select_buttons(xpos, ypos) -> None:
             objid="nogame",
         )
         g_canvas.attach(no_game_button)
-        added_button = True
+        #added_button = True
     else:
         mylog.warning("cgsb: Clearing canvas (%r)", g_canvas)
         g_canvas.deleteAll()
@@ -1076,10 +1056,10 @@ def create_game_select_buttons(xpos, ypos) -> None:
             objid=item,
         )
         g_canvas.attach(game_button)
-        added_button = True
+        #added_button = True
         ypos += 40
-    if added_button:
-        g_canvas.fitContents()
+    #if added_button:
+    g_canvas.fitContents()
     mylog.warning("Exiting create_game_select_buttons")
 
 
@@ -1092,7 +1072,7 @@ def create_player_select_buttons(xpos, ypos) -> None:
     :param ypos:    Starting Y position
     :type ypos:     float
     """
-    added_button = False
+    #added_button = False
     for item in g_player_dict:
         mylog.warning("player_dict[item]=%s", g_player_dict[item])
         player_button = SVG.Button(
@@ -1106,9 +1086,9 @@ def create_player_select_buttons(xpos, ypos) -> None:
         mylog.warning("create_player_select_buttons: player_dict item: item=%s", item)
         g_canvas.attach(player_button)
         ypos += 40
-        added_button = True
-    if added_button:
-        g_canvas.fitContents()
+        #added_button = True
+    #if added_button:
+    g_canvas.fitContents()
     mylog.warning("Exiting create_player_select_buttons")
 
 
@@ -1403,12 +1383,7 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
         )
         g_canvas.addObject(button_send_meld)
 
-    try:
-        g_canvas.fitContents()
-    except ZeroDivisionError:
-        pass
-    except AttributeError:
-        pass
+    g_canvas.fitContents()
     g_canvas.mouseMode = SVG.MouseMode.DRAG
     mylog.warning("Leaving clear_display")
 
@@ -1476,7 +1451,6 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
         place_cards(discard_deck, g_canvas, location="top", deck_type=mode)
         place_cards(g_players_hand, g_canvas, location="bottom", deck_type="player")
 
-    g_canvas.mouseMode = SVG.MouseMode.NONE
     g_canvas.mouseMode = SVG.MouseMode.DRAG
 
 
@@ -1486,7 +1460,7 @@ def resize_canvas(event=None):
     :param event: The event object passed in during callback, defaults to None
     """
     mylog.error("Entering resize_canvas")
-    h = 0.95 * window.innerHeight - document["player_name"].offsetHeight
+    h = 0.95 * window.innerHeight - document["player_name"].height
     g_canvas.style.height = f"{h}px"
     g_canvas.fitContents()
 
@@ -1500,12 +1474,16 @@ def resize_canvas(event=None):
 # window.clear_display = clear_display No longer needed I think?
 window.bind("resize", resize_canvas)
 
+#Fix the height of the space for player names by using dummy names
+document["player_name"].height = document["player_name"].offsetHeight
+
 # Attach the card graphics file
 document["card_definitions"].attach(SVG.Definitions(filename=CARD_URL))
 
 # Create the base SVG object for the card table.
 g_canvas = CardTable()
 document["card_table"] <= g_canvas
+resize_canvas()
 
 # Declare temporary decks
 discard_deck = ["card-base" for _ in range(g_players)]
