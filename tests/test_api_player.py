@@ -16,7 +16,7 @@ from pinochle.models.player import Player
 # pylint: disable=wrong-import-order
 from werkzeug import exceptions
 
-import test_utils
+from . import test_utils
 
 # from pinochle.models.utils import dump_db
 

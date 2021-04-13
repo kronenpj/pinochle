@@ -19,7 +19,8 @@ from pinochle.ws_messenger import WebSocketMessenger as WSM
 # pylint: disable=wrong-import-order
 from werkzeug import exceptions
 
-import test_utils
+# pragma: pytest: disable=wrong-import-order
+from . import test_utils
 
 
 def test_deal_to_players_w_kitty(app):
