@@ -958,9 +958,6 @@ def populate_canvas(deck, target_canvas, deck_type="player"):
             # movable=movable,
         )
         target_canvas.addObject(piece, fixed=not movable)
-        if "player" not in deck_type:
-            # print("Scaling %r", piece)
-            target_canvas.scaleElement(piece, 0.15)
         if False and "trick" in deck_type:
             # TODO: This needs to start with the player who won the bid or the last trick.
             mylog.warning("%s %s", counter, g_player_dict[g_player_id]["name"])
