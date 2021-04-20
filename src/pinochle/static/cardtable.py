@@ -364,18 +364,24 @@ def display_player_meld(meld_data: str):
     data = json.loads(meld_data)
     player_name = g_player_dict[str(data["player_id"])]["name"]
     card_list = data["card_list"]
-    dialog = InfoDialog(  # pylint: disable=assignment-from-no-return
-        "Meld Score", f"{player_name}'s meld cards are:", ok=True
-    )
     try:
         xpos = 0
-        d_canvas = SVG.CanvasObject(objid="dialog_canvas")
-        dialog.panel <= d_canvas
+        d_canvas = SVG.CanvasObject("50vw", "40vh", "none", objid="dialog_canvas")
+        #dialog.panel <= d_canvas
         for card in card_list:
             d_canvas <= SVG.UseObject(href=f"#{card}", origin=(xpos, 0))
-            xpos += CARD_WIDTH / 5.0
+            xpos += CARD_WIDTH / 2.0
     except Exception as e:  # pylint: disable=invalid-name,broad-except
         mylog.warning("display_player_meld: Caught exception: %r", e)
+
+    dialog = InfoDialog(  # pylint: disable=assignment-from-no-return
+        "Meld Score",
+        html.P(f"{player_name}'s meld cards are:") + d_canvas,
+        left = 25,
+        top = 25,
+        ok=True
+    )
+    d_canvas.fitContents()
 
 
 def update_player_names(player_data: str):
