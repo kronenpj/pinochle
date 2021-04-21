@@ -361,26 +361,45 @@ def display_player_meld(meld_data: str):
     :param meld_data: Data from the event as a JSON string.
     :type meld_data: str
     """
+    mylog.error("Entering display_player_meld.")
     data = json.loads(meld_data)
-    player_name = g_player_dict[str(data["player_id"])]["name"]
+    player_id = str(data["player_id"])
+    player_name = g_player_dict[player_id]["name"]
     card_list = data["card_list"]
     try:
+        # If a dialog already exists, delete it.
+        if existing_dialog := document.getElementById(f"dialog_{player_id}"):
+            existing_dialog.parentNode.removeChild(existing_dialog)
+    except Exception as e:  # pylint: disable=invalid-name,broad-except
+        mylog.warning("display_player_meld: Caught exception: %r", e)
+    try:
+        # Construct the new dialog to display the meld cards.
         xpos = 0
-        d_canvas = SVG.CanvasObject("50vw", "40vh", "none", objid="dialog_canvas")
-        #dialog.panel <= d_canvas
+        d_canvas = SVG.CanvasObject("40vw", "20vh", "none", objid="dialog_canvas")
         for card in card_list:
             d_canvas <= SVG.UseObject(href=f"#{card}", origin=(xpos, 0))
             xpos += CARD_WIDTH / 2.0
     except Exception as e:  # pylint: disable=invalid-name,broad-except
         mylog.warning("display_player_meld: Caught exception: %r", e)
-
-    dialog = InfoDialog(  # pylint: disable=assignment-from-no-return
-        "Meld Score",
+        return
+    InfoDialog(  # pylint: disable=assignment-from-no-return
+        "Meld Cards",
         html.P(f"{player_name}'s meld cards are:") + d_canvas,
-        left = 25,
-        top = 25,
-        ok=True
+        left=25,
+        top=25,
+        ok=True,
     )
+    mylog.warning(
+        "display_player_meld: Items: %r",
+        document.getElementsByClassName("brython-dialog-main"),
+    )
+    # Add an ID attribute so we can find it later if needed.
+    for item in document.getElementsByClassName("brython-dialog-main"):
+        mylog.warning("display_player_meld: Item: %r", item)
+        if not item.id:
+            # Assume this is the one we just created.
+            item.id = f"dialog_{player_id}"
+
     d_canvas.fitContents()
 
 
@@ -1031,7 +1050,7 @@ def create_game_select_buttons(xpos, ypos) -> None:
     """
     mylog.error("Entering create_game_select_buttons")
     mylog.warning("create_game_select_buttons: game_dict=%s", g_game_dict)
-    #added_button = False
+    # added_button = False
     if g_game_dict == {}:
         mylog.warning("cgsb: In g_game_dict={}")
         no_game_button = SVG.Button(
@@ -1043,7 +1062,7 @@ def create_game_select_buttons(xpos, ypos) -> None:
             objid="nogame",
         )
         g_canvas.attach(no_game_button)
-        #added_button = True
+        # added_button = True
     else:
         mylog.warning("cgsb: Clearing canvas (%r)", g_canvas)
         g_canvas.deleteAll()
@@ -1059,9 +1078,9 @@ def create_game_select_buttons(xpos, ypos) -> None:
             objid=item,
         )
         g_canvas.attach(game_button)
-        #added_button = True
+        # added_button = True
         ypos += 40
-    #if added_button:
+    # if added_button:
     g_canvas.fitContents()
     mylog.warning("Exiting create_game_select_buttons")
 
@@ -1075,7 +1094,7 @@ def create_player_select_buttons(xpos, ypos) -> None:
     :param ypos:    Starting Y position
     :type ypos:     float
     """
-    #added_button = False
+    # added_button = False
     for item in g_player_dict:
         mylog.warning("player_dict[item]=%s", g_player_dict[item])
         player_button = SVG.Button(
@@ -1089,8 +1108,8 @@ def create_player_select_buttons(xpos, ypos) -> None:
         mylog.warning("create_player_select_buttons: player_dict item: item=%s", item)
         g_canvas.attach(player_button)
         ypos += 40
-        #added_button = True
-    #if added_button:
+        # added_button = True
+    # if added_button:
     g_canvas.fitContents()
     mylog.warning("Exiting create_player_select_buttons")
 
@@ -1477,7 +1496,7 @@ def resize_canvas(event=None):
 # window.clear_display = clear_display No longer needed I think?
 window.bind("resize", resize_canvas)
 
-#Fix the height of the space for player names by using dummy names
+# Fix the height of the space for player names by using dummy names
 document["player_name"].height = document["player_name"].offsetHeight
 
 # Attach the card graphics file
