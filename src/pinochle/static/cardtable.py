@@ -97,6 +97,7 @@ g_game_mode: Optional[int] = None
 g_kitty_size: int = 0
 g_player_id: str = ""
 g_players: int = 4
+g_round_bid = 0
 g_round_id: str = ""
 g_team_id: str = ""
 g_trump: str = ""
@@ -624,7 +625,7 @@ def display_bid_winner(event=None):
     :type event: [type], optional
     """
     mylog.error("Entering display_bid_winner.")
-    global g_round_bid_winner
+    global g_round_bid_winner, g_round_bid
     data = json.loads(event)
     player_id = str(data["player_id"])
     player_name = g_player_dict[player_id]["name"]
@@ -643,6 +644,7 @@ def display_bid_winner(event=None):
 
     # You may have won...
     g_round_bid_winner = player_id
+    g_round_bid = bid
 
 
 def display_player_meld(meld_data: str):
@@ -748,6 +750,10 @@ def update_status_line():
     if g_trump:
         document.getElementById("game_status").attach(
             html.SPAN(f"Trump: {g_trump.capitalize()}s ", Class="game_status")
+        )
+    if g_round_bid:
+        document.getElementById("game_status").attach(
+            html.SPAN(f"Bid: {g_round_bid}s ", Class="game_status")
         )
 
 
