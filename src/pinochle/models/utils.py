@@ -250,3 +250,33 @@ def query_teamplayer_list(team_id: str) -> List[TeamPlayers]:
         .order_by(TeamPlayers.player_order)
         .all()
     )
+
+
+def query_player_ids_for_round(round_id: str) -> List[str]:
+    """
+    Query the database for the list of player IDs still bidding on this round.
+
+    :param round_id: Round ID to query
+    :type round_id: str
+    :return: [description]
+    :rtype: List[str]
+    """
+    # print(f"round_id={round_id}")
+    # Get the round requested
+    a_round: Round = query_round(round_id)
+
+    # Did we find a round?
+    if a_round is None or a_round == {}:
+        return []
+
+    # Retrieve the information for the round and teams.
+    round_t = query_roundteam_list(round_id)
+
+    player_ids = []
+    # Collect the individual players from the round's teams.
+    for t_team_id in [str(x.team_id) for x in round_t]:
+        for team_info in query_teamplayer_list(t_team_id):
+            # Add each player to the list
+            player_ids.append(str(team_info.player_id))
+
+    return player_ids

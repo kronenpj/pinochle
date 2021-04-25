@@ -9,9 +9,17 @@ from typing import Any, Dict, List, Optional
 
 import brySVG.dragcanvas as SVG  # pylint: disable=import-error
 from browser import ajax, document, html, websocket, window
-from browser.widgets.dialog import InfoDialog
+from browser.widgets.dialog import Dialog, InfoDialog
 
-from constants import CARD_HEIGHT, CARD_URL, CARD_WIDTH, DECK_CONFIG, GAME_MODES
+from constants import (
+    CARD_HEIGHT,
+    CARD_SMALLER_HEIGHT,
+    CARD_SMALLER_WIDTH,
+    CARD_URL,
+    CARD_WIDTH,
+    DECK_CONFIG,
+    GAME_MODES,
+)
 
 # Disable some pylint complaints because this code is more like javascript than python.
 # pylint: disable=global-statement
@@ -81,23 +89,32 @@ class CardTable(SVG.CanvasObject):
         :param event: The event object passed in during callback, defaults to None
         :type event: Event(?), optional
         """
-        selected_card = self.getSelectedObject(event.target.id)
         mylog.error("Entering CardTable.move_handler")
+        selected_card = self.getSelectedObject(event.target.id)
 
+        currentcoords = self.getSVGcoords(event)
+        offset = currentcoords - self.dragStartCoords
         # Moving a card within a CARD_HEIGHT of the top "throws" that card.
         if (
+            # Only play cards from player's hand
+            # Only throw cards that are face-up
             selected_card
-            and selected_card.id.startswith(
-                "player"
-            )  # Only play cards from player's hand
-            and selected_card.show_face  # Only throw cards that are face-up
+            and selected_card.id.startswith("player")
+            and selected_card.show_face
         ):
-            currentcoords = self.getSVGcoords(event)
-            offset = currentcoords - self.dragStartCoords
             if offset == (0, 0):  # We have a click, not a drag
                 selected_card.card_click_handler()
             else:  # It's a drag
                 selected_card.play_handler(event_type="drag")
+        elif (
+            # Check cards from kitty deck
+            # Only flip cards that are face-down
+            selected_card
+            and selected_card.id.startswith("kitty")
+            and not selected_card.show_face
+        ):
+            if offset == (0, 0):  # We have a click, not a drag
+                selected_card.card_click_handler()
 
 
 class PlayingCard(SVG.UseObject):
@@ -240,6 +257,54 @@ class PlayingCard(SVG.UseObject):
             self.play_handler(event_type="click")
 
 
+class BidDialog:
+    bid_dialog = None
+
+    def on_click_bid_dialog(self, event=None):
+        """
+        Handle the click event for the bid/pass buttons.
+
+        :param event: [description], defaults to None
+        :type event: [type], optional
+        """
+        if "Pass" in event.currentTarget.text:
+            bid = -1
+        else:
+            bid = int(self.bid_dialog.select_one("INPUT").value)
+        self.bid_dialog.close()
+        put({}, f"/play/{g_round_id}/submit_bid?player_id={g_player_id}&bid={bid}")
+
+    def display_bid_dialog(self, bid_data: str):
+        """
+        Display the meld hand submitted by a player in a pop-up.
+
+        :param evt: Data from the event as a JSON string.
+        :type evt: str
+        """
+        mylog.error("Entering display_bid_dialog.")
+        data = json.loads(bid_data)
+        player_id = str(data["player_id"])
+        bid = int(data["bid"])
+        player_name = g_player_dict[player_id]["name"].capitalize()
+
+        # Don't display a dialog box if this isn't the player bidding.
+        if g_player_id != player_id:
+            InfoDialog(
+                "Bid Update",
+                f"Current bid is: {bid}<br/>Next bid to: {player_name}",
+                remove_after=10,
+            )
+            return
+
+        self.bid_dialog = Dialog("Bid or Pass", ok_cancel=["Bid", "Pass"])
+        self.bid_dialog.panel <= html.DIV(
+            f"{player_name}, enter your bid or pass: " + html.INPUT(value=f"{bid+1}")
+        )
+
+        self.bid_dialog.ok_button.bind("click", self.on_click_bid_dialog)
+        self.bid_dialog.cancel_button.bind("click", self.on_click_bid_dialog)
+
+
 def dump_globals() -> None:
     """
     Debugging assistant to output the value of selected globals.
@@ -352,6 +417,37 @@ def on_ws_event(event=None):
         display_game_options()
     elif "meld_update" in event.data:
         display_player_meld(event.data)
+    elif "bid_prompt" in event.data:
+        bid_dialog = BidDialog()
+        bid_dialog.display_bid_dialog(event.data)
+    elif "bid_winner" in event.data:
+        display_bid_winner(event.data)
+
+
+def display_bid_winner(event=None):
+    """
+    Display the round's bid winner.
+
+    :param event: [description], defaults to None
+    :type event: [type], optional
+    """
+    mylog.error("Entering display_bid_winner.")
+    global g_round_bid_winner
+    data = json.loads(event)
+    player_id = str(data["player_id"])
+    player_name = g_player_dict[player_id]["name"]
+    bid = str(data["bid"])
+
+    InfoDialog(
+        "Bid Winner",
+        html.P(f"{player_name}'s has won the bid at {bid} points!"),
+        left=25,
+        top=25,
+        ok=True,
+    )
+
+    # You may have won...
+    g_round_bid_winner = player_id == g_player_id
 
 
 def display_player_meld(meld_data: str):
@@ -382,7 +478,7 @@ def display_player_meld(meld_data: str):
     except Exception as e:  # pylint: disable=invalid-name,broad-except
         mylog.warning("display_player_meld: Caught exception: %r", e)
         return
-    InfoDialog(  # pylint: disable=assignment-from-no-return
+    InfoDialog(
         "Meld Cards",
         html.P(f"{player_name}'s meld cards are:") + d_canvas,
         left=25,
@@ -931,10 +1027,11 @@ def clear_globals_for_round_change():
     """
     Clear some global variables in preparation for a new round.
     """
-    global g_round_id, g_team_list, g_players_hand, g_players_meld_deck, g_meld_deck  # pylint: disable=invalid-name
+    global g_round_id, g_round_bid_winner, g_meld_deck  # pylint: disable=invalid-name
     mylog.error("Entering clear_globals_for_round_change.")
 
     g_round_id = ""
+    g_round_bid_winner = False
     g_players_hand.clear()
     g_players_meld_deck.clear()
     g_meld_deck = ["card-base" for _ in range(HAND_SIZE)]
@@ -1001,8 +1098,8 @@ def place_cards(deck, target_canvas, location="top", deck_type="player"):
 
     :param deck: card names in the format that svg-cards.svg wants.
     :type deck: list
-    :param location: String of "top", "bottom" or anything else for middle, defaults to
-    "top", instructing routine where to place the cards vertically.
+    :param location: String of "top", "bottom", defaults to "top", instructing routine
+    where to place the cards vertically.
     :type location: str, optional
     :param deck_type: The type of (sub)-deck this is.
     :type deck_type: str, optional # TODO: Should probably be enum-like
@@ -1011,7 +1108,7 @@ def place_cards(deck, target_canvas, location="top", deck_type="player"):
 
     # Determine the starting point and step size for the location and deck being placed.
     start_y = 0 if location.lower() == "top" else 1.25 * CARD_HEIGHT
-    xincr = CARD_WIDTH / 2 if len(deck) > 4 else CARD_WIDTH
+    xincr = CARD_WIDTH / 2 if len(deck) > 4 else CARD_SMALLER_WIDTH
     start_x = (
         -xincr * (len(deck) / 2 + 0.5) if len(deck) > 4 else -xincr * len(deck) / 2
     )
@@ -1025,8 +1122,13 @@ def place_cards(deck, target_canvas, location="top", deck_type="player"):
     # where deck_type matches the node's id
     for (objid, node) in target_canvas.objectDict.items():
         if isinstance(node, SVG.UseObject) and deck_type in objid:
-            # NOTE: setPosition takes a tuple, so the double parenthesis are necessary.
-            node.setPosition((xpos, ypos))
+            # NOTE: The centre argument to setPosition takes a tuple, so the double
+            # parentheses are necessary.
+            node.setPosition(
+                (xpos, ypos),
+                width=None if deck_type == "player" else CARD_SMALLER_WIDTH,
+                height=None if deck_type == "player" else CARD_SMALLER_HEIGHT,
+            )
 
             mylog.warning(
                 "place_cards: Processing node %s. (xpos=%4.2f, ypos=%4.2f)",
@@ -1392,6 +1494,7 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
             g_canvas.addObject(item)
 
     # TODO: Add buttons & display to facilitate bidding. Tie into API.
+    # TODO: Reminder - a bid of -1 indicates the player passed.
 
     if GAME_MODES[g_game_mode] in ["meld"]:
         # Button to call submit_meld on demand
@@ -1437,10 +1540,10 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
             populate_canvas(g_players_hand, g_canvas, "player")
         if mode in ["bidfinal"]:  # Bid submitted
             # The kitty doesn't need to remain 'secret' now that the bidding is done.
+            # Ask the server for the cards in the kitty.
             if g_round_id != "":
                 get(f"/round/{g_round_id}/kitty", on_complete_kitty)
         elif mode in ["reveal"]:  # Reveal
-            # Ask the server for the cards in the kitty.
             populate_canvas(g_kitty_deck, g_canvas, "kitty")
             populate_canvas(g_players_hand, g_canvas, "player")
         elif mode in ["meld"]:  # Meld

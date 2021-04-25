@@ -99,8 +99,8 @@ paths:
       operationId: pinochle.game.update
       tags:
         - Games
-      summary: Update aspect of game that I'm not thinking of now.
-      description: TODO- Figure out what could go here.
+      summary: Update various aspects of game that don't quite fit elsewhere.
+      description: Update various aspects of game that don't fit elsewhere.
       parameters:
         - name: game_id
           in: path
@@ -115,6 +115,10 @@ paths:
           in: query
           type: boolean
           description: Increment the state and create new round when appropriate.
+        - name: dealer_id
+          in: query
+          type: string
+          description: Update the ID of the current dealer
       responses:
         200:
           description: Successfully updated game

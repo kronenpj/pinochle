@@ -21,6 +21,7 @@ class Game(db.Model):
         index=True,
         unique=True,
     )
+    dealer_id = db.Column(GUID, default=None)
     kitty_size = db.Column(db.Integer, default=0)
     state = db.Column(db.Integer, default=0)
     timestamp = db.Column(
@@ -30,7 +31,9 @@ class Game(db.Model):
     def __repr__(self):
         output = "<Game: "
         output += "game_id=%r " % self.game_id
+        output += "dealer_id=%r, " % self.dealer_id
         output += "kitty_size=%r, " % self.kitty_size
+        output += "state=%r, " % self.state
         output += ">"
         return output
 

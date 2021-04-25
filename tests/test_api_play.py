@@ -8,7 +8,7 @@ import uuid
 from random import choice
 
 import pytest
-from pinochle import gameround, round_, roundteams, teamplayers
+from pinochle import gameround, player, round_, roundteams, teamplayers
 from pinochle.cards.const import SUITS
 from pinochle.models import utils
 from pinochle.models.core import db
@@ -38,6 +38,20 @@ def test_update_bid(app):
     for __ in range(len(test_utils.PLAYER_NAMES)):
         player_id = test_utils.create_player(choice(test_utils.PLAYER_NAMES))
         player_ids.append(player_id)
+        player.update(player_id, {"bidding": True})
+
+    # Create new teams
+    team_ids = []
+    for __ in range(len(test_utils.TEAM_NAMES)):
+        team_id = test_utils.create_team(choice(test_utils.TEAM_NAMES))
+        team_ids.append(team_id)
+
+    # Join the players to the teams.
+    for idx, player_id in enumerate(player_ids):
+        test_utils.create_teamplayer(team_ids[idx % 2], player_id)
+
+    # Join the teams to the round.
+    test_utils.create_roundteam(round_id, team_ids)
 
     # Populate the bid
     bid = 21
@@ -77,9 +91,28 @@ def test_update_bid_low(app):
     for __ in range(len(test_utils.PLAYER_NAMES)):
         player_id = test_utils.create_player(choice(test_utils.PLAYER_NAMES))
         player_ids.append(player_id)
+        player.update(player_id, {"bidding": True})
+
+    # Create a new team
+    team_ids = []
+    for __ in range(len(test_utils.TEAM_NAMES)):
+        team_id = test_utils.create_team(choice(test_utils.TEAM_NAMES))
+        team_ids.append(team_id)
+
+    # Join the player to the team.
+    for idx, player_id in enumerate(player_ids):
+        test_utils.create_teamplayer(team_ids[idx % 2], player_id)
+
+    # Join the teams to the round.
+    test_utils.create_roundteam(round_id, team_ids)
+
+    # Set the first dealer
+    # Maybe...
+    temp_list = utils.query_player_ids_for_round(round_id)
+    assert len(temp_list) == 4
 
     # Populate the bid
-    bid = -1
+    bid = -2
     player_id = choice(player_ids)
     with app.test_client() as test_client:
         # Attempt to access the get round api

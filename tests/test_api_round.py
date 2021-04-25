@@ -47,7 +47,7 @@ def test_game_round_start(app, patch_ws_messenger):  # pylint: disable=unused-ar
         assert test_utils.UUID_REGEX.match(player_id)
         player_ids.append(player_id)
 
-    # Create a new teams
+    # Create new teams
     team_ids = []
     for item in range(2):
         team_id = test_utils.create_team(choice(test_utils.TEAM_NAMES))
@@ -73,6 +73,12 @@ def test_game_round_start(app, patch_ws_messenger):  # pylint: disable=unused-ar
 
     db_response = gameround.read_one(game_id, round_id)
     # print(f"db_response={db_response}")
+
+    # Make sure all players can bid.
+    # FIXME: This is pinochle-specific and should be moved to the play_pinochle test.
+    for player_id in player_ids:
+        a_player = utils.query_player(player_id)
+        assert a_player.bidding
 
 
 def test_round_score_meld_hand_no_trump(

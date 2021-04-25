@@ -78,7 +78,7 @@ def create(kitty_size=0):
     return data, 201
 
 
-def update(game_id: str, kitty_size=None, state=None):
+def update(game_id: str, kitty_size=None, state=None, dealer_id=None):
     """
     This function updates an existing game in the game structure
 
@@ -87,8 +87,12 @@ def update(game_id: str, kitty_size=None, state=None):
     :type kitty_size:   int
     :param state:       Updated state.
     :type state:        boolean
+    :param dealer_id:   Identifier of new dealer.
+    :type dealer_id:    str
     :return:            Updated / new record.
     """
+    if dealer_id:
+        return _update_data(game_id, {"dealer_id": dealer_id})
     if kitty_size:
         return _update_data(game_id, {"kitty_size": kitty_size})
     if state:

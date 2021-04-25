@@ -30,6 +30,7 @@ class Player(db.Model):
     )
     name = db.Column(db.String)
     meld_score = db.Column(db.Integer, default=0)
+    bidding = db.Column(db.Integer, default=0)
     timestamp = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
@@ -40,6 +41,7 @@ class Player(db.Model):
         output += "name=%r, " % self.name
         output += "hand_id=%r, " % self.hand_id
         output += "meld_score=%r, " % self.meld_score
+        output += "bidding=%r, " % self.bidding
         output += ">"
         return output
 

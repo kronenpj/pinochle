@@ -2,8 +2,10 @@
 Routines commonly used in tests
 
 """
+from typing import List
+
 import regex
-from pinochle import game, player, round_, team, teamplayers
+from pinochle import game, player, round_, roundteams, team, teamplayers
 from pinochle.models.game import Game
 from pinochle.models.player import Player
 from pinochle.models.roundteam import RoundTeam
@@ -113,6 +115,13 @@ def create_player(player_name: str) -> str:
 def create_teamplayer(team_id: str, player_id: str) -> None:
     # Create a new teamplayer
     db_response, status = teamplayers.create(team_id, {"player_id": player_id})
+    assert status == 201
+    assert db_response is not None
+
+
+def create_roundteam(round_id: str, team_ids: List[str]) -> None:
+    # Create new round-teams associations
+    db_response, status = roundteams.create(round_id, team_ids)
     assert status == 201
     assert db_response is not None
 

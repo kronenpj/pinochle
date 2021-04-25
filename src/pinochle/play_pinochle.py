@@ -8,7 +8,16 @@ from typing import List
 from flask import abort, make_response
 from flask.wrappers import Response
 
-from . import gameround, hand, player, round_, roundteams, score_meld, score_tricks
+from . import (
+    game,
+    gameround,
+    hand,
+    player,
+    round_,
+    roundteams,
+    score_meld,
+    score_tricks,
+)
 from .cards import utils as card_utils
 from .cards.const import SUITS
 from .cards.deck import PinochleDeck
@@ -19,7 +28,6 @@ from .models.gameround import GameRound
 from .models.player import Player
 from .models.round_ import Round
 from .models.roundteam import RoundTeam
-from .models.teamplayers import TeamPlayers
 from .ws_messenger import WebSocketMessenger as WSM
 
 
@@ -34,6 +42,10 @@ def deal_pinochle(player_ids: list, kitty_len: int = 0, kitty_id: str = None) ->
     :param kitty_id: [description]
     :type kitty_id: str
     """
+    # TODO: Think about changing this to 'look' more like a traditional deal. One or
+    # three cards dealt from the top of the stack, occassionally contribuing one to the
+    # kitty, if applicable. It shouldn't make an actual difference, but...
+
     # print(f"player_ids={player_ids}")
     hand_decks, kitty_deck = deal_hands(players=len(player_ids), kitty_cards=kitty_len)
 
@@ -43,6 +55,67 @@ def deal_pinochle(player_ids: list, kitty_len: int = 0, kitty_id: str = None) ->
         player_info: Player = utils.query_player(player_ids[index])
         hand_id = str(player_info.hand_id)
         hand.addcards(hand_id=hand_id, cards=convert_to_svg_names(hand_decks[index]))
+
+
+def set_players_bidding(player_ids: list) -> None:
+    """
+    Update each player's record to indicate they are participating in this round's 
+    bidding.
+
+    :param player_ids: [description]
+    :type player_ids: list
+    """
+    # print(f"player_ids={player_ids}")
+    for player_id in player_ids:
+        player.update(player_id, {"bidding": True})
+
+
+def query_players_bidding(round_id: str) -> List[str]:
+    """
+    Query the database for the list of player IDs still bidding on this round.
+
+    :param round_id: Round ID to query
+    :type round_id: str
+    :return: [description]
+    :rtype: List[str]
+    """
+    # print(f"round_id={round_id}")
+    player_ids = utils.query_player_ids_for_round(round_id)
+
+    bidding_players = []
+    for player_id in player_ids:
+        a_player = utils.query_player(player_id)
+        if a_player.bidding:
+            bidding_players.append(player_id)
+
+    return bidding_players
+
+
+def set_player_pass(player_id: str) -> None:
+    """
+    Update supplied player's record to indicate they are no longer participating in this 
+    round's bidding.
+
+    :param player_id: [description]
+    :type player_id: str
+    """
+    # print(f"player_id={player_id}")
+    player.update(player_id, {"bidding": False})
+
+
+def players_still_bidding(round_id: str) -> List[str]:
+    """
+    Returns list of player_ids still bidding in the supplied round.
+
+    :param round_id: [description]
+    :type round_id: str
+    :return: List of player_ids
+    :rtype: List[str]
+    """
+    player_ids = roundteams.create_ordered_player_list(round_id)
+    return [
+        player_id for player_id in player_ids if utils.query_player(player_id).bidding
+    ]
 
 
 def submit_bid(round_id: str, player_id: str, bid: int):
@@ -67,11 +140,73 @@ def submit_bid(round_id: str, player_id: str, bid: int):
     if a_player is None or a_player == {}:
         abort(404, f"Player {player_id} not found.")
 
-    # New bid must be higher than current bid.
-    if a_round.bid >= bid:
+    if bid != -1 and a_round.bid >= bid:
+        # New bid must be higher than current bid.
         abort(409, f"Bid {bid} is below current bid {a_round.bid}.")
 
-    return round_.update(round_id, {"bid": bid, "bid_winner": player_id})
+    # Determine the next player to bid this round.
+    ordered_player_list = players_still_bidding(round_id)
+    next_bid_player_id = [
+        x for x, p_id in enumerate(ordered_player_list) if p_id == player_id
+    ][0]
+    next_bid_player_id += 1
+    next_bid_player_id %= len(ordered_player_list)
+
+    # If the bid is still progressing, continue prompting.
+    game_id = str(utils.query_gameround_for_round(round_id).game_id)
+    if bid > 0:
+        # Prompt that player to bid.
+        send_bid_message(
+            "bid_prompt",
+            game_id,
+            ordered_player_list[next_bid_player_id],
+            bid if bid > 0 else a_round.bid,
+        )
+
+        return round_.update(round_id, {"bid": bid, "bid_winner": player_id})
+
+    ## Bid == -1
+    # If supplied bid is -1, this indicates the player passed.
+    set_player_pass(player_id)
+
+    if len(ordered_player_list) == 2:  # Now one since a player passed...
+        send_bid_message(
+            "bid_winner", game_id, ordered_player_list[next_bid_player_id], a_round.bid,
+        )
+        game.update(game_id, state=True)
+    else:
+        send_bid_message(
+            "bid_prompt",
+            game_id,
+            ordered_player_list[next_bid_player_id],
+            bid if bid > 0 else a_round.bid,
+        )
+
+    return {}, 200
+
+
+def send_bid_message(message_type: str, game_id: str, player_id: str, bid: int):
+    """
+    Send a websocket message to all players with a bid-related message with the 
+    information about the next bidder and current bid, or who has won the bid.
+
+    :param message_type: Type of bid messsage
+    :type message_type: str
+    :param game_id: Game identifier
+    :type game_id: str
+    :param player_id: Player identifier
+    :type player_id: str
+    :param bid: Amount of bid
+    :type bid: int
+    """
+    # Prompt the next player to bid.
+    ws_mess = WSM.get_instance()
+    message = {
+        "action": message_type,
+        "player_id": player_id,
+        "bid": bid,
+    }
+    ws_mess.websocket_broadcast(game_id, message)
 
 
 def set_trump(round_id: str, player_id: str, trump: str):
@@ -147,9 +282,8 @@ def start(round_id: str):
     # Collect the individual players from the round's teams.
     player_hand_id = {}
     for t_team_id in [str(x.team_id) for x in round_t]:
-        t_teamplayer_list: List[TeamPlayers] = utils.query_teamplayer_list(t_team_id)
-        for team_info in t_teamplayer_list:
-            # Generate new hand IDs.
+        for team_info in utils.query_teamplayer_list(t_team_id):
+            # Generate new team hand IDs.
             new_hand_id = str(uuid.uuid4())
             player_hand_id[str(team_info.player_id)] = new_hand_id
             player.update(team_info.player_id, {"hand_id": new_hand_id})
@@ -167,7 +301,25 @@ def start(round_id: str):
         kitty_id=kitty,
     )
 
+    # Reset player's flags to enable bidding.
+    set_players_bidding(list(player_hand_id.keys()))
+
     game_id = str(a_gameround.game_id)
+
+    # Determine the first player to bid this round.
+    ordered_player_list = roundteams.create_ordered_player_list(round_id)
+    first_bid_player_id = ordered_player_list[
+        a_round.round_seq % len(ordered_player_list)
+    ]
+
+    ws_mess = WSM.get_instance()
+    message = {
+        "action": "bid_prompt",
+        "player_id": first_bid_player_id,
+        "bid": a_round.bid,
+    }
+    ws_mess.websocket_broadcast(game_id, message)
+
     temp_state = utils.query_game(game_id).state
     message = {
         "action": "game_start",
@@ -247,7 +399,7 @@ def score_hand_meld(round_id: str, player_id: str, cards: str):
     return make_response(json.dumps({"score": score}), 200)
 
 
-def new_round(game_id:str, current_round:str)-> Response:
+def new_round(game_id: str, current_round: str) -> Response:
     """
     Cycle the game to a new round.
 
