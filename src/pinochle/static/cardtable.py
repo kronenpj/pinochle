@@ -1355,6 +1355,11 @@ def create_game_select_buttons(xpos, ypos) -> None:
     else:
         mylog.warning("cgsb: Clearing canvas (%r)", g_canvas)
         g_canvas.deleteAll()
+    # If there's only one game, choose that one.
+    if len(g_game_dict) == 1:
+        one_game_id = list(g_game_dict.keys())[0]
+        get(f"/setcookie/game_id/{one_game_id}", on_complete_set_gamecookie)
+        return
     mylog.warning("cgsb: Enumerating games for buttons (%d).", len(g_game_dict))
     for item, temp_dict in g_game_dict.items():
         mylog.warning("create_game_select_buttons: game_dict item: item=%s", item)
