@@ -713,21 +713,39 @@ def update_player_names(player_data: str):
         g_registered_with_server = True
         document.getElementById("player_name").clear()
         document.getElementById("player_name").attach(
-            html.BIG(g_player_dict[g_player_id]["name"].capitalize())
+            html.SPAN(
+                g_player_dict[g_player_id]["name"].capitalize(), Class="player_name",
+            )
         )
 
         # TODO: Do something more useful like a line of names with color change when
         # the player's client registers.
-        document.getElementById("player_name").attach(html.BR())
-        document.getElementById("player_name").attach(
-            html.SMALL(
+        document.getElementById("other_players").clear()
+        document.getElementById("other_players").attach(
+            html.SPAN(
                 ", ".join(
                     y["name"].capitalize()
                     for y in [
                         g_player_dict[x] for x in my_player_list if x != g_player_id
                     ]
-                )
+                ),
+                Class="other_players",
             )
+        )
+
+
+def update_status_line():
+    # TODO: Do something more useful like a line of names with color change when
+    # the player's client registers.
+    document.getElementById("game_status").clear()
+    # Team scores are not yet calculated or reported to the UI.
+    document.getElementById("game_status").attach(html.BR())
+    document.getElementById("game_status").attach(
+        html.SPAN(f"Score: 0 / 0 ", Class="game_status")
+    )
+    if g_trump:
+        document.getElementById("game_status").attach(
+            html.SPAN(f"Trump: {g_trump.capitalize()}s ", Class="game_status")
         )
 
 
@@ -1621,6 +1639,8 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
             g_ajax_outstanding_requests,
         )
         return
+
+    update_status_line()
 
     mode = GAME_MODES[g_game_mode]
     mylog.warning("Current mode=%s", mode)

@@ -57,3 +57,12 @@ td {
   padding-top: 6px;
   vertical-align: top;
 }
+span.player_name {
+  font-size: larger;
+}
+span.other_players {
+  font-size: medium;
+}
+span.game_status {
+  font-size: large;
+}

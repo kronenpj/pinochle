@@ -1,33 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <title>Pinochle</title>
-    <!--
+
+<head>
+  <meta charset="UTF-8">
+  <title>Pinochle</title>
+  <!--
     <script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.9.0/brython.min.js">
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.9.0/brython_stdlib.min.js">
     </script>
     <script src="https://cdn.jsdelivr.net/gh/andy31lewis/brySVG@0.5.0/brySVG.brython.js"></script>
     -->
-    <script type="text/javascript" src="/static/brython.min.js"></script>
-    <script type="text/javascript" src="/static/brython_stdlib.js"></script>
-    <!-- Retrieve and compile brySVG's dragdrop.py instead of using the JS file for now.
+  <script type="text/javascript" src="/static/brython.min.js"></script>
+  <script type="text/javascript" src="/static/brython_stdlib.js"></script>
+  <!-- Retrieve and compile brySVG's dragdrop.py instead of using the JS file for now.
       <script type="text/javascript" src="/static/brySVG.brython.js"></script>
     -->
-    <script type="text/python" src="../static/cardtable.py"></script>
-    <link rel="stylesheet" href="/static/standard.css" type="text/css" />
-  </head>
-  <body onload="brython(1)">
-    <div style="text-align:center; overflow:hidden;" id='player_name'>
-        <big style="visibility: hidden;">John</big><br />
-        <small style="visibility: hidden;">Paul, George, Ringo</small>
+  <script type="text/python" src="../static/cardtable.py"></script>
+  <link rel="stylesheet" href="/static/standard.css" type="text/css" />
+</head>
+
+<body onload="brython(1)">
+  <div style="text-align:center; overflow:hidden;" id='player_name'>
+    <span style="visibility: hidden;">John</span>
+  </div>
+  <div style="text-align:center; overflow:hidden;" id='other_players'>
+    <span style="visibility: hidden;">Paul, George, Ringo</span>
+  </div>
+  <div style="text-align:center; overflow:hidden;" id='game_status'>
+    <span style="visibility: hidden;">Score:</span>
+  </div>
+  <div style="text-align:center; overflow:hidden;" id='top_container'>
+    <div id='card_definitions' style="position:relative; display:inline-block; width:0; height:0; padding:0;"></div>
+    <div id='card_table' style="position:relative; display:inline-block; padding:0;">
+      <p id='please_wait'><em>Loading, this can take a minute or two... Please wait.</em></p>
     </div>
-    <div style="text-align:center; overflow:hidden;" id='top_container'>
-      <div id='card_definitions' style = "position:relative; display:inline-block; width:0; height:0; padding:0;"></div>
-      <div id='card_table' style = "position:relative; display:inline-block; padding:0;">
-        <p id='please_wait'><em>Loading, this can take a minute or two... Please wait.</em></p>
-      </div>
-    </div>
-  </body>
+  </div>
+</body>
+
 </html>
