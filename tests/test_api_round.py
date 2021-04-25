@@ -212,7 +212,7 @@ def test_round_score_meld_hand_with_trump(
         assert isinstance(score, int)
         print(f"score={score}")
 
-    trump = choice(SUITS)
+    trump = choice(SUITS).capitalize().rstrip("s")
     play_pinochle.set_trump(round_id, player_id, trump)
 
     with app.test_client() as test_client:

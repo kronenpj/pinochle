@@ -180,7 +180,7 @@ def test_set_trump(app):
         player_ids.append(player_id)
 
     # Populate the bid
-    trump = choice(SUITS)
+    trump = choice(SUITS).capitalize().rstrip("s")
     player_id = choice(player_ids)
     round_.update(round_id, {"bid_winner": player_id})
     with app.test_client() as test_client:

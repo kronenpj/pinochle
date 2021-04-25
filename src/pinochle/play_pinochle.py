@@ -173,6 +173,17 @@ def submit_bid(round_id: str, player_id: str, bid: int):
         send_bid_message(
             "bid_winner", game_id, ordered_player_list[next_bid_player_id], a_round.bid,
         )
+        # TODO: Figure out if this can possibly happen more than once. I don't think so,
+        # but it would add another set of cards to the player's hand if it did.
+        # Add the cards from the kitty, if any, to the player's hand.
+        for hand_obj in utils.query_hand_list(str(utils.query_round(round_id).hand_id)):
+            hand.addcard(
+                str(
+                    utils.query_player(ordered_player_list[next_bid_player_id]).hand_id
+                ),
+                hand_obj.card,
+            )
+        # Step to the next game state.
         game.update(game_id, state=True)
     else:
         send_bid_message(
@@ -236,10 +247,19 @@ def set_trump(round_id: str, player_id: str, trump: str):
     if str(a_round.bid_winner) != player_id:
         abort(409, f"Bid winner {a_round.bid_winner} must submit trump.")
 
-    trump = trump.capitalize()
-    if trump not in SUITS:
+    if "{}s".format(trump.capitalize()) not in SUITS:
         abort(409, f"Trump suit must be one of {SUITS}.")
 
+    ws_mess = WSM.get_instance()
+    message = {
+        "action": "trump_selected",
+        "trump": trump,
+    }
+    game_id = str(utils.query_gameround_for_round(round_id).game_id)
+    ws_mess.websocket_broadcast(game_id, message)
+
+    # Step to next game state.
+    game.update(game_id, state=True)
     return round_.update(round_id, {"trump": trump})
 
 
@@ -373,12 +393,13 @@ def score_hand_meld(round_id: str, player_id: str, cards: str):
     cardclass_list = card_utils.convert_from_svg_names(card_list)
 
     # Set trump, if it's been declared (and recorded in the datatbase)
-    temp_trump: str = a_round.trump
+    temp_trump: str = "{}s".format(a_round.trump.capitalize())
     provided_deck = PinochleDeck(cards=cardclass_list)
 
     # Set trump on the newly created deck, if it's been declared
-    if temp_trump.capitalize() in SUITS:
-        card_utils.set_trump(temp_trump, provided_deck)
+    if temp_trump in SUITS:
+        # print(f"Called trump {temp_trump} in {SUITS}.")
+        provided_deck = card_utils.set_trump(temp_trump, provided_deck)
 
     # Score the deck supplied.
     score = score_meld.score(provided_deck)

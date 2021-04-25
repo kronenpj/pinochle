@@ -47,14 +47,34 @@ def stream_socket(ws):
         message_data = json.loads(message)
 
         # Dispatch an action
-        if "action" in message and "register_client" in message:
-            msg_game_id = str(message_data["game_id"])
-            msg_player_id = message_data["player_id"]
-            if msg_game_id == "" or msg_player_id == "":
-                continue
-            ws_mess = WSM.get_instance()
-            ws_mess.game_update = game.update
-            ws_mess.register_new_player(msg_game_id, msg_player_id, ws)
+        if "action" in message:
+            if "register_client" in message:
+                msg_game_id = str(message_data["game_id"])
+                msg_player_id = message_data["player_id"]
+                if msg_game_id == "" or msg_player_id == "":
+                    continue
+                ws_mess = WSM.get_instance()
+                ws_mess.game_update = game.update
+                ws_mess.register_new_player(msg_game_id, msg_player_id, ws)
+            elif "reveal_kitty" in message:
+                msg_game_id = str(message_data["game_id"])
+                msg_player_id = message_data["player_id"]
+                msg_kitty_card = message_data["card"]
+                round_id = str(utils.query_gameround_for_game(msg_game_id).round_id)
+                bid_winner = str(utils.query_round(round_id).bid_winner)
+                if (
+                    msg_game_id == ""
+                    or msg_player_id == ""
+                    or msg_player_id != bid_winner
+                    or not utils.query_hand_card(
+                        str(utils.query_round(round_id).hand_id), msg_kitty_card
+                    )
+                ):
+                    continue
+
+                ws_mess = WSM.get_instance()
+                message = {"action": "reveal_kitty", "card": msg_kitty_card}
+                ws_mess.websocket_broadcast(msg_game_id, message)
 
 
 @app.route("/api/setcookie/player_id/<ident>", methods=["GET"])

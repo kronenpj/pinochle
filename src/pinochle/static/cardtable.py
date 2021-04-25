@@ -17,13 +17,58 @@ from constants import (
     CARD_SMALLER_WIDTH,
     CARD_URL,
     CARD_WIDTH,
-    DECK_CONFIG,
     GAME_MODES,
 )
 
 # Disable some pylint complaints because this code is more like javascript than python.
 # pylint: disable=global-statement
 # pylint: disable=pointless-statement
+
+# These are a lot less dynamic than I thought they'd be.
+DECK_CONFIG = {
+    "player": {
+        1: {"flippable": False, "movable": False, "show_face": True},  # Bid
+        2: {"flippable": False, "movable": False, "show_face": True},  # Bidfinal
+        3: {"flippable": False, "movable": False, "show_face": True},  # Reveal
+        4: {"flippable": False, "movable": True, "show_face": True},  # Meld
+        5: {"flippable": False, "movable": True, "show_face": True},  # Trick
+    },
+    "kitty": {
+        1: {"flippable": False, "movable": False, "show_face": False},  # Bid (Kitty)
+        2: {
+            "flippable": False,
+            "movable": False,
+            "show_face": False,
+        },  # Bidfinal (Kitty)
+        3: {"flippable": False, "movable": False, "show_face": True},  # Reveal (Kitty)
+        4: {"flippable": False, "movable": False, "show_face": True},  # Meld (Meld)
+        5: {"flippable": False, "movable": False, "show_face": True},  # Trick (Discard)
+    },
+    "meld": {
+        1: {"flippable": False, "movable": False, "show_face": False},  # Bid (Kitty)
+        2: {
+            "flippable": False,
+            "movable": False,
+            "show_face": False,
+        },  # Bidfinal (Kitty)
+        3: {"flippable": False, "movable": False, "show_face": False},  # Reveal (Kitty)
+        4: {"flippable": False, "movable": False, "show_face": True},  # Meld (Meld)
+        5: {"flippable": False, "movable": False, "show_face": True},  # Trick (Discard)
+    },
+    "trick": {
+        1: {"flippable": False, "movable": False, "show_face": False},  # Bid (Kitty)
+        2: {
+            "flippable": False,
+            "movable": False,
+            "show_face": False,
+        },  # Bidfinal (Kitty)
+        3: {"flippable": False, "movable": False, "show_face": False},  # Reveal (Kitty)
+        4: {"flippable": False, "movable": False, "show_face": True},  # Meld (Meld)
+        5: {"flippable": False, "movable": False, "show_face": True},  # Trick (Discard)
+    },
+}
+
+SUITS = ["spade", "heart", "club", "diamond"]
 
 # Websocket holder
 g_websocket: Optional[websocket.WebSocket] = None
@@ -33,7 +78,7 @@ g_websocket: Optional[websocket.WebSocket] = None
 # "9", "jack", "queen", "king", "10", "ace"
 # "ace", "10", "king", "queen", "jack", "9"
 DECK_SORTED: List[str] = []
-for _suit in ["spade", "diamond", "club", "heart"]:
+for _suit in SUITS:
     for _card in ["ace", "10", "king", "queen", "jack", "9"]:
         DECK_SORTED.append(f"{_suit}_{_card}")
 
@@ -51,6 +96,7 @@ g_player_id: str = ""
 g_players: int = 4
 g_round_id: str = ""
 g_team_id: str = ""
+g_trump: str = ""
 
 # Various state globals
 g_game_dict: Dict[str, Dict[str, Any]] = {}
@@ -246,13 +292,19 @@ class PlayingCard(SVG.UseObject):
             mylog.warning(
                 "PlayingCard.card_click_handler: flippable=%r", self.flippable
             )
-            self.show_face = not self.show_face
-            self.flippable = False
+            # self.show_face = not self.show_face
+            # self.flippable = False
+            # self.face_update_dom()
             # TODO: Call API to notify the other players this particular card was
             # flipped over and add it to the player's hand.
-            g_players_hand.append(self.face_value)
-            g_players_meld_deck.append(self.face_value)
-            self.face_update_dom()
+            send_websocket_message(
+                {
+                    "action": "reveal_kitty",
+                    "game_id": str(g_game_id),
+                    "player_id": str(g_player_id),
+                    "card": self.face_value,
+                }
+            )
         if GAME_MODES[g_game_mode] in ["meld"]:
             self.play_handler(event_type="click")
 
@@ -287,22 +339,85 @@ class BidDialog:
         bid = int(data["bid"])
         player_name = g_player_dict[player_id]["name"].capitalize()
 
+        remove_dialogs()
+
         # Don't display a dialog box if this isn't the player bidding.
         if g_player_id != player_id:
             InfoDialog(
                 "Bid Update",
                 f"Current bid is: {bid}<br/>Next bid to: {player_name}",
-                remove_after=10,
+                top=25,
+                left=25,
             )
             return
 
-        self.bid_dialog = Dialog("Bid or Pass", ok_cancel=["Bid", "Pass"])
+        self.bid_dialog = Dialog(
+            "Bid or Pass", ok_cancel=["Bid", "Pass"], top=25, left=25,
+        )
         self.bid_dialog.panel <= html.DIV(
             f"{player_name}, enter your bid or pass: " + html.INPUT(value=f"{bid+1}")
         )
 
         self.bid_dialog.ok_button.bind("click", self.on_click_bid_dialog)
         self.bid_dialog.cancel_button.bind("click", self.on_click_bid_dialog)
+
+
+class TrumpSelectDialog:
+    trump_dialog = None
+    d_canvas = None
+
+    def on_click_trump_dialog(self, event=None):
+        """
+        Handle the click event for the OK button. Ignore the cancel button.
+
+        :param event: [description], defaults to None
+        :type event: [type], optional
+        """
+        trump = event.target.id
+        if not trump:
+            return
+        self.trump_dialog.close()
+        put({}, f"/play/{g_round_id}/set_trump?player_id={g_player_id}&trump={trump}")
+
+    def display_trump_dialog(self):
+        """
+        Prompt the player to select trump.
+
+        :param evt: Data from the event as a JSON string.
+        :type evt: str
+        """
+        mylog.error("Entering display_trump_dialog.")
+
+        # Don't display a trump select dialog box if this isn't the player who won the
+        # bid.
+        if not g_round_bid_winner:
+            return
+
+        player_name = g_player_dict[g_player_id]["name"].capitalize()
+        self.trump_dialog = Dialog(
+            "Select Trump Suit", ok_cancel=False, top=25, left=25,
+        )
+        self.d_canvas = SVG.CanvasObject("30vw", "20vh", "none", objid="dialog_canvas")
+        glyph_width = 50
+        xpos = 0
+        for suit in SUITS:
+            self.d_canvas <= SVG.UseObject(
+                angle=180,
+                href=f"#{suit}",
+                objid=f"{suit}",
+                origin=(xpos, 0),
+                width=glyph_width,
+            )
+            xpos += glyph_width + 5
+
+        self.trump_dialog.panel <= html.DIV(
+            f"{player_name}, please select a suit to be trump. "
+            + html.BR()
+            + self.d_canvas
+        )
+        self.d_canvas.fitContents()
+
+        self.trump_dialog.bind("click", self.on_click_trump_dialog)
 
 
 def dump_globals() -> None:
@@ -422,6 +537,48 @@ def on_ws_event(event=None):
         bid_dialog.display_bid_dialog(event.data)
     elif "bid_winner" in event.data:
         display_bid_winner(event.data)
+    elif "reveal_kitty" in event.data:
+        reveal_kitty_card(event.data)
+    elif "trump_selected" in event.data:
+        record_trump_selection(event.data)
+
+
+def record_trump_selection(event=None):
+    mylog.error("Entering record_trump_selection.")
+    global g_trump
+    data = json.loads(event)
+    g_trump = str(data["trump"])
+
+    remove_dialogs()
+    InfoDialog(
+        "Trump Selected",
+        f"Trump for this round is: {g_trump.capitalize()}s",
+        remove_after=15,
+        ok=True,
+        left=25,
+        top=25,
+    )
+
+
+def reveal_kitty_card(event=None):
+    mylog.error("Entering reveal_kitty_card.")
+    data = json.loads(event)
+    revealed_card = str(data["card"])
+
+    if revealed_card not in g_kitty_deck:
+        print(f"{revealed_card=} is not in {g_kitty_deck=}")
+        return
+
+    for (objid, node) in g_canvas.objectDict.items():
+        if (
+            isinstance(node, SVG.UseObject)
+            and "kitty" in objid
+            and node.attrs["href"] == revealed_card
+            and not node.attrs["show_face"]
+        ):
+            node.show_face = True
+            node.flippable = False
+            node.face_update_dom()
 
 
 def display_bid_winner(event=None):
@@ -438,12 +595,15 @@ def display_bid_winner(event=None):
     player_name = g_player_dict[player_id]["name"]
     bid = str(data["bid"])
 
+    remove_dialogs()
+
     InfoDialog(
         "Bid Winner",
         html.P(f"{player_name}'s has won the bid at {bid} points!"),
         left=25,
         top=25,
         ok=True,
+        remove_after=15,
     )
 
     # You may have won...
@@ -544,19 +704,24 @@ def send_registration():
     if g_registered_with_server:
         return
 
+    send_websocket_message(
+        {
+            "action": "register_client",
+            "game_id": str(g_game_id),
+            "player_id": str(g_player_id),
+        }
+    )
+
+
+def send_websocket_message(message: dict):
+    """
+    Send message to server.
+    """
     if g_websocket is None:
         mylog.warning("send_registration: Opening WebSocket.")
         ws_open()
 
-    g_websocket.send(
-        json.dumps(
-            {
-                "action": "register_client",
-                "game_id": str(g_game_id),
-                "player_id": str(g_player_id),
-            }
-        )
-    )
+    g_websocket.send(json.dumps(message))
 
 
 def ajax_request_tracker(direction: int = 0):
@@ -797,6 +962,12 @@ def on_complete_kitty(req: ajax.Ajax):
     g_kitty_deck.clear()
     g_kitty_deck = temp["cards"]
     mylog.warning("on_complete_kitty: kitty_deck=%s", g_kitty_deck)
+    if g_round_bid_winner:
+        # Add the kitty cards to the bid winner's deck
+        for card in g_kitty_deck:
+            g_players_hand.append(card)
+            g_players_meld_deck.append(card)
+        advance_mode()
 
 
 def on_complete_player_cards(req: ajax.Ajax):
@@ -842,7 +1013,13 @@ def on_complete_get_meld_score(req: ajax.Ajax):
     if req.status in [200, 0]:
         mylog.warning("on_complete_get_meld_score: req.text: %s", req.text)
         temp = json.loads(req.text)
-        InfoDialog("Meld Score", f"Your meld score is {temp['score']}", remove_after=5)
+        InfoDialog(
+            "Meld Score",
+            f"Your meld score is {temp['score']}",
+            remove_after=5,
+            top=25,
+            left=25,
+        )
         return temp
 
     mylog.warning("on_complete_get_meld_score: score: %r", req)
@@ -899,6 +1076,9 @@ def advance_mode_callback(req: ajax.Ajax):
     mylog.warning(
         "Leaving advance_mode_callback (current mode=%s)", GAME_MODES[g_game_mode]
     )
+
+    remove_dialogs()
+
     display_game_options()
     # FIXME: This is temporary. The server will decide when to advance the game state.
 
@@ -1068,8 +1248,12 @@ def populate_canvas(deck, target_canvas, deck_type="player"):
             flippable = DECK_CONFIG[deck_type][g_game_mode]["flippable"]
             movable = DECK_CONFIG[deck_type][g_game_mode]["movable"]
             show_face = DECK_CONFIG[deck_type][g_game_mode]["show_face"]
-            if "kitty" in deck_type:
-                flippable = g_round_bid_winner
+            if "reveal" in GAME_MODES[g_game_mode]:
+                if "kitty" in deck_type:
+                    flippable = g_round_bid_winner
+                    # show_face = True
+                if "player" in deck_type:
+                    movable = g_round_bid_winner
 
         # Add the card to the canvas.
         piece = PlayingCard(
@@ -1493,8 +1677,10 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
         ]:
             g_canvas.addObject(item)
 
-    # TODO: Add buttons & display to facilitate bidding. Tie into API.
-    # TODO: Reminder - a bid of -1 indicates the player passed.
+    if GAME_MODES[g_game_mode] in ["reveal"]:
+        mylog.warning("Creating trump selection dialog.")
+        tsd = TrumpSelectDialog()
+        tsd.display_trump_dialog()
 
     if GAME_MODES[g_game_mode] in ["meld"]:
         # Button to call submit_meld on demand
@@ -1547,7 +1733,6 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
             populate_canvas(g_kitty_deck, g_canvas, "kitty")
             populate_canvas(g_players_hand, g_canvas, "player")
         elif mode in ["meld"]:  # Meld
-            # TODO: IF bid winner, need way to select trump & communicate with other players - BEFORE they have the chance to choose / submit their meld.
             # TODO: Add a score meld button to submit temporary deck and retrieve and display a numerical score, taking into account trump.
             populate_canvas(g_meld_deck, g_canvas, GAME_MODES[g_game_mode])
             populate_canvas(g_players_meld_deck, g_canvas, "player")
@@ -1557,7 +1742,6 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
 
     # Last-drawn are on top (z-index wise)
     # TODO: Add buttons/input for this player's meld.
-    # TODO: Figure out how to convey the bidding process across the players.
     # TODO: Retrieve events from API to show kitty cards when they are flipped over.
     if mode in ["bid", "bidfinal", "reveal"]:  # Bid & Reveal
         place_cards(g_kitty_deck, g_canvas, location="top", deck_type="kitty")
