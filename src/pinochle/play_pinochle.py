@@ -34,6 +34,7 @@ from .ws_messenger import WebSocketMessenger as WSM
 #                0      1        2           3        4       5
 GAME_MODES = ["game", "bid", "bidfinal", "reveal", "meld", "trick"]
 
+
 def deal_pinochle(player_ids: list, kitty_len: int = 0, kitty_id: str = None) -> None:
     """
     Deal a deck of Pinochle cards into player's hands and the kitty.
@@ -186,6 +187,8 @@ def submit_bid(round_id: str, player_id: str, bid: int):
                 ),
                 hand_obj.card,
             )
+        # Record the bid winner's ID
+        round_.update(round_id, {"bid_winner": ordered_player_list[next_bid_player_id]})
         # Step to the next game state.
         game.update(game_id, state=True)
     else:
@@ -248,9 +251,14 @@ def set_trump(round_id: str, player_id: str, trump: str):
     # New trump must not be already be set.
     # print("Bid winner=%s, player_id=%s" % (a_round.bid_winner, player_id))
     if str(a_round.bid_winner) != player_id:
+        # print(f"set_trump: Bid winner {a_round.bid_winner} must submit trump.")
         abort(409, f"Bid winner {a_round.bid_winner} must submit trump.")
 
     if "{}s".format(trump.capitalize()) not in SUITS:
+        # print(
+        #     f"set_trump: Trump suit must be one of {SUITS}, provided "
+        #     + "{}s".format(trump.capitalize())
+        # )
         abort(409, f"Trump suit must be one of {SUITS}.")
 
     ws_mess = WSM.get_instance()
