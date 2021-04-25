@@ -124,7 +124,7 @@ def _update_data(round_id: str, data: dict):
     local_object = db_session.merge(update_round)
 
     # Update any key present in data that isn't round_id or round_seq.
-    for key in [x for x in data if x not in ["round_id", "round_seq"]]:
+    for key in [x for x in data if x not in ["round_id"]]:
         setattr(local_object, key, data[key])
 
     # Add the updated data to the transaction.

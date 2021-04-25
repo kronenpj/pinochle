@@ -411,6 +411,8 @@ def new_round(game_id: str, current_round: str) -> Response:
     :rtype:               Response
     """
     # Deactivate soon-to-be previous round.
+    prev_seq: int = utils.query_round(current_round).round_seq
+    # print(f"new_round: prev_seq={prev_seq}")
     prev_gameround: GameRound = utils.query_gameround(game_id, current_round)
     gameround.update(game_id, prev_gameround.round_id, {"active_flag": False})
 
@@ -421,6 +423,9 @@ def new_round(game_id: str, current_round: str) -> Response:
     cur_roundteam: List[RoundTeam] = utils.query_roundteam_list(current_round)
     # Tie the current teams to the new round.
     roundteams.create(temp_round_id, [str(t.team_id) for t in cur_roundteam])
+    # Increment the round_seq for the new round
+    round_.update(temp_round_id, {"round_seq": prev_seq + 1})
+    # print(f"new_round: new_seq={utils.query_round(temp_round_id).round_seq}")
 
     # Start the new round.
     return start(temp_round_id)
