@@ -724,10 +724,12 @@ def update_player_names(player_data: str):
         document.getElementById("other_players").attach(
             html.SPAN(
                 ", ".join(
-                    y["name"].capitalize()
-                    for y in [
-                        g_player_dict[x] for x in my_player_list if x != g_player_id
-                    ]
+                    sorted(
+                        y["name"].capitalize()
+                        for y in [
+                            g_player_dict[x] for x in my_player_list if x != g_player_id
+                        ]
+                    )
                 ),
                 Class="other_players",
             )
