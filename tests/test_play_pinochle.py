@@ -5,8 +5,8 @@ License: GPLv3
 """
 from random import choice
 
+from pinochle import play_pinochle, roundteams, teamplayers
 from pinochle.models import utils
-from pinochle import roundteams, teamplayers, play_pinochle
 
 # pragma: pytest: disable=wrong-import-order
 import test_utils
@@ -24,7 +24,7 @@ def test_deal_to_players_w_kitty(app):
     # Create a new round
     round_id = test_utils.create_round(game_id)
 
-    # Create a new teams
+    # Create new teams
     team_ids = []
     for __ in range(len(test_utils.TEAM_NAMES)):
         team_id = test_utils.create_team(choice(test_utils.TEAM_NAMES))
