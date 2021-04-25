@@ -547,6 +547,9 @@ def on_ws_event(event=None):
 
 
 def record_trump_selection(event=None):
+    """
+    Convey the chosen trump to the user, as provided by the server.
+    """
     mylog.error("Entering record_trump_selection.")
     global g_trump
     data = json.loads(event)
@@ -564,6 +567,9 @@ def record_trump_selection(event=None):
 
 
 def reveal_kitty_card(event=None):
+    """
+    Reveal the provided card in the kitty.
+    """
     mylog.error("Entering reveal_kitty_card.")
     data = json.loads(event)
     revealed_card = str(data["card"])
