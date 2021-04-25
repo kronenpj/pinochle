@@ -112,8 +112,8 @@ g_players_meld_deck: List[str] = []
 g_team_dict: Dict[str, Dict[str, str]] = {}
 g_team_list: List[str] = []
 
-# Track whether this user is the round's bid winner.
-g_round_bid_winner = False  # pylint: disable=invalid-name
+# Track the user who is the round's bid winner.
+g_round_bid_winner = ""  # pylint: disable=invalid-name
 
 button_advance_mode = None  # pylint: disable=invalid-name
 g_registered_with_server = False  # pylint: disable=invalid-name
@@ -314,6 +314,7 @@ class PlayingCard(SVG.UseObject):
 
 class BidDialog:
     bid_dialog = None
+    last_bid = -1
 
     def on_click_bid_dialog(self, event=None):
         """
@@ -326,6 +327,10 @@ class BidDialog:
             bid = -1
         else:
             bid = int(self.bid_dialog.select_one("INPUT").value)
+        if bid < -1 or (bid > 0 and self.last_bid >= bid):
+            # Bid won't be accepted by server.
+            return
+        self.last_bid = bid
         self.bid_dialog.close()
         put({}, f"/play/{g_round_id}/submit_bid?player_id={g_player_id}&bid={bid}")
 
@@ -339,7 +344,7 @@ class BidDialog:
         mylog.error("Entering display_bid_dialog.")
         data = json.loads(bid_data)
         player_id = str(data["player_id"])
-        bid = int(data["bid"])
+        self.last_bid = int(data["bid"])
         player_name = g_player_dict[player_id]["name"].capitalize()
 
         remove_dialogs()
@@ -348,7 +353,7 @@ class BidDialog:
         if g_player_id != player_id:
             InfoDialog(
                 "Bid Update",
-                f"Current bid is: {bid}<br/>Next bid to: {player_name}",
+                f"Current bid is: {self.last_bid}<br/>Next bid to: {player_name}",
                 top=25,
                 left=25,
             )
@@ -358,7 +363,8 @@ class BidDialog:
             "Bid or Pass", ok_cancel=["Bid", "Pass"], top=25, left=25,
         )
         self.bid_dialog.panel <= html.DIV(
-            f"{player_name}, enter your bid or pass: " + html.INPUT(value=f"{bid+1}")
+            f"{player_name}, enter your bid or pass: "
+            + html.INPUT(value=f"{self.last_bid+1}")
         )
 
         self.bid_dialog.ok_button.bind("click", self.on_click_bid_dialog)
@@ -392,11 +398,30 @@ class TrumpSelectDialog:
         mylog.error("Entering display_trump_dialog.")
 
         # Don't display a trump select dialog box if this isn't the player who won the
-        # bid.
-        if not g_round_bid_winner:
+        # bid. Instead let the players know we're waiting for input.
+        try:
+            previous = g_canvas.getSelectedObject("dialog_trump")
+            g_canvas.removeObject(previous)
+        except AttributeError:
+            pass
+        if g_player_id != g_round_bid_winner:
+            try:
+                bid_winner_name = g_player_dict[g_round_bid_winner]["name"].capitalize()
+                InfoDialog(
+                    "Waiting...",
+                    f"Waiting for {bid_winner_name} to select trump.",
+                    ok=False,
+                )
+                # Add an ID attribute so we can find it later if needed.
+                for item in document.getElementsByClassName("brython-dialog-main"):
+                    mylog.warning("display_player_meld: Item: %r", item)
+                    if not item.id and "Waiting" in item.text:
+                        # Assume this is the one we just created.
+                        item.id = "dialog_trump"
+            except KeyError:
+                pass
             return
 
-        player_name = g_player_dict[g_player_id]["name"].capitalize()
         self.trump_dialog = Dialog(
             "Select Trump Suit", ok_cancel=False, top=25, left=25,
         )
@@ -413,6 +438,7 @@ class TrumpSelectDialog:
             )
             xpos += glyph_width + 5
 
+        player_name = g_player_dict[g_player_id]["name"].capitalize()
         self.trump_dialog.panel <= html.DIV(
             f"{player_name}, please select a suit to be trump. "
             + html.BR()
@@ -608,7 +634,7 @@ def display_bid_winner(event=None):
 
     InfoDialog(
         "Bid Winner",
-        html.P(f"{player_name}'s has won the bid at {bid} points!"),
+        html.P(f"{player_name}'s has won the bid for {bid} points!"),
         left=25,
         top=25,
         ok=True,
@@ -616,7 +642,7 @@ def display_bid_winner(event=None):
     )
 
     # You may have won...
-    g_round_bid_winner = player_id == g_player_id
+    g_round_bid_winner = player_id
 
 
 def display_player_meld(meld_data: str):
@@ -971,7 +997,7 @@ def on_complete_kitty(req: ajax.Ajax):
     g_kitty_deck.clear()
     g_kitty_deck = temp["cards"]
     mylog.warning("on_complete_kitty: kitty_deck=%s", g_kitty_deck)
-    if g_round_bid_winner:
+    if g_player_id == g_round_bid_winner:
         # Add the kitty cards to the bid winner's deck
         for card in g_kitty_deck:
             g_players_hand.append(card)
@@ -1220,7 +1246,7 @@ def clear_globals_for_round_change():
     mylog.error("Entering clear_globals_for_round_change.")
 
     g_round_id = ""
-    g_round_bid_winner = False
+    g_round_bid_winner = ""
     g_players_hand.clear()
     g_players_meld_deck.clear()
     g_meld_deck = ["card-base" for _ in range(HAND_SIZE)]
@@ -1259,10 +1285,10 @@ def populate_canvas(deck, target_canvas, deck_type="player"):
             show_face = DECK_CONFIG[deck_type][g_game_mode]["show_face"]
             if "reveal" in GAME_MODES[g_game_mode]:
                 if "kitty" in deck_type:
-                    flippable = g_round_bid_winner
+                    flippable = g_player_id == g_round_bid_winner
                     # show_face = True
                 if "player" in deck_type:
-                    movable = g_round_bid_winner
+                    movable = g_player_id == g_round_bid_winner
 
         # Add the card to the canvas.
         piece = PlayingCard(
