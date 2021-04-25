@@ -30,6 +30,9 @@ from .models.round_ import Round
 from .models.roundteam import RoundTeam
 from .ws_messenger import WebSocketMessenger as WSM
 
+# Also contained in cardtable.py
+#                0      1        2           3        4       5
+GAME_MODES = ["game", "bid", "bidfinal", "reveal", "meld", "trick"]
 
 def deal_pinochle(player_ids: list, kitty_len: int = 0, kitty_id: str = None) -> None:
     """

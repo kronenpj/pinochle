@@ -11,18 +11,21 @@ import brySVG.dragcanvas as SVG  # pylint: disable=import-error
 from browser import ajax, document, html, websocket, window
 from browser.widgets.dialog import Dialog, InfoDialog
 
-from constants import (
-    CARD_HEIGHT,
-    CARD_SMALLER_HEIGHT,
-    CARD_SMALLER_WIDTH,
-    CARD_URL,
-    CARD_WIDTH,
-    GAME_MODES,
-)
-
 # Disable some pylint complaints because this code is more like javascript than python.
 # pylint: disable=global-statement
 # pylint: disable=pointless-statement
+
+CARD_URL = "/static/playingcards.svg"
+
+# Intrinsic dimensions of the cards in the deck.
+CARD_WIDTH = 170  # pylint: disable=invalid-name
+CARD_HEIGHT = 245  # pylint: disable=invalid-name
+CARD_SMALLER_WIDTH = CARD_WIDTH * 0.75
+CARD_SMALLER_HEIGHT = CARD_HEIGHT * 0.75
+
+# NOTE: Also contained in play_pinochle.py
+#                0      1        2           3        4       5
+GAME_MODES = ["game", "bid", "bidfinal", "reveal", "meld", "trick"]
 
 # These are a lot less dynamic than I thought they'd be.
 DECK_CONFIG = {

@@ -5,17 +5,17 @@ License: GPLv3
 """
 import json
 import uuid
+from random import choice
 
 import pytest
 from pinochle import game, roundteams
 from pinochle.models.core import db
-from pinochle.static.constants import GAME_MODES
+from pinochle.play_pinochle import GAME_MODES
 
 # pylint: disable=wrong-import-order
 from werkzeug import exceptions
 
 import test_utils
-from random import choice
 
 # from pinochle.models.utils import dump_db
 

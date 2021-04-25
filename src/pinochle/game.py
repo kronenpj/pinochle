@@ -9,7 +9,7 @@ from pinochle import play_pinochle
 from .models import utils
 from .models.core import db
 from .models.game import GameSchema
-from .static.constants import GAME_MODES
+from .play_pinochle import GAME_MODES
 from .ws_messenger import WebSocketMessenger as WSM
 
 # Suppress invalid no-member messages from pylint.
@@ -126,7 +126,7 @@ def update(game_id: str, kitty_size=None, state=None, dealer_id=None):
     game = utils.query_game(game_id=game_id)
     message = {"action": "game_state", "game_id": game_id, "state": game.state}
     ws_mess = WSM.get_instance()
-    ws_mess.game_update = update # Yes, this module.
+    ws_mess.game_update = update  # Yes, this module.
     ws_mess.websocket_broadcast(game_id, message)
     # print(f"game.update: Returning game state(false): {game.state}")
     return {"state": game.state}, 200
