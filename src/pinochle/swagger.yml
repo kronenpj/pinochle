@@ -524,14 +524,10 @@ paths:
           type: string
           required: True
         - name: card
-          in: body
+          in: query
+          description: Suit and value of the card to add.
+          type: string
           required: True
-          schema:
-            type: object
-            properties:
-              content:
-                type: string
-                description: Suit and value of the card to add.
       responses:
         200:
           description: Successfully added card to collection.

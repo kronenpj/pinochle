@@ -100,9 +100,9 @@ def read(round_id: str, team_id: str):
     abort(404, f"No cards found for {round_id}/{team_id}")
 
 
-def addcard(round_id: str, team_id: str, card: dict):
+def addcard(round_id: str, team_id: str, card: str):
     """
-    This function responds to a PUT for /api/round/{round_id}/{team_id}
+    This function responds to a PUT for /api/round/{round_id}/{team_id}?card=xxx
     by adding the specified card to the team's collection.
 
     :param round_id:   Id of round to find
@@ -120,7 +120,7 @@ def addcard(round_id: str, team_id: str, card: dict):
             # Create a hand instance using the schema and the passed in card
             schema = HandSchema()
             new_card = schema.load(
-                {"hand_id": hand_id, "card": card["card"]}, session=db.session
+                {"hand_id": hand_id, "card": card}, session=db.session
             )
 
             # Add the round to the database

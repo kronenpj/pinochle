@@ -92,10 +92,10 @@ def test_roundteam_addcard(app):
 
     with app.test_client() as test_client:
         # Attempt to access the addcard roundteam api
-        put_data = {"card": choice(test_utils.CARD_LIST)}
+        put_data = {}
 
         response = test_client.put(
-            f"/api/round/{round_id}/{team_id}",
+            f"/api/round/{round_id}/{team_id}?card={choice(test_utils.CARD_LIST)}",
             data=json.dumps(put_data),
             content_type="application/json",
         )
@@ -143,7 +143,7 @@ def test_roundteam_delcard(app):
 
     # Add a card to the team's collection.
     chosen_card = choice(test_utils.CARD_LIST)
-    roundteams.addcard(round_id, team_id, {"card": chosen_card})
+    roundteams.addcard(round_id, team_id, chosen_card)
 
     with app.test_client() as test_client:
         # Attempt to access the deletecard roundteam api
@@ -245,10 +245,10 @@ def test_roundteam_addcard_missing(app):
 
     with app.test_client() as test_client:
         # Attempt to access the addcard roundteam api
-        put_data = {"card": choice(test_utils.CARD_LIST)}
+        put_data = {}
 
         response = test_client.put(
-            f"/api/round/{round_id}/{team_id}",
+            f"/api/round/{round_id}/{team_id}?card={choice(test_utils.CARD_LIST)}",
             data=json.dumps(put_data),
             content_type="application/json",
         )
