@@ -2,7 +2,7 @@
 Database utilities to consolidate db activity and simplify other parts of the application.
 
 """
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from .core import db  # pragma: no cover
 from .game import Game
@@ -56,7 +56,7 @@ def query_hand_list(hand_id: str) -> List[Hand]:
     return Hand.query.filter(Hand.hand_id == hand_id).all()
 
 
-def query_hand_card(hand_id: str, card: str) -> Hand:
+def query_hand_card(hand_id: str, card: str) -> Optional[Hand]:
     """
     Query whether the specified hand contains the specified card.
 
@@ -67,7 +67,10 @@ def query_hand_card(hand_id: str, card: str) -> Hand:
     :return: [description]
     :rtype: Dict
     """
-    return Hand.query.filter(Hand.hand_id == hand_id, Hand.card == card).one_or_none()
+    retval = Hand.query.filter(Hand.hand_id == hand_id, Hand.card == card).all()
+    if retval:
+        return retval[0]
+    return None
 
 
 def query_player(player_id: str) -> Player:
