@@ -333,7 +333,7 @@ class BidDialog:
             return
         self.last_bid = bid
         self.bid_dialog.close()
-        put({}, f"/play/{g_round_id}/submit_bid?player_id={g_player_id}&bid={bid}")
+        put(f"/play/{g_round_id}/submit_bid?player_id={g_player_id}&bid={bid}")
 
     def display_bid_dialog(self, bid_data: str):
         """
@@ -383,11 +383,41 @@ class TrumpSelectDialog:
         :param event: [description], defaults to None
         :type event: [type], optional
         """
+        mylog.error("Entering on_click_trump_dialog")
         trump = event.target.id
+        cards_buried = locate_cards_below_hand()
+        mylog.warning("on_click_trump_dialog: You buried these cards: %r", cards_buried)
         if not trump:
             return
+        if len(cards_buried) != g_kitty_size:
+            InfoDialog(
+                "Try again...",
+                f"You buried {len(cards_buried)}, but {g_kitty_size} cards are required." + "Pressing the sort button will reset your choices.",
+                ok=True,
+                remove_after=15,
+            )
+            return
         self.trump_dialog.close()
-        put({}, f"/play/{g_round_id}/set_trump?player_id={g_player_id}&trump={trump}")
+        # Notify the server of trump.
+        put(f"/play/{g_round_id}/set_trump?player_id={g_player_id}&trump={trump}")
+        # Transfer cards into the team's collection and out of the player's hand.
+        buried_trump = 0
+        for card in cards_buried:
+            put(f"/round/{g_round_id}/{g_team_id}?card={card}")
+            delete(f"/player/{g_player_id}/hand/{card}")
+            g_players_hand.remove(card)
+            g_players_meld_deck.remove(card)
+            if trump in card:
+                buried_trump += 1
+        if buried_trump > 0:
+            send_websocket_message(
+                {
+                    "action": "trump_buried",
+                    "game_id": str(g_game_id),
+                    "player_id": str(g_player_id),
+                    "count": buried_trump,
+                }
+            )
 
     def display_trump_dialog(self):
         """
@@ -440,11 +470,11 @@ class TrumpSelectDialog:
             xpos += glyph_width + 5
 
         player_name = g_player_dict[g_player_id]["name"].capitalize()
-        self.trump_dialog.panel <= html.DIV(
-            f"{player_name}, please select a suit to be trump. "
-            + html.BR()
-            + self.d_canvas
-        )
+        if g_kitty_size:
+            instructions = f"{player_name}, please move {g_kitty_size} cards BELOW your hand, then select a suit to be trump."
+        else:
+            instructions = f"{player_name}, please select a suit to be trump."
+        self.trump_dialog.panel <= html.DIV(instructions + html.BR() + self.d_canvas)
         self.d_canvas.fitContents()
 
         self.trump_dialog.bind("click", self.on_click_trump_dialog)
@@ -571,6 +601,44 @@ def on_ws_event(event=None):
         reveal_kitty_card(event.data)
     elif "trump_selected" in event.data:
         record_trump_selection(event.data)
+    elif "trump_buried" in event.data:
+        notify_trump_buried(event.data)
+
+
+def notify_trump_buried(event=None):
+    """
+    Notify players that trump has been buried.
+
+    :param event: [description], defaults to None
+    :type event: [type], optional
+    """
+    mylog.error("Entering notify_trump_buried.")
+    data = json.loads(event)
+    mylog.warning(f"notify_trump_buried: {data=}")
+    assert isinstance(data, dict)
+    if "player_id" in data:
+        mylog.warning("notify_trump_buried: About to retrieve player_id from data")
+        t_player_id = data["player_id"]
+    else:
+        t_player_id = "00000000-0000-4000-0000-000000000000"
+    mylog.warning(f"notify_trump_buried: {t_player_id=}")
+    player_name = ""
+    if t_player_id == g_player_id:
+        player_name = "You have"
+    else:
+        player_name = "{} has".format(g_player_dict[t_player_id]["name"])
+    mylog.warning(f"notify_trump_buried: {player_name=}")
+    count = data["count"]
+    mylog.warning(f"notify_trump_buried: {count=}")
+
+    InfoDialog(
+        "Trump Buried",
+        html.P(f"{player_name} buried {count} trump cards."),
+        left=25,
+        top=25,
+        ok=True,
+        remove_after=15,
+    )
 
 
 def record_trump_selection(event=None):
@@ -753,7 +821,7 @@ def update_status_line():
         )
     if g_round_bid:
         document.getElementById("game_status").attach(
-            html.SPAN(f"Bid: {g_round_bid}s ", Class="game_status")
+            html.SPAN(f"Bid: {g_round_bid} ", Class="game_status")
         )
 
 
@@ -782,6 +850,7 @@ def send_websocket_message(message: dict):
         mylog.warning("send_registration: Opening WebSocket.")
         ws_open()
 
+    mylog.warning("send_registration: Sending message.")
     g_websocket.send(json.dumps(message))
 
 
@@ -994,12 +1063,6 @@ def on_complete_getcookie(req: ajax.Ajax):
         )
         get(f"/player/{g_player_id}/hand", on_complete_player_cards)
 
-        # Set the TEAM_ID variable based on the player id chosen.
-        for _temp in g_team_dict:
-            mylog.warning("Key: %s Value: %r", _temp, g_team_dict[_temp]["player_ids"])
-            if g_player_id in g_team_dict[_temp]["player_ids"]:
-                g_team_id = g_team_dict[_temp]["team_id"]
-
     display_game_options()
 
 
@@ -1202,7 +1265,7 @@ def get(url: str, callback=None, async_call=True):
     req.send()
 
 
-def put(data: dict, url: str, callback=None, async_call=True):
+def put(url: str, callback=None, async_call=True):
     """
     Wrapper for the AJAX PUT call.
 
@@ -1217,14 +1280,16 @@ def put(data: dict, url: str, callback=None, async_call=True):
     if callback is not None:
         ajax_request_tracker(1)
         req.bind("complete", callback)
-    mylog.warning("Calling PUT /api%s with data: %r", url, data)
+    # mylog.warning("Calling PUT /api%s with data: %r", url, data)
+    mylog.warning("Calling PUT /api%s", url)
     req.open("PUT", "/api" + url, async_call)
     req.set_header("content-type", AJAX_URL_ENCODING)
     # req.send({"a": a, "b":b})
-    req.send(data)
+    # req.send(data)
+    req.send({})
 
 
-def post(data: dict, url: str, callback=None, async_call=True):
+def post(url: str, callback=None, async_call=True):
     """
     Wrapper for the AJAX POST call.
 
@@ -1239,10 +1304,12 @@ def post(data: dict, url: str, callback=None, async_call=True):
     if callback is not None:
         ajax_request_tracker(1)
         req.bind("complete", callback)
-    mylog.warning("Calling POST /api%s with data: %r", url, data)
+    # mylog.warning("Calling POST /api%s with data: %r", url, data)
+    mylog.warning("Calling POST /api%s", url)
     req.open("POST", "/api" + url, async_call)
     req.set_header("content-type", AJAX_URL_ENCODING)
-    req.send(data)
+    # req.send(data)
+    req.send({})
 
 
 def delete(url: str, callback=None, async_call=True):
@@ -1262,6 +1329,30 @@ def delete(url: str, callback=None, async_call=True):
     req.open("DELETE", "/api" + url, async_call)
     req.set_header("content-type", AJAX_URL_ENCODING)
     req.send()
+
+
+def locate_cards_below_hand() -> List[str]:
+    """
+    Identify cards that have been moved below the player's hand.
+    """
+    mylog.error("Entering locate_cards_below_hand.")
+    return_list = []
+    potential_cards = []
+    min_y_coord = float(g_canvas.attrs["height"]) + 20
+    for card in g_canvas.objectDict.values():
+        if not isinstance(card, SVG.UseObject) or "player" not in card.id:
+            continue
+        min_y_coord = min(min_y_coord, float(card.attrs["y"]))
+        potential_cards.append(card)
+    for card in potential_cards:
+        if float(card.attrs["y"]) > min_y_coord + CARD_HEIGHT / 4:
+            mylog.warning(
+                f"Card {card.attrs['href'].lstrip('#')} "
+                + f"Y-coordinate: {card.attrs['y']}"
+            )
+            return_list.append(card.attrs["href"].lstrip("#"))
+
+    return return_list
 
 
 def clear_globals_for_round_change():
@@ -1488,7 +1579,7 @@ def advance_mode(event=None):  # pylint: disable=unused-argument
     """
     mylog.error("advance_mode: Calling API (current mode=%s)", GAME_MODES[g_game_mode])
     if g_game_id != "" and g_player_id != "":
-        put({}, f"/game/{g_game_id}?state=true", advance_mode_callback, False)
+        put(f"/game/{g_game_id}?state=true", advance_mode_callback, False)
     else:
         display_game_options()
 
@@ -1590,38 +1681,48 @@ def display_game_options():
     Conditional ladder for early game data selection. This needs to be done better and
     have new game/team/player capability.
     """
-    global g_game_mode  # pylint: disable=invalid-name
+    global g_game_mode, g_team_id  # pylint: disable=invalid-name
 
     xpos = 10
     ypos = 0
 
     # Grab the game_id, team_ids, and players. Display and allow player to choose.
     if g_game_id == "":
-        mylog.warning("dso: In g_game_id=''")
+        mylog.warning("dgo: In g_game_id=''")
         create_game_select_buttons(xpos, ypos)
     elif g_game_mode is None:
-        mylog.warning("dso: In g_game_mode is None")
+        mylog.warning("dgo: In g_game_mode is None")
         get(f"/game/{g_game_id}?state=false", game_mode_query_callback)
     elif g_round_id == "":
-        mylog.warning("dso: In g_round_id=''")
+        mylog.warning("dgo: In g_round_id=''")
         # Open the websocket if needed.
         if g_websocket is None:
             ws_open()
 
         get(f"/game/{g_game_id}/round", on_complete_rounds)
     elif g_team_list == []:
-        mylog.warning("dso: In g_team_list=[]")
+        mylog.warning("dgo: In g_team_list=[]")
         get(f"/round/{g_round_id}/teams", on_complete_teams)
     elif g_player_id == "":
-        mylog.warning("dso: In g_player_id=''")
+        mylog.warning("dgo: In g_player_id=''")
         create_player_select_buttons(xpos, ypos)
     elif g_players_hand == []:
-        mylog.warning("dso: In g_players_hand=[]")
+        mylog.warning("dgo: In g_players_hand=[]")
         get(f"/player/{g_player_id}/hand", on_complete_player_cards)
     else:
-        mylog.warning("dso: In else clause")
+        mylog.warning("dgo: In else clause")
         # Send the registration message.
         send_registration()
+
+        if not g_team_id:
+            # Set the TEAM_ID variable based on the player id chosen.
+            for _temp in g_team_dict:
+                mylog.warning(
+                    "dgo: Key: %s Value: %r", _temp, g_team_dict[_temp]["player_ids"]
+                )
+                if g_player_id in g_team_dict[_temp]["player_ids"]:
+                    g_team_id = g_team_dict[_temp]["team_id"]
+                    mylog.warning(f"dgo: Set {g_team_id=}")
 
         rebuild_display()
 

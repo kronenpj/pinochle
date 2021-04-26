@@ -34,30 +34,30 @@ def stream_socket(ws):
 
     while True:
         try:
-            message = ws.receive()
+            message_text = ws.receive()
         except geventwebsocket.exceptions.WebSocketError:
             # Socket is closed.
             return
-        mylog.info("stream_socket: Received message: %s", message)
 
-        if not message:
+        if not message_text:
             continue
+        
+        mylog.info("stream_socket: Received message: %s", message_text)
 
         # Extract the message into a data structure
-        message_data = json.loads(message)
+        message_data = json.loads(message_text)
 
         # Dispatch an action
-        if "action" in message:
-            if "register_client" in message:
-                msg_game_id = str(message_data["game_id"])
+        if "action" in message_text:
+            msg_game_id = str(message_data["game_id"])
+            ws_mess = WSM.get_instance()
+            if "register_client" in message_text:
                 msg_player_id = message_data["player_id"]
                 if msg_game_id == "" or msg_player_id == "":
                     continue
-                ws_mess = WSM.get_instance()
                 ws_mess.game_update = game.update
                 ws_mess.register_new_player(msg_game_id, msg_player_id, ws)
-            elif "reveal_kitty" in message:
-                msg_game_id = str(message_data["game_id"])
+            elif "reveal_kitty" in message_text:
                 msg_player_id = message_data["player_id"]
                 msg_kitty_card = message_data["card"]
                 round_id = str(utils.query_gameround_for_game(msg_game_id).round_id)
@@ -72,9 +72,10 @@ def stream_socket(ws):
                 ):
                     continue
 
-                ws_mess = WSM.get_instance()
-                message = {"action": "reveal_kitty", "card": msg_kitty_card}
-                ws_mess.websocket_broadcast(msg_game_id, message)
+                message_text = {"action": "reveal_kitty", "card": msg_kitty_card}
+                ws_mess.websocket_broadcast(msg_game_id, message_text)
+            elif "trump_buried" in message_text:
+                ws_mess.websocket_broadcast(msg_game_id, message_data)
 
 
 @app.route("/api/setcookie/player_id/<ident>", methods=["GET"])
