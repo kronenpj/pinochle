@@ -392,7 +392,8 @@ class TrumpSelectDialog:
         if len(cards_buried) != g_kitty_size:
             InfoDialog(
                 "Try again...",
-                f"You buried {len(cards_buried)}, but {g_kitty_size} cards are required." + "Pressing the sort button will reset your choices.",
+                f"You buried {len(cards_buried)}, but {g_kitty_size} cards are required."
+                + "Pressing the sort button will reset your choices.",
                 ok=True,
                 remove_after=15,
             )
@@ -1027,7 +1028,7 @@ def on_complete_getcookie(req: ajax.Ajax):
     :type req: [type]
     """
     mylog.error("Entering on_complete_getcookie.")
-    global g_game_mode, g_game_id, g_player_id, g_kitty_size, g_team_id, g_kitty_deck  # pylint: disable=invalid-name
+    global g_game_mode, g_game_id, g_player_id, g_kitty_size, g_team_id, g_kitty_deck, g_hand_size, g_meld_deck  # pylint: disable=invalid-name
 
     ajax_request_tracker(-1)
     if req.status != 200:
@@ -1056,6 +1057,10 @@ def on_complete_getcookie(req: ajax.Ajax):
                 g_kitty_deck.clear()
         except KeyError:
             pass
+        # TODO: Figure out how better to calculate g_hand_size.
+        g_hand_size = int((48 - g_kitty_size) / g_players)
+        g_meld_deck = ["card-base" for _ in range(g_hand_size)]
+
     elif "player_id" in response_data["kind"]:
         g_player_id = response_data["ident"]
         mylog.warning(
@@ -1366,7 +1371,7 @@ def clear_globals_for_round_change():
     g_round_bid_winner = ""
     g_players_hand.clear()
     g_players_meld_deck.clear()
-    g_meld_deck = ["card-base" for _ in range(HAND_SIZE)]
+    g_meld_deck = ["card-base" for _ in range(g_hand_size)]
     display_game_options()
 
 
@@ -1965,10 +1970,6 @@ resize_canvas()
 
 # Declare temporary decks
 discard_deck = ["card-base" for _ in range(g_players)]
-
-# TODO: Figure out how better to calculate HAND_SIZE.
-HAND_SIZE = int(48 / g_players)
-g_meld_deck = ["card-base" for _ in range(HAND_SIZE)]
 
 document.getElementById("please_wait").remove()
 
