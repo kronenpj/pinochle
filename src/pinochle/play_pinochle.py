@@ -150,11 +150,9 @@ def submit_bid(round_id: str, player_id: str, bid: int):
 
     # Determine the next player to bid this round.
     ordered_player_list = players_still_bidding(round_id)
-    next_bid_player_id = [
-        x for x, p_id in enumerate(ordered_player_list) if p_id == player_id
-    ][0]
-    next_bid_player_id += 1
-    next_bid_player_id %= len(ordered_player_list)
+    next_bid_player_idx = determine_next_bidder_player_id(
+        player_id, ordered_player_list
+    )
 
     # If the bid is still progressing, continue prompting.
     game_id = str(utils.query_gameround_for_round(round_id).game_id)
@@ -163,7 +161,7 @@ def submit_bid(round_id: str, player_id: str, bid: int):
         send_bid_message(
             "bid_prompt",
             game_id,
-            ordered_player_list[next_bid_player_id],
+            ordered_player_list[next_bid_player_idx],
             bid if bid > 0 else a_round.bid,
         )
 
@@ -175,7 +173,10 @@ def submit_bid(round_id: str, player_id: str, bid: int):
 
     if len(ordered_player_list) == 2:  # Now one since a player passed...
         send_bid_message(
-            "bid_winner", game_id, ordered_player_list[next_bid_player_id], a_round.bid,
+            "bid_winner",
+            game_id,
+            ordered_player_list[next_bid_player_idx],
+            a_round.bid,
         )
         # TODO: Figure out if this can possibly happen more than once. I don't think so,
         # but it would add another set of cards to the player's hand if it did.
@@ -183,23 +184,35 @@ def submit_bid(round_id: str, player_id: str, bid: int):
         for hand_obj in utils.query_hand_list(str(utils.query_round(round_id).hand_id)):
             hand.addcard(
                 str(
-                    utils.query_player(ordered_player_list[next_bid_player_id]).hand_id
+                    utils.query_player(ordered_player_list[next_bid_player_idx]).hand_id
                 ),
                 hand_obj.card,
             )
         # Record the bid winner's ID
-        round_.update(round_id, {"bid_winner": ordered_player_list[next_bid_player_id]})
+        round_.update(
+            round_id, {"bid_winner": ordered_player_list[next_bid_player_idx]}
+        )
         # Step to the next game state.
         game.update(game_id, state=True)
     else:
         send_bid_message(
             "bid_prompt",
             game_id,
-            ordered_player_list[next_bid_player_id],
+            ordered_player_list[next_bid_player_idx],
             bid if bid > 0 else a_round.bid,
         )
 
     return {}, 200
+
+
+def determine_next_bidder_player_id(player_id, ordered_player_list):
+    # Determine the next player to bid this round.
+    next_bid_player_idx = [
+        x for x, p_id in enumerate(ordered_player_list) if p_id == player_id
+    ][0]
+    next_bid_player_idx += 1
+    next_bid_player_idx %= len(ordered_player_list)
+    return next_bid_player_idx
 
 
 def send_bid_message(message_type: str, game_id: str, player_id: str, bid: int):

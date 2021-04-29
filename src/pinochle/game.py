@@ -106,10 +106,7 @@ def update(game_id: str, kitty_size=None, state=None, dealer_id=None):
         # print(f"game.update: mode: {new_state}, array length: {len(GAME_MODES)}")
         if new_state < len(GAME_MODES):
             # print(f"game.update: Returning game state(true): {game.state}")
-            message = {"action": "game_state", "game_id": game_id, "state": new_state}
-            ws_mess = WSM.get_instance()
-            ws_mess.game_update = update
-            ws_mess.websocket_broadcast(game_id, message)
+            send_game_state_message(game_id, game.state)
             return _update_data(game_id, {"state": new_state})
 
         new_state = 1
@@ -124,13 +121,9 @@ def update(game_id: str, kitty_size=None, state=None, dealer_id=None):
 
     # Send the current game state rather than advancing it.
     game = utils.query_game(game_id=game_id)
-    message = {"action": "game_state", "game_id": game_id, "state": game.state}
-    ws_mess = WSM.get_instance()
-    ws_mess.game_update = update  # Yes, this module.
-    ws_mess.websocket_broadcast(game_id, message)
     # print(f"game.update: Returning game state(false): {game.state}")
+    send_game_state_message(game_id, game.state)
     return {"state": game.state}, 200
-
 
 def _update_data(game_id: str, data: dict):
     """
@@ -165,6 +158,14 @@ def _update_data(game_id: str, data: dict):
     data = schema.dump(update_game)
 
     return data, 200
+
+
+def send_game_state_message(game_id, new_state):
+    # print(f"game.send_game_state_message: Sending game state message: {new_state}")
+    message = {"action": "game_state", "game_id": game_id, "state": new_state}
+    ws_mess = WSM.get_instance()
+    ws_mess.game_update = update
+    ws_mess.websocket_broadcast(game_id, message)
 
 
 def delete(game_id: str):
