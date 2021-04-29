@@ -153,9 +153,7 @@ def test_team_delete(app):
     # Verify the database agrees.
     db_response = team.read_all()
     assert db_response is not None
-    team_id_list = []
-    for response in db_response:
-        team_id_list.append(response["team_id"])
+    team_id_list = [response["team_id"] for response in db_response]
     assert team_id in team_id_list
 
     with app.test_client() as test_client:

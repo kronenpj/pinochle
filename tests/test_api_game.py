@@ -128,26 +128,7 @@ def test_game_update_state_wrap(
     WHEN the '/api/game/{game_id}?state' page is requested (PUT)
     THEN check that the response is valid
     """
-    # Create a new game & round
-    game_id = test_utils.create_game(0)
-    round_id = test_utils.create_round(game_id)
-
-    # Create players players
-    player_ids = []
-    for player_name in test_utils.PLAYER_NAMES:
-        player_id = test_utils.create_player(player_name)
-        player_ids.append(player_id)
-
-    # Populate teams with players
-    team_ids = []
-    for idx, __ in enumerate(test_utils.TEAM_NAMES):
-        team_id = test_utils.create_team(choice(test_utils.TEAM_NAMES))
-        team_ids.append(team_id)
-        test_utils.create_teamplayer(team_id, player_ids[0 + idx * 2])
-        test_utils.create_teamplayer(team_id, player_ids[1 + idx * 2])
-
-    # Create the roundteam association for the teams.
-    roundteams.create(round_id, teams=team_ids)
+    game_id, round_id, team_ids, player_ids = test_utils.setup_complete_game(4)
 
     # Set state to the last one available.
     test_utils.set_game_state(game_id, len(GAME_MODES))

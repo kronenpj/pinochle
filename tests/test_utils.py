@@ -2,10 +2,11 @@
 Routines commonly used in tests
 
 """
+from random import choice
 from typing import List
 
 import regex
-from pinochle import game, player, round_, roundteams, team, teamplayers
+from pinochle import game, gameround, player, round_, roundteams, team, teamplayers
 from pinochle.models.game import Game
 from pinochle.models.player import Player
 from pinochle.models.roundteam import RoundTeam
@@ -164,3 +165,39 @@ def query_game_data(game_id: str) -> Game:
 
     return rt_data
 
+
+def setup_complete_game(kitty_s: int):
+    # Create a new game
+    game_id = str(create_game(kitty_s))
+
+    # Create a new round
+    round_id = str(create_round(game_id))
+
+    # Verify the database agrees.
+    db_response = round_.read_one(round_id)
+    assert db_response is not None
+
+    db_response = gameround.read_one(game_id, round_id)
+    assert db_response is not None
+
+    # Create players
+    player_ids = []
+    for player_name in PLAYER_NAMES:
+        player_id = create_player(player_name)
+        assert UUID_REGEX.match(player_id)
+        player_ids.append(player_id)
+
+    # Create a new teams
+    team_ids = []
+    for item in range(2):
+        team_id = create_team(choice(TEAM_NAMES))
+        team_ids.append(team_id)
+        teamplayers.create(team_id=team_id, player_id={"player_id": player_ids[item]})
+        teamplayers.create(
+            team_id=team_id, player_id={"player_id": player_ids[item + 2]}
+        )
+
+    # Create the roundteam association for the teams.
+    roundteams.create(round_id=round_id, teams=team_ids)
+
+    return game_id, round_id, team_ids, player_ids
