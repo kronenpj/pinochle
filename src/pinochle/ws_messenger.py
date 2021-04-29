@@ -74,6 +74,72 @@ class WebSocketMessenger:
         # Gather information about the number of players and the game state.
         self.distribute_registered_players(game_id)
 
+        self.update_refreshed_player_page(game_id, player_id, ws)
+
+    def update_refreshed_player_page(self, game_id, player_id, ws):
+        # Send this player information about the game, as appropriate, in case they've
+        # just refreshed the page.
+        game_mode = utils.query_game(game_id).state
+        round_id = str(utils.query_gameround_for_game(game_id).round_id)
+        if "bid" in play_pinochle.GAME_MODES[game_mode]:
+            self.update_refreshed_page_bid(round_id, player_id, ws)
+        elif "reveal" in play_pinochle.GAME_MODES[game_mode]:
+            self.update_refreshed_page_reveal(round_id, ws)
+        elif "meld" in play_pinochle.GAME_MODES[game_mode]:
+            self.update_refreshed_page_bid(round_id, player_id, ws)
+            self.update_refreshed_page_trump(round_id, ws)
+
+    @staticmethod
+    def update_refreshed_page_trump(round_id, ws):
+        a_round = utils.query_round(round_id)
+        ws.send(
+            json.dumps(
+                {
+                    "action": "trump_selected",
+                    "trump": str(a_round.trump),
+                }
+            )
+        )
+
+    @staticmethod
+    def update_refreshed_page_reveal(round_id, ws):
+        a_round = utils.query_round(round_id)
+        ws.send(
+            json.dumps(
+                {
+                    "action": "bid_winner",
+                    "player_id": str(a_round.bid_winner),
+                    "bid": a_round.bid,
+                }
+            )
+        )
+
+    @staticmethod
+    def update_refreshed_page_bid(round_id, player_id, ws):
+        # Try to figure out who is responsible for the next bid...
+        ordered_player_list = play_pinochle.players_still_bidding(round_id)
+        a_round = utils.query_round(round_id)
+
+        current_bid = a_round.bid
+        if current_bid > 20:
+            next_bid_player_idx = play_pinochle.determine_next_bidder_player_id(
+                player_id, ordered_player_list
+            )
+            player_bidding = ordered_player_list[next_bid_player_idx]
+        else:
+            player_bidding = ordered_player_list[
+                a_round.round_seq % len(ordered_player_list)
+            ]
+            ws.send(
+                json.dumps(
+                    {
+                        "action": "bid_prompt",
+                        "player_id": player_bidding,
+                        "bid": current_bid,
+                    }
+                )
+            )
+
     def distribute_registered_players(self, game_id):
         """
         Send registrant list for the supplied game to all currently registered players. Also
@@ -101,7 +167,7 @@ class WebSocketMessenger:
         )
 
         # Gather information about the number of players and the game state.
-        temp_round = utils.query_gameround_for_game(game_id).round_id
+        temp_round = str(utils.query_gameround_for_game(game_id).round_id)
         temp_team_list = utils.query_roundteam_list(temp_round)
         num_players = sum(
             len(utils.query_teamplayer_list(str(temp_team.team_id)))
@@ -111,7 +177,10 @@ class WebSocketMessenger:
 
         # In order to make the decision of whether the game should start.
         self.mylog.info("Players: %d - Game mode: %d", num_players, game_mode)
-        if len(joined_players) == num_players and game_mode == 0:
+        if (
+            len(joined_players) == num_players
+            and "game" in play_pinochle.GAME_MODES[game_mode]
+        ):
             self.mylog.info("Enough players have joined. Start the game!")
             try:
                 self._game_update(game_id, state=True)
@@ -120,7 +189,7 @@ class WebSocketMessenger:
                     "WebSocketMessenger: game_update was not set before use."
                 )
             # TODO: This should be abstracted to be any kind of game.
-            play_pinochle.start(str(temp_round))
+            play_pinochle.start(temp_round)
 
     def websocket_broadcast(
         self, game_id: str, message: dict, exclude: Optional[str] = None
