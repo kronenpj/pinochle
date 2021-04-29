@@ -87,50 +87,52 @@ def create(team: Dict):
     abort(400, f"Team {name} could not be added to the database.")
 
 
-def update(team_id: str, data: dict):
-    """
-    This function updates an existing team in the team structure
+# Commented out until it's needed.
+# def update(team_id: str, data: dict):
+#     """
+#     This function updates an existing team in the team structure
 
-    :param team_id:     Id of the team to update
-    :param data:        Dictionary containing the data to update.
-    :return:            Updated record.
-    """
-    return _update_data(team_id, data)
+#     :param team_id:     Id of the team to update
+#     :param data:        Dictionary containing the data to update.
+#     :return:            Updated record.
+#     """
+#     return _update_data(team_id, data)
 
 
-def _update_data(team_id: str, data: dict):
-    """
-    This function updates an existing team in the team structure
+# def _update_data(team_id: str, data: dict):
+#     """
+#     This function updates an existing team in the team structure
 
-    :param team_id:     Id of the team to update
-    :param data:        Dictionary containing the data to update.
-    :return:            Updated record.
-    """
-    # Get the team requested from the db into session
-    update_team = Team.query.filter(Team.team_id == team_id).one_or_none()
+#     :param team_id:     Id of the team to update
+#     :param data:        Dictionary containing the data to update.
+#     :return:            Updated record.
+#     """
+#     # Get the team requested from the db into session
+#     update_team = Team.query.filter(Team.team_id == team_id).one_or_none()
 
-    # Did we find an existing team?
-    if update_team is None or update_team == {}:
-        # Otherwise, nope, didn't find that team
-        abort(404, f"Team not found for Id: {team_id}")
+#     # Did we find an existing team?
+#     if update_team is None or update_team == {}:
+#         # Otherwise, nope, didn't find that team
+#         abort(404, f"Team not found for Id: {team_id}")
 
-    # turn the passed in round into a db object
-    db_session = db.session()
-    local_object = db_session.merge(update_team)
+#     # turn the passed in round into a db object
+#     db_session = db.session()
+#     local_object = db_session.merge(update_team)
 
-    # Update any key present in data that isn't round_id or round_seq.
-    for key in [x for x in data if x not in ["team_id"]]:
-        setattr(local_object, key, data[key])
+#     # Update any key present in data that isn't round_id or round_seq.
+#     for key in [x for x in data if x not in ["team_id"]]:
+#         setattr(local_object, key, data[key])
 
-    # Add the updated data to the transaction.
-    db_session.add(local_object)
-    db_session.commit()
+#     # Add the updated data to the transaction.
+#     db_session.add(local_object)
+#     db_session.commit()
 
-    # return updated team in the response
-    schema = TeamSchema()
-    data = schema.dump(update_team)
+#     # return updated team in the response
+#     schema = TeamSchema()
+#     data = schema.dump(update_team)
 
-    return data, 200
+#     return data, 200
+# Commented out until it's needed.
 
 
 def delete(team_id: str):
