@@ -18,7 +18,7 @@ sockets = Sockets(app)
 
 # Create non-blueprint-defined endpoints.
 @sockets.route("/echo")
-def echo_socket(ws):
+def echo_socket(ws):  # pragma: no cover
     while True:
         message = ws.receive()
         # ws.send(message[::-1])
@@ -27,7 +27,7 @@ def echo_socket(ws):
 
 
 @sockets.route("/stream")
-def stream_socket(ws):
+def stream_socket(ws):  # pragma: no cover
     mylog = custom_log.get_logger()
     mylog.setLevel(GLOBAL_LOG_LEVEL)
     mylog.info("Log level: %d", mylog.getEffectiveLevel())
