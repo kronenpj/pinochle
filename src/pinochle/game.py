@@ -161,7 +161,7 @@ def _update_data(game_id: str, data: dict):
 
 
 def send_game_state_message(game_id, new_state):
-    # print(f"game.send_game_state_message: Sending game state message: {new_state}")
+    print(f"game.send_game_state_message: Sending game state message: {new_state}")
     message = {"action": "game_state", "game_id": game_id, "state": new_state}
     ws_mess = WSM.get_instance()
     ws_mess.game_update = update
