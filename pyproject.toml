@@ -148,10 +148,12 @@ source = ["src"]
 
 [tool.coverage.report]
 show_missing = true
+skip_covered = true
 omit = [
+   "**/cards/**",
+   "**/custom_log.py",
    "**/game_old/**",
    "**/log_decorator.py",
-   "**/custom_log.py",
    "**/__version__.py",
    "**/__main__.py"
 ]
