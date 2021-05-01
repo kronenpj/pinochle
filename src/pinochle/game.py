@@ -105,8 +105,8 @@ def update(game_id: str, kitty_size=None, state=None, dealer_id=None):
         new_state = current_state + 1
         # print(f"game.update: mode: {new_state}, array length: {len(GAME_MODES)}")
         if new_state < len(GAME_MODES):
-            # print(f"game.update: Returning game state(true): {game.state}")
-            send_game_state_message(game_id, game.state)
+            # print(f"game.update: Returning game state(true): {new_state}")
+            send_game_state_message(game_id, new_state)
             return _update_data(game_id, {"state": new_state})
 
         new_state = 1
