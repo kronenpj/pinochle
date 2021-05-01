@@ -1,8 +1,18 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 export PYTHONPATH=$(pwd)/src
 
+for i in "$@"; do
+  MYARGS[${#MYARGS[@]}]="$i"
+done
+
+if [ ${#MYARGS} -eq 0 ]; then
+  MYARGS[0]='--capture-output'
+  MYARGS[1]='--access-logfile'
+  MYARGS[2]='-'
+fi
+
 poetry run gunicorn --bind 0.0.0.0:5000 \
     --graceful-timeout 5 \
-    -k flask_sockets.worker --reload "pinochle.wsgi:application" "$@"
-    # --reload "pinochle.wsgi:application" "$@"
+    -k flask_sockets.worker --reload "pinochle.wsgi:application" "${MYARGS[@]}"
+    # --reload "pinochle.wsgi:application" "${MYARGS[@]}"
