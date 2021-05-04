@@ -11,6 +11,7 @@ from .hand import Hand
 from .player import Player
 from .round_ import Round
 from .roundteam import RoundTeam
+from .team import Team
 from .teamplayers import TeamPlayers
 
 
@@ -203,6 +204,18 @@ def query_roundteam(round_id: str, team_id: str) -> RoundTeam:
     return RoundTeam.query.filter(
         RoundTeam.round_id == round_id, RoundTeam.team_id == team_id
     ).one_or_none()
+
+
+def query_team(team_id: str) -> Team:
+    """
+    Retrieve information about a specified team pair.
+
+    :param team_id: [description]
+    :type team_id: str
+    :return: [description]
+    :rtype: Team
+    """
+    return Team.query.filter(Team.team_id == team_id).one_or_none()
 
 
 def query_roundteam_list(round_id: str) -> List[RoundTeam]:

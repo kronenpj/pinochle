@@ -29,8 +29,9 @@ class Player(db.Model):
         unique=True,
     )
     name = db.Column(db.String)
-    meld_score = db.Column(db.Integer, default=0)
     bidding = db.Column(db.Integer, default=0)
+    meld_final = db.Column(db.Integer, default=0)
+    meld_score = db.Column(db.Integer, default=0)
     timestamp = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
@@ -40,8 +41,9 @@ class Player(db.Model):
         output += "player_id=%r, " % self.player_id
         output += "name=%r, " % self.name
         output += "hand_id=%r, " % self.hand_id
-        output += "meld_score=%r, " % self.meld_score
         output += "bidding=%r, " % self.bidding
+        output += "meld_final=%r, " % self.meld_final
+        output += "meld_score=%r, " % self.meld_score
         output += ">"
         return output
 

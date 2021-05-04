@@ -21,7 +21,7 @@ import test_utils
 # from pinochle.models.utils import dump_db
 
 
-def test_game_round_start(app, patch_ws_messenger):  # pylint: disable=unused-argument
+def test_game_round_start(app, patch_geventws):  # pylint: disable=unused-argument
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/round/{round_id}/start' page is requested (POST)
@@ -44,7 +44,7 @@ def test_game_round_start(app, patch_ws_messenger):  # pylint: disable=unused-ar
 
 
 def test_round_score_meld_hand_no_trump(
-    app, patch_ws_messenger
+    app, patch_geventws
 ):  # pylint: disable=unused-argument
     """
     GIVEN a Flask application configured for testing
@@ -82,7 +82,7 @@ def test_round_score_meld_hand_no_trump(
 
 
 def test_round_score_meld_hand_with_trump(
-    app, patch_ws_messenger
+    app, patch_geventws
 ):  # pylint: disable=unused-argument
     """
     GIVEN a Flask application configured for testing
@@ -455,7 +455,7 @@ def test_game_round_create_invalid(app):  # pylint: disable=unused-argument
 
 
 def test_round_score_meld_bad_hand(
-    app, patch_ws_messenger
+    app, patch_geventws
 ):  # pylint: disable=unused-argument
     """
     GIVEN a Flask application configured for testing

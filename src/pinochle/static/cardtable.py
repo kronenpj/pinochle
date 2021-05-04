@@ -86,18 +86,23 @@ for _suit in SUITS:
         DECK_SORTED.append(f"{_suit}_{_card}")
 
 mylog = logging.getLogger("cardtable")
-mylog.setLevel(logging.CRITICAL)  # No output
-# mylog.setLevel(logging.ERROR)  # Function entry/exit
+# mylog.setLevel(logging.CRITICAL)  # No output
+mylog.setLevel(logging.ERROR)  # Function entry/exit
 # mylog.setLevel(logging.WARNING)  # Everything
 
 # API "Constants"
 AJAX_URL_ENCODING = "application/x-www-form-urlencoded"
+
+# Game-related globals
 g_game_id: str = ""
 g_game_mode: Optional[int] = None
 g_kitty_size: int = 0
+g_my_team_score: int = 0
+g_meld_score: int = 0
+g_other_team_score: int = 0
 g_player_id: str = ""
 g_players: int = 4
-g_round_bid = 0
+g_round_bid: int = 0
 g_round_id: str = ""
 g_team_id: str = ""
 g_trump: str = ""
@@ -339,8 +344,8 @@ class BidDialog:
         """
         Display the meld hand submitted by a player in a pop-up.
 
-        :param evt: Data from the event as a JSON string.
-        :type evt: str
+        :param bid_data: Data from the event as a JSON string.
+        :type bid_data: str
         """
         mylog.error("Entering display_bid_dialog.")
         data = json.loads(bid_data)
@@ -423,19 +428,17 @@ class TrumpSelectDialog:
     def display_trump_dialog(self):
         """
         Prompt the player to select trump.
-
-        :param evt: Data from the event as a JSON string.
-        :type evt: str
         """
         mylog.error("Entering display_trump_dialog.")
 
-        # Don't display a trump select dialog box if this isn't the player who won the
-        # bid. Instead let the players know we're waiting for input.
+        # Clear previous dialog_trump instances.
         try:
             previous = g_canvas.getSelectedObject("dialog_trump")
             g_canvas.removeObject(previous)
         except AttributeError:
             pass
+        # Don't display a trump select dialog box if this isn't the player who won the
+        # bid. Instead let the players know we're waiting for input.
         if g_player_id != g_round_bid_winner:
             try:
                 bid_winner_name = g_player_dict[g_round_bid_winner]["name"].capitalize()
@@ -446,7 +449,7 @@ class TrumpSelectDialog:
                 )
                 # Add an ID attribute so we can find it later if needed.
                 for item in document.getElementsByClassName("brython-dialog-main"):
-                    mylog.warning("display_player_meld: Item: %r", item)
+                    mylog.warning("display_trump_dialog: Item: %r", item)
                     if not item.id and "Waiting" in item.text:
                         # Assume this is the one we just created.
                         item.id = "dialog_trump"
@@ -457,7 +460,7 @@ class TrumpSelectDialog:
         self.trump_dialog = Dialog(
             "Select Trump Suit", ok_cancel=False, top=25, left=25,
         )
-        self.d_canvas = SVG.CanvasObject("30vw", "20vh", "none", objid="dialog_canvas")
+        self.d_canvas = SVG.CanvasObject("20vw", "20vh", "none", objid="dialog_canvas")
         glyph_width = 50
         xpos = 0
         for suit in SUITS:
@@ -479,6 +482,36 @@ class TrumpSelectDialog:
         self.d_canvas.fitContents()
 
         self.trump_dialog.bind("click", self.on_click_trump_dialog)
+
+
+class MeldFinalDialog:
+    meld_final_dialog = None
+
+    def on_click_meld_dialog(self, event=None):
+        """
+        Handle the click event for the OK button. Ignore the cancel button.
+
+        :param event: [description], defaults to None
+        :type event: [type], optional
+        """
+        mylog.error("Entering on_click_meld_dialog")
+        # Notify the server of my meld is final.
+        put(f"/play/{g_round_id}/finalize_meld?player_id={g_player_id}")
+        self.meld_final_dialog.close()
+
+    def display_meld_final_dialog(self):
+        """
+        Prompt the player to select whether their meld is final.
+        """
+        mylog.error("Entering display_meld_final_dialog.")
+
+        self.meld_final_dialog = Dialog(
+            "Is your meld submission final?", top=150, left=25, ok_cancel=["Yes", "No"]
+        )
+        player_name = g_player_dict[g_player_id]["name"].capitalize()
+        self.meld_final_dialog.panel <= html.DIV(f"{player_name}, Is your meld final?")
+
+        self.meld_final_dialog.ok_button.bind("click", self.on_click_meld_dialog)
 
 
 def dump_globals() -> None:
@@ -591,8 +624,6 @@ def on_ws_event(event=None):
     elif "game_state" in event.data:
         g_game_mode = json.loads(event.data)["state"]
         display_game_options()
-    elif "meld_update" in event.data:
-        display_player_meld(event.data)
     elif "bid_prompt" in event.data:
         bid_dialog = BidDialog()
         bid_dialog.display_bid_dialog(event.data)
@@ -604,6 +635,37 @@ def on_ws_event(event=None):
         record_trump_selection(event.data)
     elif "trump_buried" in event.data:
         notify_trump_buried(event.data)
+    elif "meld_update" in event.data:
+        display_player_meld(event.data)
+    elif "team_score" in event.data:
+        update_team_scores(event.data)
+
+
+def update_team_scores(event=None):
+    """
+    Notify players that trump has been buried.
+
+    :param event: [description], defaults to None
+    :type event: [type], optional
+    """
+    mylog.error("Entering update_team_scores.")
+    global g_my_team_score, g_other_team_score, g_meld_score
+    data = json.loads(event)
+    mylog.critical(f"update_team_scores: {data=}")
+    mylog.warning(f"update_team_scores: {data=}")
+    assert isinstance(data, dict)
+    t_team_id = data["team_id"]
+    mylog.critical(f"update_team_scores: {t_team_id=}")
+    if g_team_id == t_team_id:
+        g_my_team_score = data["score"]
+        g_meld_score = data["meld_score"]
+        mylog.critical(f"update_team_scores: {g_my_team_score=}")
+        mylog.critical(f"update_team_scores: {g_meld_score=}")
+    else:  # Other team
+        g_other_team_score = data["score"]
+        mylog.critical(f"update_team_scores: {g_other_team_score=}")
+
+    update_status_line()
 
 
 def notify_trump_buried(event=None):
@@ -704,7 +766,7 @@ def display_bid_winner(event=None):
 
     InfoDialog(
         "Bid Winner",
-        html.P(f"{player_name}'s has won the bid for {bid} points!"),
+        html.P(f"{player_name} has won the bid for {bid} points!"),
         left=25,
         top=25,
         ok=True,
@@ -811,10 +873,11 @@ def update_status_line():
     # TODO: Do something more useful like a line of names with color change when
     # the player's client registers.
     document.getElementById("game_status").clear()
-    # Team scores are not yet calculated or reported to the UI.
     document.getElementById("game_status").attach(html.BR())
     document.getElementById("game_status").attach(
-        html.SPAN(f"Score: 0 / 0 ", Class="game_status")
+        html.SPAN(
+            f"Score: {g_my_team_score} / {g_other_team_score} ", Class="game_status"
+        )
     )
     if g_trump:
         document.getElementById("game_status").attach(
@@ -823,6 +886,10 @@ def update_status_line():
     if g_round_bid:
         document.getElementById("game_status").attach(
             html.SPAN(f"Bid: {g_round_bid} ", Class="game_status")
+        )
+    if g_meld_score:
+        document.getElementById("game_status").attach(
+            html.SPAN(f"Meld score: {g_meld_score} ", Class="game_status")
         )
 
 
@@ -1140,6 +1207,7 @@ def on_complete_get_meld_score(req: ajax.Ajax):
 
     # TODO: Do something with the response.
     if req.status in [200, 0]:
+        mylog.error("on_complete_get_meld_score: req.text: %s", req.text)
         mylog.warning("on_complete_get_meld_score: req.text: %s", req.text)
         temp = json.loads(req.text)
         InfoDialog(
@@ -1149,6 +1217,8 @@ def on_complete_get_meld_score(req: ajax.Ajax):
             top=25,
             left=25,
         )
+        mfd = MeldFinalDialog()
+        mfd.display_meld_final_dialog()
         return temp
 
     mylog.warning("on_complete_get_meld_score: score: %r", req)
@@ -1614,7 +1684,7 @@ def send_meld(event=None):  # pylint: disable=unused-argument
     """
     card_string = ",".join(x for x in g_meld_deck if x != "card-base")
 
-    mylog.warning(
+    mylog.error(
         "send_meld: /round/%s/score_meld?player_id=%s&cards=%s",
         g_round_id,
         g_player_id,
@@ -1686,7 +1756,7 @@ def display_game_options():
     Conditional ladder for early game data selection. This needs to be done better and
     have new game/team/player capability.
     """
-    global g_game_mode, g_team_id  # pylint: disable=invalid-name
+    global g_game_mode, g_team_id, g_meld_score, g_round_bid, g_round_bid_winner, g_trump
 
     xpos = 10
     ypos = 0
@@ -1718,6 +1788,13 @@ def display_game_options():
         mylog.warning("dgo: In else clause")
         # Send the registration message.
         send_registration()
+
+        if g_game_mode == 1:
+            g_meld_score = 0
+            g_round_bid = 0
+            g_round_bid_winner = ""
+            g_trump = ""
+            update_status_line()
 
         if not g_team_id:
             # Set the TEAM_ID variable based on the player id chosen.

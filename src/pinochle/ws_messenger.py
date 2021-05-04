@@ -79,27 +79,42 @@ class WebSocketMessenger:
     def update_refreshed_player_page(self, game_id, player_id, ws):
         # Send this player information about the game, as appropriate, in case they've
         # just refreshed the page.
+        # TODO: Replace this nonsense with a straightforward entire game/round/team/
+        # player status message.
         game_mode = utils.query_game(game_id).state
         round_id = str(utils.query_gameround_for_game(game_id).round_id)
+        self.update_refreshed_page_team_scores(round_id, ws)
         if "bid" in play_pinochle.GAME_MODES[game_mode]:
             self.update_refreshed_page_bid(round_id, player_id, ws)
         elif "reveal" in play_pinochle.GAME_MODES[game_mode]:
             self.update_refreshed_page_reveal(round_id, ws)
         elif "meld" in play_pinochle.GAME_MODES[game_mode]:
-            self.update_refreshed_page_bid(round_id, player_id, ws)
+            try:
+                self.update_refreshed_page_bid(round_id, player_id, ws)
+            except IndexError:
+                pass
             self.update_refreshed_page_trump(round_id, ws)
+
+    @staticmethod
+    def update_refreshed_page_team_scores(round_id, ws):
+        a_roundteams = utils.query_roundteam_list(round_id)
+        for a_roundteam in a_roundteams:
+            a_team = utils.query_team(str(a_roundteam.team_id))
+            ws.send(
+                json.dumps(
+                    {
+                        "action": "team_score",
+                        "team_id": str(a_roundteam.team_id),
+                        "score": a_team.score,
+                        "meld_score": 0,
+                    }
+                )
+            )
 
     @staticmethod
     def update_refreshed_page_trump(round_id, ws):
         a_round = utils.query_round(round_id)
-        ws.send(
-            json.dumps(
-                {
-                    "action": "trump_selected",
-                    "trump": str(a_round.trump),
-                }
-            )
-        )
+        ws.send(json.dumps({"action": "trump_selected", "trump": str(a_round.trump),}))
 
     @staticmethod
     def update_refreshed_page_reveal(round_id, ws):

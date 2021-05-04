@@ -5,10 +5,10 @@ License: GPLv3
 """
 import json
 import uuid
-from random import choice
+from unittest.mock import MagicMock
 
 import pytest
-from pinochle import game, roundteams
+from pinochle import game
 from pinochle.models.core import db
 from pinochle.play_pinochle import GAME_MODES
 
@@ -93,12 +93,14 @@ def test_game_update_kitty_size(app):
     assert new_kitty == db_response.get("kitty_size")
 
 
-def test_game_update_state(app, patch_ws_messenger):  # pylint: disable=unused-argument
+def test_game_update_state(app, patch_geventws):  # pylint: disable=unused-argument
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/game/{game_id}?state' page is requested (PUT)
     THEN check that the response is valid
     """
+    game.send_game_state_message = MagicMock()
+
     # Create a new game
     game_id = test_utils.create_game(0)
 
@@ -113,6 +115,8 @@ def test_game_update_state(app, patch_ws_messenger):  # pylint: disable=unused-a
         response = test_client.put(f"/api/game/{game_id}?state=true")
         assert response.status == "200 OK"
 
+    # Make sure the WS message went out
+    game.send_game_state_message.assert_called_with(game_id, state)
     # Verify the database agrees.
     db_response = game.read_one(game_id)
     assert db_response is not None
@@ -120,9 +124,7 @@ def test_game_update_state(app, patch_ws_messenger):  # pylint: disable=unused-a
     assert state == db_response.get("state")
 
 
-def test_game_update_state_wrap(
-    app, patch_ws_messenger
-):  # pylint: disable=unused-argument
+def test_game_update_state_wrap(app, patch_geventws):  # pylint: disable=unused-argument
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/game/{game_id}?state' page is requested (PUT)
@@ -148,6 +150,36 @@ def test_game_update_state_wrap(
     assert db_response is not None
     assert game_id == db_response.get("game_id")
     assert db_response.get("state") == 1
+
+
+def test_game_update_state_no_change(
+    app, patch_geventws
+):  # pylint: disable=unused-argument
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/game/{game_id}?state' page is requested (PUT)
+    THEN check that the response is valid
+    """
+    game_id, round_id, team_ids, player_ids = test_utils.setup_complete_game(4)
+
+    # Set state to the last one available.
+    test_utils.set_game_state(game_id, len(GAME_MODES))
+
+    # Verify the database agrees.
+    db_response = game.read_one(game_id)
+    initial_state = db_response.get("state")
+    assert len(GAME_MODES) == initial_state
+
+    with app.test_client() as test_client:
+        # Attempt to access the delete game api
+        response = test_client.put(f"/api/game/{game_id}?state=false")
+        assert response.status == "200 OK"
+
+    # Verify the database agrees.
+    db_response = game.read_one(game_id)
+    assert db_response is not None
+    assert game_id == db_response.get("game_id")
+    assert db_response.get("state") == initial_state
 
 
 def test_game_update_invalid_game(app):

@@ -5,6 +5,7 @@ License: GPLv3
 """
 
 from unittest.mock import MagicMock
+
 import geventwebsocket
 from pinochle import game, play_pinochle
 from pinochle.models import utils
@@ -15,9 +16,7 @@ import test_utils
 # from pinochle.models.utils import dump_db
 
 
-def test_register_new_player(
-    app, patch_ws_messenger
-):  # pylint: disable=unused-argument
+def test_register_new_player(app, patch_geventws):  # pylint: disable=unused-argument
     """
     GIVEN a Flask application configured for testing
     WHEN the register_new_player function is called
@@ -39,9 +38,7 @@ def test_register_new_player(
     assert ws_mess.client_sockets[game_id][0]["ws"] == dummy_ws
 
 
-def test_register_four_players(
-    app, patch_ws_messenger
-):  # pylint: disable=unused-argument
+def test_register_four_players(app, patch_geventws):  # pylint: disable=unused-argument
     """
     GIVEN a Flask application configured for testing
     WHEN the register_new_player function is called
@@ -62,7 +59,7 @@ def test_register_four_players(
 
 
 def test_register_new_players_game_0(
-    app, patch_ws_messenger
+    app, patch_geventws
 ):  # pylint: disable=unused-argument
     """
     GIVEN a Flask application configured for testing
@@ -87,7 +84,7 @@ def test_register_new_players_game_0(
 
 
 def test_register_new_players_game_bid(
-    app, patch_ws_messenger
+    app, patch_geventws
 ):  # pylint: disable=unused-argument
     """
     GIVEN a Flask application configured for testing
@@ -118,7 +115,7 @@ def test_register_new_players_game_bid(
 
 
 def test_register_new_players_game_reveal(
-    app, patch_ws_messenger
+    app, patch_geventws
 ):  # pylint: disable=unused-argument
     """
     GIVEN a Flask application configured for testing
@@ -147,7 +144,7 @@ def test_register_new_players_game_reveal(
 
 
 def test_register_new_players_game_trump(
-    app, patch_ws_messenger
+    app, patch_geventws
 ):  # pylint: disable=unused-argument
     """
     GIVEN a Flask application configured for testing

@@ -4,10 +4,13 @@ Module to hold test fixtures.
 License: GPLv3
 """
 
+from unittest.mock import MagicMock
+
 import geventwebsocket
 import pytest
 from pinochle import wsgi
 from pinochle.models.core import db
+from pinochle.ws_messenger import WebSocketMessenger as WSM
 
 # Suppress invalid redefined-outer-name messages from pylint.
 # pragma pylint: disable=redefined-outer-name
@@ -42,10 +45,16 @@ def do_nothing(*args, **kwargs):  # pylint: disable=unused-argument
     pass  # pylint: disable=unnecessary-pass
 
 
-@pytest.fixture
-def patch_ws_messenger(monkeypatch):
+@pytest.fixture(scope="function")
+def patch_geventws(monkeypatch):
     """
     Fixture to replace send method of WebSocket implementation with a no-op.
     """
     monkeypatch.setattr(geventwebsocket.websocket.WebSocket, "__init__", do_nothing)
     monkeypatch.setattr(geventwebsocket.websocket.WebSocket, "send", do_nothing)
+
+
+@pytest.fixture(scope="function")
+def patch_ws_messenger_to_MM():
+    WSM.websocket_broadcast = MagicMock()
+    WSM.websocket_broadcast.assert_has_calls

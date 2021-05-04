@@ -17,6 +17,7 @@ from . import (
     roundteams,
     score_meld,
     score_tricks,
+    team,
 )
 from .cards import utils as card_utils
 from .cards.const import SUITS
@@ -74,27 +75,6 @@ def set_players_bidding(player_ids: list) -> None:
         player.update(player_id, {"bidding": True})
 
 
-def query_players_bidding(round_id: str) -> List[str]:
-    """
-    Query the database for the list of player IDs still bidding on this round.
-
-    :param round_id: Round ID to query
-    :type round_id: str
-    :return: [description]
-    :rtype: List[str]
-    """
-    # print(f"round_id={round_id}")
-    player_ids = utils.query_player_ids_for_round(round_id)
-
-    bidding_players = []
-    for player_id in player_ids:
-        a_player = utils.query_player(player_id)
-        if a_player.bidding:
-            bidding_players.append(player_id)
-
-    return bidding_players
-
-
 def set_player_pass(player_id: str) -> None:
     """
     Update supplied player's record to indicate they are no longer participating in this 
@@ -127,7 +107,7 @@ def submit_bid(round_id: str, player_id: str, bid: int):
     This function processes a bid submission for a player.
 
     :param round_id:   Id of the round to delete
-    :param game_id:    Id of the player submitting the bid
+    :param player_id:  Id of the player submitting the bid
     :return:           200 on successful delete, 404 if not found,
                        409 if requirements are not satisfied.
     """
@@ -205,14 +185,86 @@ def submit_bid(round_id: str, player_id: str, bid: int):
     return {}, 200
 
 
+def finalize_meld(round_id: str, player_id: str):
+    """
+    This function processes a meld finalize submission for a player.
+
+    :param round_id:   Id of the round to delete
+    :param player_id:  Id of the player submitting the meld
+    :return:           200 on successful delete, 404 if not found,
+                       409 if requirements are not satisfied.
+    """
+    # print(f"finalize_meld: round_id={round_id}, player_id={player_id}")
+    # Get the round requested
+    a_round: Round = utils.query_round(str(round_id))
+    a_player: Player = utils.query_player(str(player_id))
+
+    # Did we find a round?
+    if a_round is None or a_round == {}:
+        abort(404, f"Round {round_id} not found.")
+
+    # Did we find a player?
+    if a_player is None or a_player == {}:
+        abort(404, f"Player {player_id} not found.")
+
+    # Gather all the players for this round.
+    player_list = utils.query_player_ids_for_round(round_id)
+
+    if player_id not in player_list:
+        abort(404, f"Player {player_id} not playing this round.")
+
+    player.update(player_id, {"meld_final": True})
+
+    # Check to see if all players are ready for the next round.
+    if all(utils.query_player(x).meld_final for x in player_list):
+        # All meld is final
+        total_team_scores(round_id)
+
+
+def total_team_scores(round_id):
+    # All meld is final
+    # print("finalize_bid: Totalling team scores")
+
+    ws_mess = WSM.get_instance()
+    game_id = str(utils.query_gameround_for_round(round_id).game_id)
+
+    # Total each team's meld.
+    for t_roundteam in utils.query_roundteam_list(round_id):
+        team_id = str(t_roundteam.team_id)
+        total = utils.query_team(team_id).score
+        meld_score = sum(
+            utils.query_player(t_player.player_id).meld_score
+            for t_player in utils.query_teamplayer_list(team_id)
+        )
+        total += meld_score
+        team.update(team_id, {"score": total})
+
+        # Communicate team scores:
+        message = {
+            "action": "team_score",
+            "team_id": team_id,
+            "score": total,
+            "meld_score": meld_score,
+        }
+        ws_mess.websocket_broadcast(game_id, message)
+
+    # Advance the game mode.
+    game.update(game_id, state=True)
+
+
 def determine_next_bidder_player_id(player_id, ordered_player_list):
     # Determine the next player to bid this round.
-    next_bid_player_idx = [
-        x for x, p_id in enumerate(ordered_player_list) if p_id == player_id
-    ][0]
-    next_bid_player_idx += 1
-    next_bid_player_idx %= len(ordered_player_list)
-    return next_bid_player_idx
+    try:
+        next_bid_player_idx = [
+            x for x, p_id in enumerate(ordered_player_list) if p_id == player_id
+        ][0]
+        next_bid_player_idx += 1
+        next_bid_player_idx %= len(ordered_player_list)
+        return next_bid_player_idx
+    except IndexError as e:
+        if len(ordered_player_list) == 0:
+            return 0
+        raise IndexError(e) from e
 
 
 def send_bid_message(message_type: str, game_id: str, player_id: str, bid: int):
@@ -399,34 +451,37 @@ def score_hand_meld(round_id: str, player_id: str, cards: str):
     if a_player is None or a_player == {}:
         abort(409, f"No player found for {player_id}.")
 
-    # Associate the player with that player's hand.
-    player_temp: Player = utils.query_player(player_id=player_id)
-    player_hand_id = str(player_temp.hand_id)
-    player_hand = utils.query_hand_list(player_hand_id)
-    player_hand_list = [x.card for x in player_hand]
-    card_list = cards.split(",")
+    score = 0
+    card_list = []
+    if len(cards) > 2:
+        # Associate the player with that player's hand.
+        player_temp: Player = utils.query_player(player_id=player_id)
+        player_hand_id = str(player_temp.hand_id)
+        player_hand = utils.query_hand_list(player_hand_id)
+        player_hand_list = [x.card for x in player_hand]
+        card_list = cards.split(",")
 
-    # print(f"score_hand_meld: player_hand={player_hand_list}")
-    # print(f"score_hand_meld: card_list={card_list}")
+        # print(f"score_hand_meld: player_hand={player_hand_list}")
+        # print(f"score_hand_meld: card_list={card_list}")
 
-    for item in card_list:
-        if item not in player_hand_list:
-            abort(409, f"Card {item} not in player's hand.")
+        for item in card_list:
+            if item not in player_hand_list:
+                abort(409, f"Card {item} not in player's hand.")
 
-    # Convert from list of SVG card names to PinochleDeck list.
-    cardclass_list = card_utils.convert_from_svg_names(card_list)
+        # Convert from list of SVG card names to PinochleDeck list.
+        cardclass_list = card_utils.convert_from_svg_names(card_list)
 
-    # Set trump, if it's been declared (and recorded in the datatbase)
-    temp_trump: str = "{}s".format(a_round.trump.capitalize())
-    provided_deck = PinochleDeck(cards=cardclass_list)
+        # Set trump, if it's been declared (and recorded in the datatbase)
+        temp_trump: str = "{}s".format(a_round.trump.capitalize())
+        provided_deck = PinochleDeck(cards=cardclass_list)
 
-    # Set trump on the newly created deck, if it's been declared
-    if temp_trump in SUITS:
-        # print(f"Called trump {temp_trump} in {SUITS}.")
-        provided_deck = card_utils.set_trump(temp_trump, provided_deck)
+        # Set trump on the newly created deck, if it's been declared
+        if temp_trump in SUITS:
+            # print(f"Called trump {temp_trump} in {SUITS}.")
+            provided_deck = card_utils.set_trump(temp_trump, provided_deck)
 
-    # Score the deck supplied.
-    score = score_meld.score(provided_deck)
+        # Score the deck supplied.
+        score = score_meld.score(provided_deck)
 
     player.update(player_id=player_id, data={"meld_score": score})
 
@@ -460,6 +515,10 @@ def new_round(game_id: str, current_round: str) -> Response:
     # print(f"new_round: prev_seq={prev_seq}")
     prev_gameround: GameRound = utils.query_gameround(game_id, current_round)
     gameround.update(game_id, prev_gameround.round_id, {"active_flag": False})
+
+    player_ids = utils.query_player_ids_for_round(str(prev_gameround.round_id))
+    for player_id in player_ids:
+        player.update(player_id, {"meld_final": False, "meld_score": 0})
 
     # Create new round and gameround
     temp_gameround, __ = round_.create(game_id)

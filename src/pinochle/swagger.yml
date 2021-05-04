@@ -1067,6 +1067,32 @@ paths:
         409:
           description: Failed to record bid.
 
+  /play/{round_id}/finalize_meld:
+    put:
+      operationId: pinochle.play_pinochle.finalize_meld
+      tags:
+        - Play
+      summary: Mark a player's previous meld as final.
+      description: Mark a player's previous meld as final.
+      parameters:
+        - name: round_id
+          in: path
+          description: Id of the round to update.
+          type: string
+          required: True
+        - name: player_id
+          in: query
+          description: Player Id to finalize meld.
+          type: string
+          required: True
+      responses:
+        200:
+          description: Bid finalized and recorded.
+        404:
+          description: Specified round was not found.
+        409:
+          description: Failed to record bid.
+
   /play/{round_id}/set_trump:
     put:
       operationId: pinochle.play_pinochle.set_trump
