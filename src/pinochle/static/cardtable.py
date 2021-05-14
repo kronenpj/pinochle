@@ -1246,6 +1246,47 @@ def on_complete_common(req: ajax.Ajax):
     mylog.warning("on_complete_common: req=%s", req)
 
 
+def order_player_index_list_for_trick() -> List[int]:
+    """
+    Generate a list of indices in g_player_list starting with the current
+    g_round_bid_trick_winner.
+
+    :return: Re-ordered list of player indices.
+    :rtype: List[str]
+    """
+    player_list_len = len(g_player_list)
+    # Locate the index of the winner in the player list
+    starting_index = g_player_list.index(g_round_bid_trick_winner)
+    # Generate a list of indices for the players, starting with the
+    # g_round_bid_trick_winner.
+    return [(x + starting_index) % player_list_len for x in range(player_list_len)]
+
+
+def order_player_id_list_for_trick() -> List[str]:
+    """
+    Generate a list of players from g_player_list starting with the current
+    g_round_bid_trick_winner.
+
+    :return: Re-ordered list of player ids.
+    :rtype: List[str]
+    """
+    return [g_player_list[idx] for idx in order_player_index_list_for_trick()]
+
+
+def order_player_name_list_for_trick() -> List[str]:
+    """
+    Generate a list of player names from g_player_list starting with the current
+    g_round_bid_trick_winner.
+
+    :return: Re-ordered list of player names.
+    :rtype: List[str]
+    """
+    return [
+        g_player_dict[p_id]["name"].capitalize()
+        for p_id in order_player_id_list_for_trick()
+    ]
+
+
 # FIXME: This is temporary. The server will decide when to advance the game state.
 def advance_mode_callback(req: ajax.Ajax):
     """
@@ -1498,14 +1539,14 @@ def populate_canvas(deck, target_canvas, deck_type="player"):
         )
         target_canvas.addObject(piece, fixed=not movable)
         if False and "trick" in deck_type:
-            # TODO: This needs to start with the player who won the bid or the last trick.
-            mylog.warning("%s %s", counter, g_player_dict[g_player_id]["name"])
-            text = SVG.TextObject(
-                f"{g_player_dict[g_player_id]['name']}",
-                fontsize=24,
-                objid=f"t_{deck_type}{counter}",
-            )
-            target_canvas.addObject(text, fixed=True)
+            # This is an attempt to place player names under the trick deck in the order
+            # they will be playing cards during the trick.
+            mylog.warning("%s %s", counter, order_player_name_list_for_trick()["name"])
+            for player_name in order_player_name_list_for_trick()[counter]:
+                text = SVG.TextObject(
+                    f"{player_name}", fontsize=24, objid=f"t_{deck_type}{counter}",
+                )
+                target_canvas.addObject(text, fixed=True)
         counter += 1
 
 
