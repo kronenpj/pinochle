@@ -95,7 +95,8 @@ AJAX_URL_ENCODING = "application/x-www-form-urlencoded"
 
 # Game-related globals
 g_game_id: str = ""
-g_game_mode: Optional[int] = None
+g_game_mode: int = -1
+g_hand_size: int = 0
 g_kitty_size: int = 0
 g_my_team_score: int = 0
 g_meld_score: int = 0
@@ -108,9 +109,10 @@ g_team_id: str = ""
 g_trump: str = ""
 
 # Various state globals
+g_ajax_outstanding_requests: int = 0
 g_game_dict: Dict[str, Dict[str, Any]] = {}
 g_kitty_deck: List[str] = []
-g_ajax_outstanding_requests: int = 0
+g_meld_deck: List[str] = []
 g_player_dict: Dict[str, Dict[str, str]] = {}
 g_player_list: List[str] = []
 g_players_hand: List[str] = []
@@ -118,8 +120,8 @@ g_players_meld_deck: List[str] = []
 g_team_dict: Dict[str, Dict[str, str]] = {}
 g_team_list: List[str] = []
 
-# Track the user who is the round's bid winner.
-g_round_bid_winner = ""  # pylint: disable=invalid-name
+# Track the user who is the round's bid winner, and each trick winner.
+g_round_bid_trick_winner = ""  # pylint: disable=invalid-name
 
 button_advance_mode = None  # pylint: disable=invalid-name
 g_registered_with_server = False  # pylint: disable=invalid-name
@@ -439,9 +441,11 @@ class TrumpSelectDialog:
             pass
         # Don't display a trump select dialog box if this isn't the player who won the
         # bid. Instead let the players know we're waiting for input.
-        if g_player_id != g_round_bid_winner:
+        if g_player_id != g_round_bid_trick_winner:
             try:
-                bid_winner_name = g_player_dict[g_round_bid_winner]["name"].capitalize()
+                bid_winner_name = g_player_dict[g_round_bid_trick_winner][
+                    "name"
+                ].capitalize()
                 InfoDialog(
                     "Waiting...",
                     f"Waiting for {bid_winner_name} to select trump.",
@@ -756,11 +760,11 @@ def display_bid_winner(event=None):
     :type event: [type], optional
     """
     mylog.error("Entering display_bid_winner.")
-    global g_round_bid_winner, g_round_bid
+    global g_round_bid_trick_winner, g_round_bid
     data = json.loads(event)
     player_id = str(data["player_id"])
     player_name = g_player_dict[player_id]["name"]
-    bid = str(data["bid"])
+    bid = int(data["bid"])
 
     remove_dialogs()
 
@@ -774,7 +778,7 @@ def display_bid_winner(event=None):
     )
 
     # You may have won...
-    g_round_bid_winner = player_id
+    g_round_bid_trick_winner = player_id
     g_round_bid = bid
 
 
@@ -1158,7 +1162,7 @@ def on_complete_kitty(req: ajax.Ajax):
     g_kitty_deck.clear()
     g_kitty_deck = temp["cards"]
     mylog.warning("on_complete_kitty: kitty_deck=%s", g_kitty_deck)
-    if g_player_id == g_round_bid_winner:
+    if g_player_id == g_round_bid_trick_winner:
         # Add the kitty cards to the bid winner's deck
         for card in g_kitty_deck:
             g_players_hand.append(card)
@@ -1434,11 +1438,11 @@ def clear_globals_for_round_change():
     """
     Clear some global variables in preparation for a new round.
     """
-    global g_round_id, g_round_bid_winner, g_meld_deck  # pylint: disable=invalid-name
+    global g_round_id, g_round_bid_trick_winner, g_meld_deck  # pylint: disable=invalid-name
     mylog.error("Entering clear_globals_for_round_change.")
 
     g_round_id = ""
-    g_round_bid_winner = ""
+    g_round_bid_trick_winner = ""
     g_players_hand.clear()
     g_players_meld_deck.clear()
     g_meld_deck = ["card-base" for _ in range(g_hand_size)]
@@ -1453,6 +1457,8 @@ def populate_canvas(deck, target_canvas, deck_type="player"):
     :type deck: list
     :param target_canvas: [description]
     :type target_canvas: [type]
+    :param deck_type: The "type" of deck populating the UI.
+    :type deck_type: str
     """
     mylog.error("Entering populate_canvas.")
 
@@ -1477,10 +1483,10 @@ def populate_canvas(deck, target_canvas, deck_type="player"):
             show_face = DECK_CONFIG[deck_type][g_game_mode]["show_face"]
             if "reveal" in GAME_MODES[g_game_mode]:
                 if "kitty" in deck_type:
-                    flippable = g_player_id == g_round_bid_winner
+                    flippable = g_player_id == g_round_bid_trick_winner
                     # show_face = True
                 if "player" in deck_type:
-                    movable = g_player_id == g_round_bid_winner
+                    movable = g_player_id == g_round_bid_trick_winner
 
         # Add the card to the canvas.
         piece = PlayingCard(
@@ -1756,7 +1762,7 @@ def display_game_options():
     Conditional ladder for early game data selection. This needs to be done better and
     have new game/team/player capability.
     """
-    global g_game_mode, g_team_id, g_meld_score, g_round_bid, g_round_bid_winner, g_trump
+    global g_game_mode, g_team_id, g_meld_score, g_round_bid, g_round_bid_trick_winner, g_trump  # pylint: disable=invalid-name
 
     xpos = 10
     ypos = 0
@@ -1792,7 +1798,7 @@ def display_game_options():
         if g_game_mode == 1:
             g_meld_score = 0
             g_round_bid = 0
-            g_round_bid_winner = ""
+            g_round_bid_trick_winner = ""
             g_trump = ""
             update_status_line()
 
