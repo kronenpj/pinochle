@@ -7,7 +7,7 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-import brySVG.dragcanvas as SVG  # pylint: disable=import-error
+import brySVG.dragcanvas as SVG
 from browser import ajax, document, html, websocket, window
 from browser.widgets.dialog import Dialog, InfoDialog
 
@@ -86,8 +86,8 @@ for _suit in SUITS:
         DECK_SORTED.append(f"{_suit}_{_card}")
 
 mylog = logging.getLogger("cardtable")
-# mylog.setLevel(logging.CRITICAL)  # No output
-mylog.setLevel(logging.ERROR)  # Function entry/exit
+mylog.setLevel(logging.CRITICAL)  # No output
+# mylog.setLevel(logging.ERROR)  # Function entry/exit
 # mylog.setLevel(logging.WARNING)  # Everything
 
 # API "Constants"
@@ -260,7 +260,11 @@ class PlayingCard(SVG.UseObject):
         # first remaining instance of 'card-base'
         if add_only and "card-base" not in receiving_deck:
             receiving_deck.append("card-base")
-        placement = receiving_deck.index("card-base")
+        if GAME_MODES[g_game_mode] not in ["trick"]:
+            placement = receiving_deck.index("card-base")
+        else:
+            p_list = order_player_id_list_for_trick()
+            placement = p_list.index(g_player_id)
         mylog.warning(
             "PlayingCard.play_handler: Locating %s%s\nPlayingCard.play_handler: %s: %s",
             card_tag,
@@ -286,10 +290,15 @@ class PlayingCard(SVG.UseObject):
         discard_object.unbind("click")
         # TODO: Remove this when taking meld back is implemented above.
 
-        # TODO: Call game API to notify server what card was added to meld or
-        # thrown and by which player.
+        if GAME_MODES[g_game_mode] in ["trick"]:
+            mylog.warning("Throwing card: %s", self.face_value)
+            # Convey the played card to the server.
+            put(
+                f"/play/{g_round_id}/play_card?player_id={g_player_id}&card={self.face_value}"
+            )
+
         self.face_update_dom()
-        set_card_positions()
+        rebuild_display()
 
     def card_click_handler(self):
         """
@@ -462,7 +471,7 @@ class TrumpSelectDialog:
             return
 
         self.trump_dialog = Dialog(
-            "Select Trump Suit", ok_cancel=False, top=25, left=25,
+            "Select Trump Suit", ok_cancel=False, top=40, left=30,
         )
         self.d_canvas = SVG.CanvasObject("20vw", "20vh", "none", objid="dialog_canvas")
         glyph_width = 50
@@ -510,12 +519,53 @@ class MeldFinalDialog:
         mylog.error("Entering display_meld_final_dialog.")
 
         self.meld_final_dialog = Dialog(
-            "Is your meld submission final?", top=150, left=25, ok_cancel=["Yes", "No"]
+            "Is your meld submission final?", ok_cancel=["Yes", "No"]
         )
         player_name = g_player_dict[g_player_id]["name"].capitalize()
         self.meld_final_dialog.panel <= html.DIV(f"{player_name}, Is your meld final?")
 
         self.meld_final_dialog.ok_button.bind("click", self.on_click_meld_dialog)
+
+
+class TrickWonDialog:
+    trick_won_dialog = None
+    last_bid = -1
+
+    def on_click_trick_won_dialog(self, event=None):
+        """
+        Handle the click event for the bid/pass buttons.
+
+        :param event: [description], defaults to None
+        :type event: [type], optional
+        """
+        if not event.currentTarget.text:
+            return
+
+        # Convey to the server that play is continuing.
+        put(f"/play/{g_round_id}/next_trick?player_id={g_player_id}")
+        self.trick_won_dialog.close()
+
+    def display_trick_won_dialog(self):
+        """
+        Display the meld hand submitted by a player in a pop-up.
+
+        :param bid_data: Data from the event as a JSON string.
+        :type bid_data: str
+        """
+        mylog.error("Entering display_trick_won_dialog.")
+
+        self.trick_won_dialog = Dialog(
+            "Trick complete", ok_cancel=["Next trick", "Ok"], top=25,
+        )
+        self.trick_won_dialog.panel <= html.DIV(
+            f"{g_player_dict[g_player_id]['name']}, you won the trick!"
+        )
+
+        self.trick_won_dialog.ok_button.bind("click", self.on_click_trick_won_dialog)
+        # TODO: See if there's a way to delete the cancel button.
+        self.trick_won_dialog.cancel_button.bind(
+            "click", self.on_click_trick_won_dialog
+        )
 
 
 def dump_globals() -> None:
@@ -643,6 +693,70 @@ def on_ws_event(event=None):
         display_player_meld(event.data)
     elif "team_score" in event.data:
         update_team_scores(event.data)
+    elif "trick_card" in event.data:
+        update_trick_card(event.data)
+    elif "trick_won" in event.data:
+        update_trick_winner(event.data)
+    elif "next_trick" in event.data:
+        clear_globals_for_trick_change()
+
+
+def update_trick_winner(event=None):
+    """
+    Notify players that the trick has been won.
+
+    :param event: [description], defaults to None
+    :type event: [type], optional
+    """
+    mylog.error("Entering update_trick_winner.")
+    global g_round_bid_trick_winner
+
+    data = json.loads(event)
+    mylog.warning("update_trick_winner: data=%s", data)
+    assert isinstance(data, dict)
+    t_player_id = data["player_id"]  # Can't use this yet.
+    t_card = data["winning_card"]
+    mylog.warning("update_trick_winner: t_player_id=%s", t_player_id)
+    mylog.warning("update_trick_winner: t_card=%s", t_card)
+
+    # Find the first instance of the winning card in the list.
+    card_index = discard_deck.index(t_card)
+    # Correlate that to the player_id who threw it.
+    t_player_id = order_player_id_list_for_trick()[card_index]
+    mylog.warning("update_trick_winner: t_player_id=%s", t_player_id)
+    # Record that information.
+    g_round_bid_trick_winner = t_player_id
+
+    if str(g_player_id) == str(t_player_id):
+        TrickWonDialog().display_trick_won_dialog()
+    else:
+        InfoDialog(
+            "Trick Won",
+            f"{g_player_dict[t_player_id]['name'].capitalize()} won the trick.",
+            top=25,
+            left=25,
+        )
+
+
+def update_trick_card(event=None):
+    """
+    Place the thrown card in the player's slot for this trick.
+
+    :param event: [description], defaults to None
+    :type event: [type], optional
+    """
+    mylog.error("Entering update_trick_card.")
+    data = json.loads(event)
+    mylog.warning("update_trick_card: data=%s", data)
+    assert isinstance(data, dict)
+    t_player_id = data["player_id"]
+    t_card = data["card"]
+    mylog.warning("update_trick_card: t_player_id=%s", t_player_id)
+    mylog.warning("update_trick_card: t_card=%s", t_card)
+    discard_deck[order_player_id_list_for_trick().index(t_player_id)] = t_card
+
+    # Set the player's hand to unmovable until the trick is over.
+    rebuild_display()
 
 
 def update_team_scores(event=None):
@@ -653,21 +767,16 @@ def update_team_scores(event=None):
     :type event: [type], optional
     """
     mylog.error("Entering update_team_scores.")
-    global g_my_team_score, g_other_team_score, g_meld_score
+    global g_my_team_score, g_other_team_score, g_meld_score  # pylint: disable=invalid-name
     data = json.loads(event)
-    mylog.critical(f"update_team_scores: {data=}")
     mylog.warning(f"update_team_scores: {data=}")
     assert isinstance(data, dict)
     t_team_id = data["team_id"]
-    mylog.critical(f"update_team_scores: {t_team_id=}")
     if g_team_id == t_team_id:
         g_my_team_score = data["score"]
         g_meld_score = data["meld_score"]
-        mylog.critical(f"update_team_scores: {g_my_team_score=}")
-        mylog.critical(f"update_team_scores: {g_meld_score=}")
     else:  # Other team
         g_other_team_score = data["score"]
-        mylog.critical(f"update_team_scores: {g_other_team_score=}")
 
     update_status_line()
 
@@ -1209,7 +1318,6 @@ def on_complete_get_meld_score(req: ajax.Ajax):
     if temp is None:
         return
 
-    # TODO: Do something with the response.
     if req.status in [200, 0]:
         mylog.error("on_complete_get_meld_score: req.text: %s", req.text)
         mylog.warning("on_complete_get_meld_score: req.text: %s", req.text)
@@ -1479,14 +1587,25 @@ def clear_globals_for_round_change():
     """
     Clear some global variables in preparation for a new round.
     """
-    global g_round_id, g_round_bid_trick_winner, g_meld_deck  # pylint: disable=invalid-name
+    global discard_deck, g_round_id, g_round_bid_trick_winner, g_meld_deck  # pylint: disable=invalid-name
     mylog.error("Entering clear_globals_for_round_change.")
 
     g_round_id = ""
-    g_round_bid_trick_winner = ""
     g_players_hand.clear()
     g_players_meld_deck.clear()
     g_meld_deck = ["card-base" for _ in range(g_hand_size)]
+    discard_deck = ["card-base" for _ in range(len(g_player_list))]
+    display_game_options()
+
+
+def clear_globals_for_trick_change():
+    """
+    Clear some global variables in preparation for a new round.
+    """
+    global discard_deck  # pylint: disable=invalid-name
+    mylog.error("Entering clear_globals_for_round_change.")
+
+    discard_deck = ["card-base" for _ in range(len(g_player_list))]
     display_game_options()
 
 
@@ -1528,6 +1647,18 @@ def populate_canvas(deck, target_canvas, deck_type="player"):
                     # show_face = True
                 if "player" in deck_type:
                     movable = g_player_id == g_round_bid_trick_winner
+            if "trick" in GAME_MODES[g_game_mode] and "player" in deck_type:
+                # This makes the player's deck movable based on whether their card place
+                # in the discard deck is 'blank' or occupied.
+                player_index_in_discard_deck = order_player_id_list_for_trick().index(
+                    g_player_id
+                )
+                movable = discard_deck[player_index_in_discard_deck] == "card-base"
+                mylog.warning(
+                    "populate_canvas: player_idx_in_discard: %d",
+                    player_index_in_discard_deck,
+                )
+                mylog.warning("populate_canvas: movable: %r", movable)
 
         # Add the card to the canvas.
         piece = PlayingCard(
@@ -1841,7 +1972,7 @@ def display_game_options():
             g_round_bid = 0
             g_round_bid_trick_winner = ""
             g_trump = ""
-            update_status_line()
+            # update_status_line()
 
         if not g_team_id:
             # Set the TEAM_ID variable based on the player id chosen.
@@ -1892,7 +2023,7 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
     # Get the dimensions of the canvas and update the display.
     set_card_positions()
 
-    if g_game_mode >= 0:
+    if g_game_mode != 0:
         # Update/create buttons
         # Button to call advance_mode on demand
         # FIXME: This is temporary. The server will decide when to advance the game state.
@@ -2031,22 +2162,19 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
             populate_canvas(g_kitty_deck, g_canvas, "kitty")
             populate_canvas(g_players_hand, g_canvas, "player")
         elif mode in ["meld"]:  # Meld
-            # TODO: Add a score meld button to submit temporary deck and retrieve and display a numerical score, taking into account trump.
-            populate_canvas(g_meld_deck, g_canvas, GAME_MODES[g_game_mode])
+            populate_canvas(g_meld_deck, g_canvas, mode)
             populate_canvas(g_players_meld_deck, g_canvas, "player")
         elif mode in ["trick"]:  # Trick
-            populate_canvas(discard_deck, g_canvas, GAME_MODES[g_game_mode])
+            populate_canvas(discard_deck, g_canvas, mode)
             populate_canvas(g_players_hand, g_canvas, "player")
 
     # Last-drawn are on top (z-index wise)
-    # TODO: Add buttons/input for this player's meld.
     # TODO: Retrieve events from API to show kitty cards when they are flipped over.
     if mode in ["bid", "bidfinal", "reveal"]:  # Bid & Reveal
         place_cards(g_kitty_deck, g_canvas, location="top", deck_type="kitty")
         place_cards(g_players_hand, g_canvas, location="bottom", deck_type="player")
     elif mode in ["meld"]:  # Meld
         # TODO: Expand display to show all four players.
-        # TODO: Retrieve events from API to show other player's meld.
         place_cards(g_meld_deck, g_canvas, location="top", deck_type=mode)
         place_cards(
             g_players_meld_deck, g_canvas, location="bottom", deck_type="player"
@@ -2054,7 +2182,6 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
     elif mode in ["trick"]:  # Trick
         # Remove any dialogs from the meld phase.
         remove_dialogs()
-        # TODO: Retrieve/send events from API to show cards as they are played.
         place_cards(discard_deck, g_canvas, location="top", deck_type=mode)
         place_cards(g_players_hand, g_canvas, location="bottom", deck_type="player")
 

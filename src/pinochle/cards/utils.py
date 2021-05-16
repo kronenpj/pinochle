@@ -272,6 +272,14 @@ def convert_to_svg_names(deck: PinochleDeck) -> List[str]:
 
 
 @log_decorator
+def convert_to_svg_name(card: PinochleCard) -> str:
+    (value, suit) = str(card).split(" of ")
+    suit = suit.lower()[:-1]  # Trim the trailing 's'
+    value = value.lower()
+    return f"{suit}_{value}"
+
+
+@log_decorator
 def convert_from_svg_names(deck: list) -> PinochleDeck:
     return_deck = PinochleDeck()
     for p_card in deck:

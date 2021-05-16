@@ -2,7 +2,7 @@
 Database utilities to consolidate db activity and simplify other parts of the application.
 
 """
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from .core import db  # pragma: no cover
 from .game import Game
@@ -13,6 +13,7 @@ from .round_ import Round
 from .roundteam import RoundTeam
 from .team import Team
 from .teamplayers import TeamPlayers
+from .trick import Trick
 
 
 # This is used for database debugging only. No test coverage needed.
@@ -296,3 +297,56 @@ def query_player_ids_for_round(round_id: str) -> List[str]:
             player_ids.append(str(team_info.player_id))
 
     return player_ids
+
+
+def query_trick(trick_id: str) -> Trick:
+    """
+    Retrieve information about the specified round.
+
+    :param round_id: [description]
+    :type round_id: str
+    :return: [description]
+    :rtype: Dict
+    """
+    return Trick.query.filter(Trick.trick_id == trick_id).one_or_none()
+
+
+def query_trick_for_round_id(round_id: str) -> Trick:
+    """
+    Retrieve the specified trick.
+
+    :param trick_id: [description]
+    :type trick_id: str
+    :return: [description]
+    :rtype: Dict
+    """
+    trick_list = Trick.query.filter(Trick.round_id == round_id).all()
+    # print(f"query_trick_for_round_id: {trick_list=}")
+    if trick_list:
+        return trick_list[len(trick_list) - 1]
+
+    return None
+
+
+def query_all_tricks_for_round_id(round_id: str) -> List[Trick]:
+    """
+    Retrieve the specified trick.
+
+    :param trick_id: [description]
+    :type trick_id: str
+    :return: [description]
+    :rtype: Dict
+    """
+    return Trick.query.filter(Trick.round_id == round_id).all()
+
+
+def query_all_tricks() -> List[Trick]:
+    """
+    Retrieve the specified trick.
+
+    :param trick_id: [description]
+    :type trick_id: str
+    :return: [description]
+    :rtype: Dict
+    """
+    return Trick.query.filter().all()

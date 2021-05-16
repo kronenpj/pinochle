@@ -18,6 +18,7 @@ from . import (
     score_meld,
     score_tricks,
     team,
+    trick,
 )
 from .cards import utils as card_utils
 from .cards.const import SUITS
@@ -26,9 +27,11 @@ from .cards.utils import convert_to_svg_names, deal_hands
 from .models import utils
 from .models.game import Game
 from .models.gameround import GameRound
+from .models.hand import Hand
 from .models.player import Player
 from .models.round_ import Round
 from .models.roundteam import RoundTeam
+from .models.trick import Trick
 from .ws_messenger import WebSocketMessenger as WSM
 
 # Also contained in cardtable.py
@@ -390,6 +393,10 @@ def start(round_id: str):
     # print(f"player_list_ordered={player_list_ordered}")
     # print(f"player_list_ordered={[utils.query_player(x).name for x in player_list_ordered]}")
 
+    if not utils.query_trick_for_round_id(round_id):
+        # Create new trick for the round
+        trick.create(round_id)
+
     # Time to deal the cards.
     deal_pinochle(
         player_ids=list(player_hand_id.keys()),
@@ -531,5 +538,159 @@ def new_round(game_id: str, current_round: str) -> Response:
     round_.update(temp_round_id, {"round_seq": prev_seq + 1})
     # print(f"new_round: new_seq={utils.query_round(temp_round_id).round_seq}")
 
+    # Create new trick for the round
+    trick.create(temp_round_id)
+
     # Start the new round.
     return start(temp_round_id)
+
+
+def start_next_trick(round_id: str, player_id: str) -> Response:
+    """
+    Accept a card played by player for current trick.
+
+    :param round_id:      The round in play.
+    :type round_id:       str
+    :param player_id:     The player initiating the continue instruction.
+    :type player_id:      str
+    :return:              Response to the web request originating the request.
+    :rtype:               Response
+    """
+    # print(f"\play_trick_card: round_id={round_id}")
+    # Get the round requested
+    a_round: Round = utils.query_round(round_id)
+    a_player: Player = utils.query_player(player_id)
+    game_id: str = str(utils.query_gameround_for_round(round_id).game_id)
+
+    # Did we find a round?
+    if a_round is None or a_round == {}:
+        abort(404, f"Round {round_id} not found.")
+
+    # Did we find the player?
+    if a_player is None or a_player == {}:
+        abort(409, f"No player found for {player_id}.")
+
+    # Create the next trick.
+    trick.create(round_id)
+
+    # Send notice of new trick to all players via Websocket
+    message = {
+        "action": "next_trick",
+        "game_id": game_id,
+        "player_id": player_id,
+    }
+    ws_mess = WSM.get_instance()
+    ws_mess.websocket_broadcast(game_id, message)
+
+    return make_response(200, "Start next trick")
+
+
+def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
+    """
+    Accept a card played by player for current trick.
+
+    :param round_id:      The round in play.
+    :type round_id:       str
+    :return:              Response to the web request originating the request.
+    :rtype:               Response
+    """
+    # print(f"\play_trick_card: round_id={round_id}")
+    # Get the round requested
+    a_round: Round = utils.query_round(round_id)
+    a_player: Player = utils.query_player(player_id)
+    game_id: str = str(utils.query_gameround_for_round(round_id).game_id)
+
+    # Did we find a round?
+    if a_round is None or a_round == {}:
+        abort(404, f"Round {round_id} not found.")
+
+    # Did we find the player?
+    if a_player is None or a_player == {}:
+        abort(409, f"No player found for {player_id}.")
+
+    # Retrieve trick data
+    a_trick: Trick = utils.query_trick_for_round_id(round_id)
+    if a_trick is None or a_trick == {}:
+        print(f"play_trick_card: {utils.query_all_tricks()=}")
+        abort(409, f"Trick could not be found for round {round_id}.")
+
+    # Associate the player with that player's hand.
+    player_temp: Player = utils.query_player(player_id=player_id)
+    player_hand_id = str(player_temp.hand_id)
+    player_hand = utils.query_hand_list(player_hand_id)
+    player_hand_list = [x.card for x in player_hand]
+
+    # print(f"play_trick_card: player_hand={player_hand_list}")
+    # print(f"play_trick_card: card_list={card_list}")
+
+    if card not in player_hand_list:
+        abort(409, f"Card {card} not in player's hand.")
+
+    ## TODO: Make sure the player hasn't already sent a card for this trick.
+
+    # Remove card from player's hand
+    hand.deletecard(player_hand_id, card)
+
+    # Obtain trick hand ID
+    trick_hand_id = str(a_trick.hand_id)
+    # Add card to trick deck
+    hand.addcard(trick_hand_id, card)
+
+    # Send played card to other players via Websocket
+    message = {
+        "action": "trick_card",
+        "game_id": game_id,
+        "player_id": player_id,
+        "card": card,
+    }
+    ws_mess = WSM.get_instance()
+    ws_mess.websocket_broadcast(game_id, message, player_id)
+
+    # Determine if the trick is complete (all players submitted cards) and if so, declare
+    # trick winner.
+    trick_hand_list = utils.query_hand_list(trick_hand_id)
+    # print(f"play_trick_card: {trick_hand_list=}")
+    if len(trick_hand_list) == 4:  # TODO Calculate this instead of using a constant
+        # print("play_trick_card: All cards played.")
+        # print(f"play_trick_card: {trick_hand_list=}")
+        winning_card = find_winning_trick_card(
+            trick_hand_list, f"{a_round.trump.capitalize()}s"
+        )
+        # print(f"play_trick_card: Winning card: {winning_card=}")
+
+        # FIXME: This needs to specify the PLAYER ID that won the trick, not the card that did. This leaves to UI to decide and record that information. This is a possible avenue for cheating.
+        # Send played card to other players via Websocket
+        message = {
+            "action": "trick_won",
+            "game_id": game_id,
+            "player_id": "",
+            "winning_card": winning_card,
+        }
+        ws_mess = WSM.get_instance()
+        ws_mess.websocket_broadcast(game_id, message)
+
+    return make_response("Card accepted", 200)
+
+
+def find_winning_trick_card(trick_card_list: List[Hand], trump: str) -> str:
+    temp_deck = card_utils.convert_from_svg_names([x.card for x in trick_card_list])
+    trick_deck = card_utils.set_trump(trump, temp_deck)
+    winning_card = trick_deck[0]
+    suit_led = winning_card.suit
+
+    for card in trick_deck:
+        # print(f"{card=}  -  {winning_card=}  -  {trump=}")
+        if winning_card == card:
+            # print(f"{winning_card} == {card}")
+            continue
+        if card.suit == trump and winning_card.suit != trump:
+            # print(f"{card.suit} == {trump} and {winning_card.suit} != {trump}")
+            winning_card = card
+            suit_led = winning_card.suit
+            continue
+        if card.suit == suit_led and card > winning_card:
+            # print(f"{card.suit} == {suit_led} and {card.value} > {winning_card.value}")
+            winning_card = card
+            continue
+
+    return card_utils.convert_to_svg_name(winning_card)

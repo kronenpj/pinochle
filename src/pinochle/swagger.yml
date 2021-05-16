@@ -1123,3 +1123,60 @@ paths:
           description: Specified round was not found.
         409:
           description: Failed to record trump.
+
+  /play/{round_id}/play_card:
+    put:
+      operationId: pinochle.play_pinochle.play_trick_card
+      tags:
+        - Play
+      summary: Submit card for the trick by a player.
+      description: Submit card for the trick by a player.
+      parameters:
+        - name: round_id
+          in: path
+          description: Id of the round to update.
+          type: string
+          required: True
+        - name: player_id
+          in: query
+          description: Player Id to validate card ownership.
+          type: string
+          required: True
+        - name: card
+          in: query
+          description: Card for this trick
+          type: string
+          required: True
+      responses:
+        200:
+          description: Card accepted and recorded.
+        404:
+          description: Specified round was not found.
+        409:
+          description: Failed to locate card in player's deck.
+
+  /play/{round_id}/next_trick:
+    put:
+      operationId: pinochle.play_pinochle.start_next_trick
+      tags:
+        - Play
+      summary: Player who won the trick is ready for the next trick.
+      description: Player who won the trick is ready for the next trick.
+      parameters:
+        - name: round_id
+          in: path
+          description: Id of the round to update.
+          type: string
+          required: True
+        - name: player_id
+          in: query
+          description: Player Id to validate win.
+          type: string
+          required: True
+      responses:
+        200:
+          description: Starting next trick.
+        404:
+          description: Specified round was not found.
+        409:
+          description: Failed to verify player won trick.

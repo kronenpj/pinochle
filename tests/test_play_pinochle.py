@@ -10,6 +10,7 @@ from unittest.mock import ANY, call
 import pytest
 from pinochle import play_pinochle, player
 from pinochle.models import utils
+from pinochle.models.hand import Hand
 from pinochle.ws_messenger import WebSocketMessenger as WSM
 
 # pylint: disable=wrong-import-order
@@ -210,3 +211,101 @@ def test_meld_submissions(app, patch_ws_messenger_to_MM):
     ]
     WSM.websocket_broadcast.assert_has_calls(calls, any_order=True)
 
+
+def test_choose_winning_trick_card_follow_suit(app):
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/round/{round_id}/kitty' page is requested (GET)
+    THEN check that the response contains the expected information
+    """
+    t_UUID = "059f907f-ab46-4fe3-8b09-6387940404ef"
+    t_trump = "Hearts"
+    t_card_list = ["club_queen", "club_king", "club_10", "club_9"]
+    t_hand_list = []
+
+    for card in t_card_list:
+        t_hand = Hand()
+        t_hand.card = card
+        t_hand.hand_id = t_UUID
+        t_hand_list.append(t_hand)
+
+    t_card = play_pinochle.find_winning_trick_card(t_hand_list, t_trump)
+    assert t_card == "club_10"
+
+    t_trump = "Clubs"
+    t_card = play_pinochle.find_winning_trick_card(t_hand_list, t_trump)
+    assert t_card == "club_10"
+
+
+def test_choose_winning_trick_card_not_follow_suit(app):
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/round/{round_id}/kitty' page is requested (GET)
+    THEN check that the response contains the expected information
+    """
+    t_UUID = "059f907f-ab46-4fe3-8b09-6387940404ef"
+    t_trump = "Hearts"
+    t_card_list = ["club_queen", "heart_king", "spade_10", "diamond_ace"]
+    t_hand_list = []
+
+    for card in t_card_list:
+        t_hand = Hand()
+        t_hand.card = card
+        t_hand.hand_id = t_UUID
+        t_hand_list.append(t_hand)
+
+    t_card = play_pinochle.find_winning_trick_card(t_hand_list, t_trump)
+    assert t_card == "heart_king"
+
+    t_trump = "Clubs"
+    t_card = play_pinochle.find_winning_trick_card(t_hand_list, t_trump)
+    assert t_card == "club_queen"
+
+
+def test_choose_winning_trick_card_crafted(app):
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the '/api/round/{round_id}/kitty' page is requested (GET)
+    THEN check that the response contains the expected information
+    """
+    t_UUID = "059f907f-ab46-4fe3-8b09-6387940404ef"
+    t_trump = "Hearts"
+    t_card_list = ["diamond_9", "heart_king", "spade_10", "diamond_ace"]
+    t_hand_list = []
+
+    for card in t_card_list:
+        t_hand = Hand()
+        t_hand.card = card
+        t_hand.hand_id = t_UUID
+        t_hand_list.append(t_hand)
+
+    t_card = play_pinochle.find_winning_trick_card(t_hand_list, t_trump)
+    assert t_card == "heart_king"
+
+    t_trump = "Clubs"
+    t_card = play_pinochle.find_winning_trick_card(t_hand_list, t_trump)
+    assert t_card == "diamond_ace"
+
+    # Swap first and second cards.
+    # Deck is now heart_king, diamond_9, spade_10, diamond_ace
+    t_hand_list[0], t_hand_list[1] = t_hand_list[1], t_hand_list[0]
+
+    t_trump = "Clubs"
+    t_card = play_pinochle.find_winning_trick_card(t_hand_list, t_trump)
+    assert t_card == "heart_king"
+
+    t_trump = "Diamonds"
+    t_card = play_pinochle.find_winning_trick_card(t_hand_list, t_trump)
+    assert t_card == "diamond_ace"
+
+    # Swap first and third cards.
+    # Deck is now spade_10, diamond_9, heart_king, diamond_ace
+    t_hand_list[0], t_hand_list[2] = t_hand_list[2], t_hand_list[0]
+
+    t_trump = "Clubs"
+    t_card = play_pinochle.find_winning_trick_card(t_hand_list, t_trump)
+    assert t_card == "spade_10"
+
+    t_trump = "Hearts"
+    t_card = play_pinochle.find_winning_trick_card(t_hand_list, t_trump)
+    assert t_card == "heart_king"

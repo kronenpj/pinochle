@@ -10,3 +10,4 @@ from .round_ import Round, RoundSchema
 from .roundteam import RoundTeam, RoundTeamSchema
 from .team import Team, TeamSchema
 from .teamplayers import TeamPlayers, TeamPlayersSchema
+from .trick import Trick, TrickSchema
