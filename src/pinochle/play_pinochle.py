@@ -582,7 +582,7 @@ def start_next_trick(round_id: str, player_id: str) -> Response:
     ws_mess = WSM.get_instance()
     ws_mess.websocket_broadcast(game_id, message)
 
-    return make_response(200, "Start next trick")
+    return make_response("Start next trick", 200)
 
 
 def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
