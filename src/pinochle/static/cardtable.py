@@ -1793,16 +1793,17 @@ def create_player_select_buttons(xpos, ypos) -> None:
     # added_button = False
     for item in g_player_dict:
         mylog.warning("player_dict[item]=%s", g_player_dict[item])
-        player_button = SVG.Button(
-            position=(xpos, ypos),
-            size=(450, 35),
-            text=f"Player: {g_player_dict[item]['name']}",
-            onclick=choose_player,
-            fontsize=18,
-            objid=g_player_dict[item]["player_id"],
-        )
-        mylog.warning("create_player_select_buttons: player_dict item: item=%s", item)
-        g_canvas.attach(player_button)
+        if not document.getElementById(g_player_dict[item]["player_id"]):
+            player_button = SVG.Button(
+                position=(xpos, ypos),
+                size=(450, 35),
+                text=f"Player: {g_player_dict[item]['name']}",
+                onclick=choose_player,
+                fontsize=18,
+                objid=g_player_dict[item]["player_id"],
+            )
+            mylog.warning("create_player_select_buttons: player_dict item: item=%s", item)
+            g_canvas.attach(player_button)
         ypos += 40
         # added_button = True
     # if added_button:
