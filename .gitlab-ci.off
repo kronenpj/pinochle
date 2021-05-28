@@ -34,7 +34,7 @@ test:
   script:
     - source venv/bin/activate
     - pip --disable-pip-version-check install tox
-    - tox -c tox.ini -p all -e py38 -- -m "not hypothesis"
+    - tox -p all -e py38 -- -m "not hypothesis"
   artifacts:
     reports:
       cobertura: .coverage.xml
