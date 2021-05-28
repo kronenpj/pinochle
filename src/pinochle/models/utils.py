@@ -75,7 +75,7 @@ def query_hand_card(hand_id: str, card: str) -> Optional[Hand]:
     return None
 
 
-def query_player(player_id: str) -> Player:
+def query_player(player_id: str) -> Optional[Player]:
     """
     Retrieve information about the specified player.
 

@@ -3,7 +3,7 @@ This is the module that handles Pinochle game play.
 """
 import json
 import uuid
-from typing import List
+from typing import List, Optional
 
 from flask import abort, make_response
 from flask.wrappers import Response
@@ -60,7 +60,7 @@ def deal_pinochle(player_ids: list, kitty_len: int = 0, kitty_id: str = None) ->
     if kitty_len > 0 and kitty_id is not None:
         hand.addcards(hand_id=kitty_id, cards=convert_to_svg_names(kitty_deck))
     for index, __ in enumerate(player_ids):
-        player_info: Player = utils.query_player(player_ids[index])
+        player_info: Optional[Player] = utils.query_player(player_ids[index])
         hand_id = str(player_info.hand_id)
         hand.addcards(hand_id=hand_id, cards=convert_to_svg_names(hand_decks[index]))
 
@@ -117,7 +117,7 @@ def submit_bid(round_id: str, player_id: str, bid: int):
     # print(f"\nround_id={round_id}, player_id={player_id}")
     # Get the round requested
     a_round: Round = utils.query_round(str(round_id))
-    a_player: Player = utils.query_player(str(player_id))
+    a_player: Optional[Player] = utils.query_player(str(player_id))
 
     # Did we find a round?
     if a_round is None or a_round == {}:
@@ -205,7 +205,7 @@ def finalize_meld(round_id: str, player_id: str):
     # print(f"finalize_meld: round_id={round_id}, player_id={player_id}")
     # Get the round requested
     a_round: Round = utils.query_round(str(round_id))
-    a_player: Player = utils.query_player(str(player_id))
+    a_player: Optional[Player] = utils.query_player(str(player_id))
 
     # Did we find a round?
     if a_round is None or a_round == {}:
@@ -229,8 +229,13 @@ def finalize_meld(round_id: str, player_id: str):
         total_team_scores(round_id)
 
 
-def total_team_scores(round_id):
-    # All meld is final
+def total_team_scores(round_id: str):
+    """
+    All meld is final, total the team scores so far and update the database.
+
+    :param round_id: Round ID in play
+    :type round_id: str
+    """
     # print("finalize_bid: Totalling team scores")
 
     ws_mess = WSM.get_instance()
@@ -260,17 +265,25 @@ def total_team_scores(round_id):
     game.update(game_id, state=True)
 
 
-def determine_next_bidder_player_id(player_id, ordered_player_list):
-    # Determine the next player to bid this round.
+def determine_next_bidder_player_id(player_id: str, ordered_player_list: List[str]):
+    """
+    Determine the next player to bid this round.
+
+    :param player_id: Player ID who bid last
+    :type player_id: str
+    :param ordered_player_list: Ordered list of players
+    :type ordered_player_list: List[str]
+    :raises IndexError: [description]
+    :return: [description]
+    :rtype: [type]
+    """
     try:
-        next_bid_player_idx = [
-            x for x, p_id in enumerate(ordered_player_list) if p_id == player_id
-        ][0]
+        next_bid_player_idx = ordered_player_list.index(player_id)
         next_bid_player_idx += 1
         next_bid_player_idx %= len(ordered_player_list)
         return next_bid_player_idx
     except IndexError as e:
-        if len(ordered_player_list) == 0:
+        if not ordered_player_list:
             return 0
         raise IndexError(e) from e
 
@@ -311,7 +324,7 @@ def set_trump(round_id: str, player_id: str, trump: str):
     # print(f"\nround_id={round_id}, player_id={player_id}")
     # Get the round requested
     a_round: Round = utils.query_round(str(round_id))
-    a_player: Player = utils.query_player(str(player_id))
+    a_player: Optional[Player] = utils.query_player(str(player_id))
 
     # Did we find a round?
     if a_round is None or a_round == {}:
@@ -328,10 +341,6 @@ def set_trump(round_id: str, player_id: str, trump: str):
         abort(409, f"Bid winner {a_round.bid_winner} must submit trump.")
 
     if "{}s".format(trump.capitalize()) not in SUITS:
-        # print(
-        #     f"set_trump: Trump suit must be one of {SUITS}, provided "
-        #     + "{}s".format(trump.capitalize())
-        # )
         abort(409, f"Trump suit must be one of {SUITS}.")
 
     ws_mess = WSM.get_instance()
@@ -452,7 +461,7 @@ def score_hand_meld(round_id: str, player_id: str, cards: str):
     # print(f"\nscore_hand_meld: round_id={round_id}")
     # Get the round requested
     a_round: Round = utils.query_round(round_id)
-    a_player: Player = utils.query_player(player_id)
+    a_player: Optional[Player] = utils.query_player(player_id)
     game_id: str = str(utils.query_gameround_for_round(round_id).game_id)
 
     # Did we find a round?
@@ -467,7 +476,7 @@ def score_hand_meld(round_id: str, player_id: str, cards: str):
     card_list = []
     if len(cards) > 2:
         # Associate the player with that player's hand.
-        player_temp: Player = utils.query_player(player_id=player_id)
+        player_temp: Optional[Player] = utils.query_player(player_id=player_id)
         player_hand_id = str(player_temp.hand_id)
         player_hand = utils.query_hand_list(player_hand_id)
         player_hand_list = [x.card for x in player_hand]
@@ -564,15 +573,14 @@ def start_next_trick(round_id: str, player_id: str) -> Response:
     # print(f"\play_trick_card: round_id={round_id}")
     # Get the round requested
     a_round: Round = utils.query_round(round_id)
-    a_player: Player = utils.query_player(player_id)
-    game_id: str = str(utils.query_gameround_for_round(round_id).game_id)
+    round_player_list: List[str] = utils.query_player_ids_for_round(round_id)
 
     # Did we find a round?
     if a_round is None or a_round == {}:
         abort(404, f"Round {round_id} not found.")
 
     # Did we find the player?
-    if a_player is None or a_player == {}:
+    if player_id not in round_player_list:
         abort(409, f"No player found for {player_id}.")
 
     # Create the next trick.
@@ -580,6 +588,7 @@ def start_next_trick(round_id: str, player_id: str) -> Response:
     trick.update(str(t_trick["trick_id"]), {"trick_starter": player_id})
 
     # Send notice of new trick to all players via Websocket
+    game_id: str = str(utils.query_gameround_for_round(round_id).game_id)
     message = {
         "action": "trick_next",
         "game_id": game_id,
@@ -592,42 +601,29 @@ def start_next_trick(round_id: str, player_id: str) -> Response:
 
 
 def reorder_players(round_id: str, winner_id: str) -> List[str]:
-    round_player_id_list = utils.query_player_ids_for_round(round_id)
-    # print(
-    #     "reorder_players: Original player name list: {}".format(
-    #         [utils.query_player(x).name for x in round_player_id_list]
-    #     )
-    # )
-    player_list_len = len(round_player_id_list)
+    """
+    Create ordered list of players starting with the player_id supplied.
 
-    # print(
-    #     "reorder_players: round_player_id_list= "
-    #     + ", ".join(round_player_id_list)
-    # )
-    # print(f"reorder_players: Trick starter: {str(a_trick.trick_starter)}")
+    :param round_id:      The round in play.
+    :type round_id:       str
+    :param winner_id:     Player ID of the bid or trick winner.
+    :type winner_id:      str
+    :return: List of player_ids in order starting with the bid or trick winner
+    :rtype: List[str]
+    """
+    round_player_id_list = utils.query_player_ids_for_round(round_id)
 
     # Locate the index of the winner in the player list
     starting_index = round_player_id_list.index(winner_id)
     # print("reorder_players: starting_index={}".format(starting_index))
 
     # Generate a list of indices for the players, starting with the
-    # a_trick.trick_starter player id.
+    # player id passed in as winner_id.
+    player_list_len = len(round_player_id_list)
     ordered_player_index_list = [
         (x + starting_index) % player_list_len for x in range(player_list_len)
     ]
-    ordered_player_ids = [round_player_id_list[x] for x in ordered_player_index_list]
-    # print(
-    #     "reorder_players: ordered_player_index_list={}".format(
-    #         ordered_player_index_list
-    #     )
-    # )
-    # print("reorder_players: ordered_player_ids={}".format(ordered_player_ids))
-    # print(
-    #     "reorder_players: ordered_player_names={}".format(
-    #         [utils.query_player(x).name for x in ordered_player_ids]
-    #     )
-    # )
-    return ordered_player_ids
+    return [round_player_id_list[x] for x in ordered_player_index_list]
 
 
 def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
@@ -642,7 +638,7 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
     # print(f"\play_trick_card: round_id={round_id}")
     # Get the round requested
     a_round: Round = utils.query_round(round_id)
-    a_player: Player = utils.query_player(player_id)
+    a_player: Optional[Player] = utils.query_player(player_id)
     game_id: str = str(utils.query_gameround_for_round(round_id).game_id)
 
     # Did we find a round?
@@ -656,11 +652,11 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
     # Retrieve trick data
     a_trick: Trick = utils.query_trick_for_round_id(round_id)
     if a_trick is None or a_trick == {}:
-        print(f"play_trick_card: {utils.query_all_tricks()=}")
+        print(f"play_trick_card: utils.query_all_tricks()={utils.query_all_tricks()}")
         abort(409, f"Trick could not be found for round {round_id}.")
 
     # Associate the player with that player's hand.
-    player_temp: Player = utils.query_player(player_id=player_id)
+    player_temp: Optional[Player] = utils.query_player(player_id=player_id)
     player_hand_id = str(player_temp.hand_id)
     player_hand = utils.query_hand_list(player_hand_id)
     player_hand_list = [x.card for x in player_hand]
@@ -671,25 +667,18 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
     if card not in player_hand_list:
         abort(409, f"Card {card} not in player's hand.")
 
-    ## TODO: Make sure the player hasn't already sent a card for this trick.
-
-    # Remove card from player's hand
-    hand.deletecard(player_hand_id, card)
+    # TODO: Make sure the player hasn't already sent a card for this trick.
 
     # Determine the order of the players
-    #
     ordered_player_id_list = reorder_players(str(round_id), str(a_trick.trick_starter))
-    # print(
-    #     "play_trick_card: Ordered players are: "
-    #     + ", ".join([utils.query_player(x).name for x in ordered_player_id_list])
-    # )
+
     # Obtain trick hand ID
     trick_hand_id = str(a_trick.hand_id)
+
     # Add card to trick deck
-    # print(
-    #     f"Adding {card} to trick hand ({trick_hand_id} at index {ordered_player_id_list.index(player_id)}"
-    # )
     hand.addcard(trick_hand_id, card, ordered_player_id_list.index(player_id))
+    # Remove card from player's hand
+    hand.deletecard(player_hand_id, card)
 
     # Send played card to other players via Websocket
     message = {
@@ -705,14 +694,13 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
     # trick winner.
     trick_hand_list = utils.query_hand_list(trick_hand_id)
 
-    # print(f"play_trick_card: {trick_hand_list=}")
+    # print(f"play_trick_card: trick_hand_list={trick_hand_list}")
     if len(trick_hand_list) == len(ordered_player_id_list):
-        # print("play_trick_card: All cards played.")
-        # print(f"play_trick_card: {trick_hand_list=}")
+        # print(f"play_trick_card: trick_hand_list={trick_hand_list}")
         winning_card = find_winning_trick_card(
             trick_hand_list, f"{a_round.trump.capitalize()}s"
         )
-        # print(f"play_trick_card: Winning card: {winning_card=}")
+        # print(f"play_trick_card: Winning card: {winning_card}")
         winning_card_index = -1
         # print(f"play_trick_card: Trick cards: {[x.card for x in trick_hand_list]}")
         # print(f"play_trick_card: Determining winning card index for {winning_card}:")
@@ -722,22 +710,32 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
                 winning_card_index = index
                 break
         assert winning_card_index != -1
-        # print(f"play_trick_card: {winning_card_index=}")
+        # print(f"play_trick_card: winning_card_index={winning_card_index}")
 
+        # Determine the player_id who won the trick and their team_id.
         winning_player_id = ordered_player_id_list[winning_card_index]
+        a_roundteam_list = utils.query_roundteam_list(round_id)
+        team_id_list = [x.team_id for x in a_roundteam_list]
+        winning_team_id = None
+        for team_id in team_id_list:
+            if winning_player_id in [
+                str(x.player_id) for x in utils.query_teamplayer_list(team_id)
+            ]:
+                winning_team_id = team_id
+        assert winning_team_id
+        winning_team_hand_id = str(
+            utils.query_roundteam(round_id, winning_team_id).hand_id
+        )
         # print(f"play_trick_card: Winning player: {winning_player_id}")
-        # print(
-        #     f"play_trick_card: Winning player name: {utils.query_player(winning_player_id).name}"
-        # )
 
-        # Update the trick winner
+        # Copy the cards in the trick hand to the winning player's team's hand.
+        for a_hand in trick_hand_list:
+            hand.addcard(winning_team_hand_id, a_hand.card)
+        # Update the trick winner in the database
         trick.update(str(a_trick.trick_id), {"trick_winner": winning_player_id})
 
-        if not hand.read_one(player_hand_id):
-            # The last trick for this round has been played.
-            notify_round_complete(game_id, round_id)
-        else:
-            # FIXME: This needs to specify the PLAYER ID that won the trick, not the card that did. This leaves to UI to decide and record that information. This is a possible avenue for cheating.
+        # Check to see if a player has cards left in their hand.
+        if hand.read_one(player_hand_id):
             # Send played card to other players via Websocket
             message = {
                 "action": "trick_won",
@@ -747,62 +745,35 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
             }
             ws_mess = WSM.get_instance()
             ws_mess.websocket_broadcast(game_id, message)
+        else:
+            # The last trick for this round has been played.
+            notify_round_complete(game_id, round_id, winning_player_id, winning_team_id)
 
     return make_response("Card accepted", 200)
 
 
-def notify_round_complete(game_id, round_id):
-    """
-    The last trick for this round has been played. Tally the scores and notify players.
-
-    :param game_id: [description]
-    :type game_id: [type]
-    :param round_id: [description]
-    :type round_id: [type]
-    """
-    # Collect data needed for notification.
-    a_roundteam_list = utils.query_roundteam_list(round_id)
-    team_id_list = [x.team_id for x in a_roundteam_list]
-    t_hand_id_list = [x.hand_id for x in a_roundteam_list]
-
-    # Score the team hands
-    trick_score = {}
-    for index, h_id in enumerate(t_hand_id_list):
-        if hand.read_one(h_id):
-            trick_score[team_id_list[index]] = score_tricks.score(
-                card_utils.convert_from_svg_names(hand.read_one(h_id))
-            )
-        else:
-            trick_score[team_id_list[index]] = 0
-
-    # Update the overall team scores
-    # FIXME: Handle case where bid winner's team doesn't make the bid.
-    team_scores = {}
-    for t_id in team_id_list:
-        a_team = utils.query_team(t_id)
-        score = a_team.score + trick_score[t_id]
-        team.update(t_id, {"score": score})
-        team_scores[t_id] = score
-
-    # Notify the players of the final trick score.
-    message = {
-        "action": "trick_score",
-        "game_id": game_id,
-        "team_trick_scores": trick_score,
-        "team_scores": team_scores,
-    }
-    ws_mess = WSM.get_instance()
-    ws_mess.websocket_broadcast(game_id, message)
-
-
 def find_winning_trick_card(trick_card_list: List[Hand], trump: str) -> str:
+    """
+    Determine the card in the list which wins the trick, based on trump. The card list is
+    ordered such that the card that was 'led' is in position 0.
+
+    :param trick_card_list: Ordered list of Hand classes. 
+    :type trick_card_list: List[Hand]
+    :param trump: The suit designated as trump for this round.
+    :type trump: str
+    :return: The card that won the trick.
+    :rtype: str
+    """
+    # Convert the list of cards (in Hand classes) to PinochleDeck
     temp_deck = card_utils.convert_from_svg_names([x.card for x in trick_card_list])
     trick_deck = card_utils.set_trump(trump, temp_deck)
+
+    # If nothing else beats it, the card led for the trick wins.
     winning_card = trick_deck[0]
     suit_led = winning_card.suit
 
     for card in trick_deck:
-        # print(f"{card=}  -  {winning_card=}  -  {trump=}")
+        # print(f"card={card}  -  winning_card={winning_card}  -  trump={trump}")
         if winning_card == card:
             # print(f"{winning_card} == {card}")
             continue
@@ -817,3 +788,63 @@ def find_winning_trick_card(trick_card_list: List[Hand], trump: str) -> str:
             continue
 
     return card_utils.convert_to_svg_name(winning_card)
+
+
+def notify_round_complete(
+    game_id: str, round_id: str, winning_player_id: str, winning_team_id: str
+):
+    """
+    The last trick for this round has been played. Tally the scores and notify players.
+
+    :param game_id: ID of the game being played
+    :type game_id: str
+    :param round_id: ID of the round of that game
+    :type round_id: str
+    :param winning_player_id: The ID of the player who won the last trick.
+    :type winning_player_id: str
+    """
+    # Collect data needed for notification.
+    a_roundteam_list = utils.query_roundteam_list(round_id)
+    team_id_list = [x.team_id for x in a_roundteam_list]
+    t_hand_id_list = [x.hand_id for x in a_roundteam_list]
+
+    # Score the team hands
+    trick_score = {}
+    assert t_hand_id_list
+    print(f"t_hand_id_list={t_hand_id_list}")
+    for index, h_id in enumerate(t_hand_id_list):
+        t_h_id = str(h_id)
+        print(f"  h_id: {hand.read_one(h_id)}")
+        print(f"t_h_id: {hand.read_one(t_h_id)}")
+        if hand.read_one(t_h_id):
+            trick_score[team_id_list[index]] = score_tricks.score(
+                card_utils.convert_from_svg_names(hand.read_one(t_h_id)["cards"])
+            )
+            if str(team_id_list[index]) == str(winning_team_id):
+                trick_score[team_id_list[index]] += 1
+            print(
+                f"Score for team {team_id_list[index]}: "
+                f"{trick_score[team_id_list[index]]}"
+            )
+        else:
+            # print(f"Zero score {index}/{t_h_id}")
+            trick_score[team_id_list[index]] = 0
+
+    # Update the overall team scores
+    # FIXME: Handle case where bid winner's team doesn't make the bid.
+    team_scores = {}
+    for t_id in team_id_list:
+        a_team = utils.query_team(t_id)
+        score = a_team.score + trick_score[t_id]
+        team.update(t_id, {"score": score})
+        team_scores[t_id] = score
+
+    # Notify the players of the final trick score.
+    message = {
+        "action": "round_score",
+        "game_id": game_id,
+        "team_trick_scores": trick_score,
+        "team_scores": team_scores,
+    }
+    ws_mess = WSM.get_instance()
+    ws_mess.websocket_broadcast(game_id, message)

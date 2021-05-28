@@ -314,6 +314,58 @@ def test_choose_winning_trick_card_crafted(app):
     assert t_card == "heart_king"
 
 
+def test_start_next_trick_normal(app):
+    """
+    [summary]
+
+    :param app: [description]
+    :type app: [type]
+    """
+    game_id, round_id, team_ids, player_ids = test_utils.setup_complete_game(4)
+
+    # Create a trick for this round.
+    t_trick, _ = trick.create(round_id)
+    t_trick_id = str(t_trick["trick_id"])
+
+    player_id = choice(player_ids)
+    t_response = play_pinochle.start_next_trick(round_id, player_id)
+    assert t_response
+    assert t_response.status_code == 200
+
+    new_trick_id = str(utils.query_trick_for_round_id(round_id))
+    assert new_trick_id != t_trick_id
+
+
+def test_start_next_trick_bad_round(app):
+    """
+    [summary]
+
+    :param app: [description]
+    :type app: [type]
+    """
+    game_id, round_id, team_ids, player_ids = test_utils.setup_complete_game(4)
+
+    round_id = str(uuid.uuid4())
+
+    player_id = choice(player_ids)
+    with pytest.raises(exceptions.HTTPException):
+        play_pinochle.start_next_trick(round_id, player_id)
+
+
+def test_start_next_trick_bad_player(app):
+    """
+    [summary]
+
+    :param app: [description]
+    :type app: [type]
+    """
+    game_id, round_id, team_ids, player_ids = test_utils.setup_complete_game(4)
+
+    player_id = str(uuid.uuid4())
+    with pytest.raises(exceptions.Conflict):
+        play_pinochle.start_next_trick(round_id, player_id)
+
+
 def test_play_trick_card_normal(app):
     """
     GIVEN a Flask application configured for testing
@@ -350,8 +402,6 @@ def test_play_trick_card_normal(app):
     # Deal cards
     play_pinochle.deal_pinochle(player_ids)
 
-    assert winner_player_id in player_ids
-    assert player_hand_ids[winner_player_id]
     for p_h_id in player_hand_ids.values():
         assert len(utils.query_hand_list(p_h_id)) == 12
     for t_h_id in team_hand_ids.values():

@@ -746,11 +746,11 @@ def on_ws_event(event=None):
         update_trick_winner(event.data)
     elif "trick_next" in event.data:
         clear_globals_for_trick_change()
-    elif "trick_score" in event.data:
-        update_trick_final_score(event.data)
+    elif "round_score" in event.data:
+        update_round_final_score(event.data)
 
 
-def update_trick_final_score(event=None):
+def update_round_final_score(event=None):
     """
     Notify players that the final trick has been won.
 
@@ -785,7 +785,7 @@ def update_trick_final_score(event=None):
     )
 
     # TODO: Handle case where bid winner's team doesn't make the bid.
-    my_team_score, other_team_score = (
+    g_my_team_score, g_other_team_score = (
         t_team_scores[my_team],
         t_team_scores[other_team],
     )
