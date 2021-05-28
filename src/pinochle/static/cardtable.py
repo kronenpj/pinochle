@@ -545,6 +545,20 @@ class TrickWonDialog:
         put(f"/play/{g_round_id}/next_trick?player_id={g_player_id}")
         self.trick_won_dialog.close()
 
+    def on_click_final_trick_won_dialog(self, event=None):
+        """
+        Handle the click event for the next round/ok buttons.
+
+        :param event: [description], defaults to None
+        :type event: [type], optional
+        """
+        if not event.currentTarget.text:
+            return
+
+        # Convey to the server that to start the next round.
+        put(f"/game/{g_game_id}?state=true", advance_mode_callback, False)
+        self.trick_won_dialog.close()
+
     def display_trick_won_dialog(self):
         """
         Display the meld hand submitted by a player in a pop-up.
@@ -565,6 +579,39 @@ class TrickWonDialog:
         # TODO: See if there's a way to delete the cancel button.
         self.trick_won_dialog.cancel_button.bind(
             "click", self.on_click_trick_won_dialog
+        )
+
+    def display_final_trick_dialog(
+        self, my_team: str, my_scores: int, other_team: str, other_scores: int
+    ):
+        """
+        Display notification that the final trick has been won by this player.
+
+        :param my_team: This player's team name
+        :type my_team: str
+        :param my_scores: This player's team trick score
+        :type my_scores: int
+        :param other_team: The other team's name
+        :type other_team: str
+        :param other_scores: The other team's trick score
+        :type other_scores: int
+        """
+        mylog.error("Entering display_final_trick_dialog.")
+
+        self.trick_won_dialog = Dialog(
+            "Final trick complete", ok_cancel=["Next round", "Ok"], top=25,
+        )
+        self.trick_won_dialog.panel <= html.DIV(
+            f"{g_player_dict[g_player_id]['name']}, you won the trick! "
+            f"Trick Scores: {my_team}: {my_scores} points / {other_team}: {other_scores} points",
+        )
+
+        self.trick_won_dialog.ok_button.bind(
+            "click", self.on_click_final_trick_won_dialog
+        )
+        # TODO: See if there's a way to delete the cancel button.
+        self.trick_won_dialog.cancel_button.bind(
+            "click", self.on_click_final_trick_won_dialog
         )
 
 
@@ -697,8 +744,64 @@ def on_ws_event(event=None):
         update_trick_card(event.data)
     elif "trick_won" in event.data:
         update_trick_winner(event.data)
-    elif "next_trick" in event.data:
+    elif "trick_next" in event.data:
         clear_globals_for_trick_change()
+    elif "trick_score" in event.data:
+        update_trick_final_score(event.data)
+
+
+def update_trick_final_score(event=None):
+    """
+    Notify players that the final trick has been won.
+
+    :param event: [description], defaults to None
+    :type event: [type], optional
+    """
+    mylog.error("Entering update_trick_final_score.")
+    global g_round_bid_trick_winner, g_my_team_score, g_other_team_score
+
+    data = json.loads(event)
+    mylog.warning("update_trick_final_score: data=%s", data)
+    assert isinstance(data, dict)
+    t_player_id = data["player_id"]
+    t_team_trick_scores = data["team_trick_scores"]
+    t_team_scores = data["team_scores"]
+    mylog.warning("update_trick_final_score: t_player_id=%s", t_player_id)
+    mylog.warning(
+        "update_trick_final_score: t_team_trick_scores=%r", t_team_trick_scores
+    )
+    mylog.warning("update_trick_final_score: t_team_scores=%r", t_team_scores)
+
+    # Record that information.
+    g_round_bid_trick_winner = t_player_id
+
+    my_team = g_team_dict[g_team_id]["name"].capitalize()
+    other_team = [g_team_dict[x]["name"] for x in g_team_dict if x != g_team_id][
+        0
+    ].capitalize()
+    my_scores, other_scores = (
+        t_team_trick_scores[my_team],
+        t_team_trick_scores[other_team],
+    )
+
+    # TODO: Handle case where bid winner's team doesn't make the bid.
+    my_team_score, other_team_score = (
+        t_team_scores[my_team],
+        t_team_scores[other_team],
+    )
+
+    if str(g_player_id) == str(t_player_id):
+        TrickWonDialog().display_final_trick_dialog(
+            my_team, my_scores, other_team, other_scores
+        )
+    else:
+        InfoDialog(
+            "Last Trick Won",
+            f"{g_player_dict[t_player_id]['name'].capitalize()} won the final trick. "
+            f"Trick Scores: {my_team}: {my_scores} points / {other_team}: {other_scores} points",
+            top=25,
+            left=25,
+        )
 
 
 def update_trick_winner(event=None):
@@ -714,16 +817,16 @@ def update_trick_winner(event=None):
     data = json.loads(event)
     mylog.warning("update_trick_winner: data=%s", data)
     assert isinstance(data, dict)
-    t_player_id = data["player_id"]  # Can't use this yet.
+    t_player_id = data["player_id"]
     t_card = data["winning_card"]
-    mylog.warning("update_trick_winner: t_player_id=%s", t_player_id)
-    mylog.warning("update_trick_winner: t_card=%s", t_card)
+    mylog.critical("update_trick_winner: t_player_id=%s", t_player_id)
+    mylog.critical("update_trick_winner: t_card=%s", t_card)
 
     # Find the first instance of the winning card in the list.
     card_index = discard_deck.index(t_card)
     # Correlate that to the player_id who threw it.
     t_player_id = order_player_id_list_for_trick()[card_index]
-    mylog.warning("update_trick_winner: t_player_id=%s", t_player_id)
+    mylog.critical("update_trick_winner: t_player_id=%s", t_player_id)
     # Record that information.
     g_round_bid_trick_winner = t_player_id
 
@@ -1802,7 +1905,9 @@ def create_player_select_buttons(xpos, ypos) -> None:
                 fontsize=18,
                 objid=g_player_dict[item]["player_id"],
             )
-            mylog.warning("create_player_select_buttons: player_dict item: item=%s", item)
+            mylog.warning(
+                "create_player_select_buttons: player_dict item: item=%s", item
+            )
             g_canvas.attach(player_button)
         ypos += 40
         # added_button = True

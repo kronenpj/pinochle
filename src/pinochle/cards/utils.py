@@ -261,14 +261,7 @@ def hand_summary_score(hand: Hand) -> str:  # pragma: no cover
 
 @log_decorator
 def convert_to_svg_names(deck: PinochleDeck) -> List[str]:
-    return_list = []
-    for p_card in deck:
-        (value, suit) = str(p_card).split(" of ")
-        suit = suit.lower()[:-1]  # Trim the trailing 's'
-        value = value.lower()
-        return_list.append(f"{suit}_{value}")
-
-    return return_list
+    return [convert_to_svg_name(p_card) for p_card in deck]
 
 
 @log_decorator
@@ -283,11 +276,14 @@ def convert_to_svg_name(card: PinochleCard) -> str:
 def convert_from_svg_names(deck: list) -> PinochleDeck:
     return_deck = PinochleDeck()
     for p_card in deck:
-        (suit, value) = p_card.split("_")
-        suit.capitalize()
-        suit += "s"  # Re-add the trailing s
-        value.capitalize()
-        temp_card = PinochleCard(value=value, suit=suit)
-        return_deck.add(temp_card)
+        return_deck.add(convert_from_svg_name(p_card))
 
     return return_deck
+
+@log_decorator
+def convert_from_svg_name(card: str) -> PinochleCard:
+    (suit, value) = card.split("_")
+    suit.capitalize()
+    suit += "s"  # Re-add the trailing s
+    value.capitalize()
+    return PinochleCard(value=value, suit=suit)

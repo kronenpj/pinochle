@@ -22,6 +22,7 @@ class Trick(db.Model):
     )
     round_id = db.Column(GUID, db.ForeignKey("round.round_id"), index=False)
     trick_starter = db.Column(GUID, db.ForeignKey("player.player_id"), nullable=True)
+    trick_winner = db.Column(GUID, db.ForeignKey("player.player_id"), nullable=True)
     hand_id = db.Column(
         GUID,
         default=lambda: uuid.uuid4(),  # pragma pylint: disable=unnecessary-lambda
@@ -35,6 +36,7 @@ class Trick(db.Model):
         output += "trick_id=%r, " % self.trick_id
         output += "round_id=%r, " % self.round_id
         output += "trick_starter=%r, " % self.trick_starter
+        output += "trick_winner=%r, " % self.trick_winner
         output += "hand_id=%r, " % self.hand_id
         output += ">"
         return output

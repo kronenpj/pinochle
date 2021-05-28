@@ -18,11 +18,13 @@ class Hand(db.Model):
     # - roundteam.hand_id
     hand_id = db.Column(GUID, index=True, nullable=False)
     card = db.Column(db.String, nullable=False)
+    seq = db.Column(db.Integer, nullable=False, unique=False, default=-1)
 
     def __repr__(self):
         output = "<Hand: "
         output += "hand_id=%r, " % self.hand_id
         output += "card=%r, " % self.card
+        output += "seq=%r, " % self.seq
         output += ">"
         return output
 

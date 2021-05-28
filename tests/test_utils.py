@@ -7,6 +7,7 @@ from typing import List
 
 import regex
 from pinochle import game, gameround, player, round_, roundteams, team, teamplayers
+from pinochle.models import utils
 from pinochle.models.game import Game
 from pinochle.models.player import Player
 from pinochle.models.roundteam import RoundTeam
@@ -200,4 +201,6 @@ def setup_complete_game(kitty_s: int):
     # Create the roundteam association for the teams.
     roundteams.create(round_id=round_id, teams=team_ids)
 
-    return game_id, round_id, team_ids, player_ids
+    # The order expected by the tests is to be the same as the game, which is not the
+    # order from the original list.
+    return game_id, round_id, team_ids, utils.query_player_ids_for_round(round_id)

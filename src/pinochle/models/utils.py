@@ -55,7 +55,7 @@ def query_hand_list(hand_id: str) -> List[Hand]:
     :return: [description]
     :rtype: List[Dict]
     """
-    return Hand.query.filter(Hand.hand_id == hand_id).all()
+    return Hand.query.filter(Hand.hand_id == hand_id).order_by(Hand.seq).all()
 
 
 def query_hand_card(hand_id: str, card: str) -> Optional[Hand]:
@@ -271,7 +271,7 @@ def query_teamplayer_list(team_id: str) -> List[TeamPlayers]:
 
 def query_player_ids_for_round(round_id: str) -> List[str]:
     """
-    Query the database for the list of player IDs still bidding on this round.
+    Query the database for the list of player IDs in this round.
 
     :param round_id: Round ID to query
     :type round_id: str
@@ -320,7 +320,7 @@ def query_trick_for_round_id(round_id: str) -> Trick:
     :return: [description]
     :rtype: Dict
     """
-    trick_list = Trick.query.filter(Trick.round_id == round_id).all()
+    trick_list = Trick.query.filter(Trick.round_id == round_id).order_by(Trick._id).all()
     # print(f"query_trick_for_round_id: {trick_list=}")
     if trick_list:
         return trick_list[len(trick_list) - 1]
@@ -337,7 +337,7 @@ def query_all_tricks_for_round_id(round_id: str) -> List[Trick]:
     :return: [description]
     :rtype: Dict
     """
-    return Trick.query.filter(Trick.round_id == round_id).all()
+    return Trick.query.filter(Trick.round_id == round_id).order_by(Trick._id).all()
 
 
 def query_all_tricks() -> List[Trick]:

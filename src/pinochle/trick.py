@@ -61,3 +61,49 @@ def read_one(trick_id: str):
     # Serialize the data for the response
     trick_schema = TrickSchema()
     return trick_schema.dump(a_trick)
+
+
+def update(trick_id: str, data: dict):
+    """
+    This function updates an existing round in the round structure
+
+    :param trick_id:    Id of the round to update
+    :param data:        String containing the data to update.
+    :return:            Updated record.
+    """
+    return _update_data(trick_id, data)
+
+
+def _update_data(trick_id: str, data: dict):
+    """
+    This function updates an existing round in the round structure
+
+    :param round_id:    Id of the round to update in the round structure
+    :param data:        Dictionary containing the data to update.
+    :return:            Updated record.
+    """
+    # Get the trick requested from the db into session
+    update_trick = utils.query_trick(trick_id=trick_id)
+
+    # Did we find an existing round?
+    if update_trick is None or update_trick == {}:
+        # Otherwise, nope, didn't find that round
+        abort(404, f"Trick not found for Id: {trick_id}")
+
+    # turn the passed in round into a db object
+    db_session = db.session()
+    local_object = db_session.merge(update_trick)
+
+    # Update any key present in data that isn't trick_id.
+    for key in [x for x in data if x not in ["trick_id"]]:
+        setattr(local_object, key, data[key])
+
+    # Add the updated data to the transaction.
+    db_session.add(local_object)
+    db_session.commit()
+
+    # return updated round in the response
+    schema = TrickSchema()
+    data = schema.dump(update_trick)
+
+    return data, 200

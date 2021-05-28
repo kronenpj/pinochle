@@ -55,7 +55,7 @@ def read_one(hand_id: str):
     return None
 
 
-def addcard(hand_id: str, card: str):
+def addcard(hand_id: str, card: str, seq: int = -1):
     """
     This function responds to API requests database access
     by adding the specified card to the given hand_id.
@@ -67,12 +67,14 @@ def addcard(hand_id: str, card: str):
     if hand_id is not None and card is not None:
         # Create a hand instance using the schema and the passed in card
         schema = HandSchema()
-        new_card = schema.load({"hand_id": hand_id, "card": card}, session=db.session)
+        new_card = schema.load(
+            {"hand_id": hand_id, "card": card, "seq": seq}, session=db.session
+        )
 
         # Add the round to the database
         db.session.add(new_card)
         db.session.commit()
-        return make_response(f"Card {card} added to player's hand", 201)
+        return make_response(f"Card {card} added to requested hand", 201)
 
     # Otherwise, nope, didn't find that player
     abort(404, f"Could not add card to: {hand_id}/{card}")
