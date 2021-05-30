@@ -17,7 +17,7 @@ from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 from pinochle.cards.const import SUITS
 
-g_browser = 'chrome'
+g_browser = "chrome"
 g_player_ids = []
 g_player_names = []
 BASE_URL = "http://172.16.42.10:5000"
@@ -70,7 +70,7 @@ class TestSelectPerson:
             driver = webdriver.Remote(
                 # command_executor=f"http://172.16.42.10:444{seq+1}",
                 command_executor="http://172.16.42.10:4444",
-                desired_capabilities={'browserName': g_browser},
+                desired_capabilities={"browserName": g_browser},
                 options=t_options,
             )
             self.driver.append(driver)
@@ -304,9 +304,46 @@ class TestSelectPerson:
             # We ran out of cards to try.
             assert False
 
+    def test_220_wait_for_send_meld_button(self):
+        """
+        Wait for the send meld button to appear.
+        """
+        for driver in self.driver:
+            WebDriverWait(driver, 10).until(
+                expected_conditions.presence_of_element_located(
+                    (By.XPATH, "//*[@id='button_send_meld']",)
+                )
+            )
+
+    def test_230_submit_no_meld(self):
+        """
+        Submit meld without choosing any cards.
+        """
+        # Locate and click the button.
+        for driver in self.driver:
+            send_meld_button = driver.find_element(
+                By.XPATH, "//*[@id='button_send_meld']",
+            )
+            webdriver.ActionChains(driver).move_to_element(
+                send_meld_button
+            ).click().perform()
+
+        for driver in self.driver:
+            WebDriverWait(driver, 10).until(
+                expected_conditions.presence_of_element_located(
+                    (By.XPATH, "//button[text()='Yes']")
+                )
+            )
+            # t_dialog_list = driver.find_elements(By.CLASS_NAME, "brython-dialog-button")
+            t_dialog_list = driver.find_elements(By.XPATH, "//button[text()='Yes']")
+            for t_dialog in t_dialog_list:
+                # if t_dialog.text == "Yes":
+                    # Acknowledge as final meld.
+                t_dialog.click()
+
     def test_990_sleep(self):
         """
         Sleep at the end so interaction with the browsers is possible.
         """
         print("\nSleeping...")
-        time.sleep(30)
+        time.sleep(60)
