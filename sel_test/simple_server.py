@@ -5,17 +5,17 @@ import threading
 import wsgiref.simple_server
 
 import flask
-import pytest
+import selenium
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
 
 
-@pytest.mark.usefixtures("app")
+# @pytest.fixture()
 class ServerThread(threading.Thread):
     def setup(self, app):
         self.app = app
         self.app.config["TESTING"] = True
-        self.app.config["TEST_SERVER_PORT"] = 5001
+        self.app.config["TEST_SERVER_PORT"] = 5000
         self.port = app.config["TEST_SERVER_PORT"]
 
     def run(self):
@@ -27,7 +27,7 @@ class ServerThread(threading.Thread):
         self.httpd.shutdown()
 
 
-@pytest.mark.usefixtures("app")
+# @pytest.fixture()
 class BrowserClient(object):
     """Interacts with a running instance of the application via animating a
     browser."""
@@ -43,19 +43,13 @@ class BrowserClient(object):
             print(f"Setting command_executor={hub_host}")
             self.driver = driver_class(command_executor=hub_host, options=options)
         else:
-            self.driver=driver_class()
+            self.driver = driver_class()
         print("BrowserClient.init: driver instantiated")
-        self.driver.set_window_size(1200, 760)
-        print("BrowserClient.init: window size set")
+        # self.driver.set_window_size(1200, 760)
+        # print("BrowserClient.init: window size set")
 
     def finalise(self):
         self.driver.close()
-        # A bit of hack this but currently there is some bug I believe in
-        # the phantomjs code rather than selenium, but in any case it means that
-        # the phantomjs process is not being killed so we do so explicitly here
-        # for the time being. Obviously we can remove this when that bug is
-        # fixed. See: https://github.com/SeleniumHQ/selenium/issues/767
-        self.driver.service.process.send_signal(signal.SIGTERM)
         self.driver.quit()
 
     def log_current_page(self, message=None, output_basename=None):
@@ -72,7 +66,6 @@ class BrowserClient(object):
         self.driver.save_screenshot(filename)
 
 
-@pytest.mark.usefixtures("app")
 def make_url(app, endpoint, **kwargs):
     with app.app_context():
         return flask.url_for(endpoint, **kwargs)
@@ -81,35 +74,35 @@ def make_url(app, endpoint, **kwargs):
 # TODO: Ultimately we'll need a fixture so that we can have multiple
 # test functions that all use the same server thread and possibly the same
 # browser client.
-@pytest.mark.usefixtures("app")
 def test_server(app):
     # Start server
-    server_thread = ServerThread()
-    server_thread.setup(app)
-    print("Starting server...")
-    server_thread.start()
-    print("Server started...")
+    # server_thread = ServerThread()
+    # server_thread.setup(app)
+    # server_thread.start()
+    # print("Server started...")
 
     firefox_options = webdriver.FirefoxOptions()
     print("Firefox options set...")
-    # driver = webdriver.Remote(
-    #     command_executor="http://localhost:4444", options=firefox_options
-    # )
-    client = BrowserClient(browser="remote", hub_host="http://172.16.42.10:4444", options=firefox_options)
-    print("Remote browser set...")
-    driver = client.driver
-    print("Local variable assigned...")
 
+    client = BrowserClient(
+        browser="remote", hub_host="http://172.16.42.10:4444", options=firefox_options
+    )
+    driver = client.driver
     print("Browser started...")
 
     try:
         port = app.config["TEST_SERVER_PORT"]
         app.config["SERVER_NAME"] = "172.16.42.10:{}".format(port)
 
-        driver.get(make_url(app, "/"))
+        url = make_url(app, '/')
+        print(f"{url=}")
+        driver.get(url)
         assert "Pinochle" in driver.page_source
 
     finally:
-        server_thread.stop()
-        server_thread.join()
-        client.finalise()
+        # server_thread.stop()
+        # server_thread.join()
+        try:
+            client.finalise()
+        except selenium.common.exceptions.InvalidSessionIdException:
+            pass
