@@ -4,7 +4,6 @@ import time
 from copy import deepcopy
 from random import choice
 
-import pytest
 import requests
 from selenium import webdriver
 from selenium.common.exceptions import (
@@ -17,7 +16,9 @@ from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 from pinochle.cards.const import SUITS
 
-g_browser = "chrome"
+# G_BROWSER = "firefox"
+G_BROWSER = "chrome"
+# G_BROWSER = "MicrosoftEdge"
 g_player_ids = []
 g_player_names = []
 BASE_URL = "http://172.16.42.10:5000"
@@ -70,7 +71,7 @@ class TestSelectPerson:
             driver = webdriver.Remote(
                 # command_executor=f"http://172.16.42.10:444{seq+1}",
                 command_executor="http://172.16.42.10:4444",
-                desired_capabilities={"browserName": g_browser},
+                desired_capabilities={"browserName": G_BROWSER},
                 options=t_options,
             )
             self.driver.append(driver)
@@ -246,11 +247,12 @@ class TestSelectPerson:
         )
 
         # Choose a trump suit.
-        # Only 'spade' works due to the displacement between where Firefox displays the
-        # glyph and where it shows the glyph being positioned in the developer utility.
-        declared_trump = choice(SUITS)
+        declared_trump = choice(SUITS)  # Chrome-Works, Edge-Works
         declared_trump = declared_trump.lower().rstrip("s")
-        # declared_trump = "spade"  # Works
+        # In Firefox, only 'spade' works due to the displacement between where Firefox
+        # displays the glyph and where it shows the glyph being positioned in the
+        # developer utility / programmatically.
+        # declared_trump = "spade"  # FF-Works
         # declared_trump = "heart" # FF-Broken
         # declared_trump = "club" # FF-Broken
         # declared_trump = "diamond" # FF-Broken
@@ -309,7 +311,7 @@ class TestSelectPerson:
         Wait for the send meld button to appear.
         """
         for driver in self.driver:
-            WebDriverWait(driver, 10).until(
+            WebDriverWait(driver, 5).until(
                 expected_conditions.presence_of_element_located(
                     (By.XPATH, "//*[@id='button_send_meld']",)
                 )
@@ -328,22 +330,20 @@ class TestSelectPerson:
                 send_meld_button
             ).click().perform()
 
+        # Wait for prompt to acknowledge as final meld.
         for driver in self.driver:
-            WebDriverWait(driver, 10).until(
+            WebDriverWait(driver, 5).until(
                 expected_conditions.presence_of_element_located(
                     (By.XPATH, "//button[text()='Yes']")
                 )
             )
-            # t_dialog_list = driver.find_elements(By.CLASS_NAME, "brython-dialog-button")
-            t_dialog_list = driver.find_elements(By.XPATH, "//button[text()='Yes']")
-            for t_dialog in t_dialog_list:
-                # if t_dialog.text == "Yes":
-                    # Acknowledge as final meld.
-                t_dialog.click()
+            # Acknowledge as final meld.
+            t_dialog = driver.find_element(By.XPATH, "//button[text()='Yes']")
+            t_dialog.click()
 
     def test_990_sleep(self):
         """
         Sleep at the end so interaction with the browsers is possible.
         """
         print("\nSleeping...")
-        time.sleep(60)
+        time.sleep(0.5)
