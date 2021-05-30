@@ -16,13 +16,16 @@ from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 from pinochle.cards.const import SUITS
 
-# G_BROWSER = "firefox"
-G_BROWSER = "chrome"
-# G_BROWSER = "MicrosoftEdge"
+G_SELENIUM_HOST = "172.16.42.10"
+G_SELENIUM_STANDALONE_URI = f"http://{G_SELENIUM_HOST}:444"
+G_SELENIUM_HUB_URL = f"http://{G_SELENIUM_HOST}:4444"
+# G_BROWSER_LIST = ['firefox', 'chrome','MicrosoftEdge']
+G_BROWSER_LIST = ["chrome", "MicrosoftEdge"]
+G_BROWSER = G_BROWSER_LIST[0]
 g_player_ids = []
 g_player_names = []
 BASE_URL = "http://172.16.42.10:5000"
-# For some reason placing this in the class causes stores values to be lost.
+# For some reason placing this in the class causes stored values to be lost.
 g_driver_bid_winner = -1
 
 
@@ -69,9 +72,10 @@ class TestSelectPerson:
         # t_options.headless = False
         for seq in range(len(self.player_ids)):
             driver = webdriver.Remote(
-                # command_executor=f"http://172.16.42.10:444{seq+1}",
-                command_executor="http://172.16.42.10:4444",
+                # command_executor=f"{G_SELENIUM_STANDALONE_URI}{seq+1}",
+                command_executor=G_SELENIUM_HUB_URL,
                 desired_capabilities={"browserName": G_BROWSER},
+                # desired_capabilities={"browserName": choice(G_BROWSER_LIST)},
                 options=t_options,
             )
             self.driver.append(driver)
