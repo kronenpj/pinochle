@@ -241,7 +241,12 @@ class PlayingCard(SVG.UseObject):
         sending_deck = []
         # This "should never be called" during GAME_MODEs 0 or 1.
         add_only = False
-        if GAME_MODES[g_game_mode] in ["meld"]:  # Meld
+        if GAME_MODES[g_game_mode] in ["reveal"]:  # Bury
+            if "player" in self.id:
+                parent_canvas.translateObject(
+                    parent_canvas.objectDict[f"{self.id}"], (0, CARD_HEIGHT / 1.9)
+                )
+        elif GAME_MODES[g_game_mode] in ["meld"]:  # Meld
             if True or "player" in self.id:
                 sending_deck = g_players_meld_deck  # Deep copy
                 receiving_deck = g_meld_deck  # Reference
@@ -325,7 +330,7 @@ class PlayingCard(SVG.UseObject):
                     "card": self.face_value,
                 }
             )
-        if GAME_MODES[g_game_mode] in ["meld"]:
+        if GAME_MODES[g_game_mode] in ["reveal", "meld"]:
             self.play_handler(event_type="click")
 
 
