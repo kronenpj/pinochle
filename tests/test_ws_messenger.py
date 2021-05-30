@@ -11,7 +11,7 @@ from pinochle import game, play_pinochle
 from pinochle.models import utils
 from pinochle.ws_messenger import WebSocketMessenger as WSM
 
-import test_utils
+from . import test_utils
 
 # from pinochle.models.utils import dump_db
 
