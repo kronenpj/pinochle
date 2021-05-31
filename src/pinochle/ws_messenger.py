@@ -95,21 +95,26 @@ class WebSocketMessenger:
                 pass
             self.update_refreshed_page_trump(round_id, ws)
 
-    @staticmethod
-    def update_refreshed_page_team_scores(round_id, ws):
+    def update_refreshed_page_team_scores(self, round_id, ws):
         a_roundteams = utils.query_roundteam_list(round_id)
         for a_roundteam in a_roundteams:
             a_team = utils.query_team(str(a_roundteam.team_id))
-            ws.send(
-                json.dumps(
-                    {
-                        "action": "team_score",
-                        "team_id": str(a_roundteam.team_id),
-                        "score": a_team.score,
-                        "meld_score": 0,
-                    }
+            try:
+                ws.send(
+                    json.dumps(
+                        {
+                            "action": "team_score",
+                            "team_id": str(a_roundteam.team_id),
+                            "score": a_team.score,
+                            "meld_score": 0,
+                        }
+                    )
                 )
-            )
+            except geventwebsocket.exceptions.WebSocketError:
+                # Client disconnected unexpectedly.
+                self.mylog.warning(
+                    "ws_messenger:WSM.urptc: Client disconnected unexpectedly. Continuing."
+                )
 
     @staticmethod
     def update_refreshed_page_trump(round_id, ws):
