@@ -74,7 +74,13 @@ class WebSocketMessenger:
         # Gather information about the number of players and the game state.
         self.distribute_registered_players(game_id)
 
-        self.update_refreshed_player_page(game_id, player_id, ws)
+        try:
+            self.update_refreshed_player_page(game_id, player_id, ws)
+        except geventwebsocket.exceptions.WebSocketError:
+            # Client disconnected unexpectedly.
+            self.mylog.warning(
+                "Client disconnected unexpectedly. Continuing."
+            )
 
     def update_refreshed_player_page(self, game_id, player_id, ws):
         # Send this player information about the game, as appropriate, in case they've
@@ -99,22 +105,16 @@ class WebSocketMessenger:
         a_roundteams = utils.query_roundteam_list(round_id)
         for a_roundteam in a_roundteams:
             a_team = utils.query_team(str(a_roundteam.team_id))
-            try:
-                ws.send(
-                    json.dumps(
-                        {
-                            "action": "team_score",
-                            "team_id": str(a_roundteam.team_id),
-                            "score": a_team.score,
-                            "meld_score": 0,
-                        }
-                    )
+            ws.send(
+                json.dumps(
+                    {
+                        "action": "team_score",
+                        "team_id": str(a_roundteam.team_id),
+                        "score": a_team.score,
+                        "meld_score": 0,
+                    }
                 )
-            except geventwebsocket.exceptions.WebSocketError:
-                # Client disconnected unexpectedly.
-                self.mylog.warning(
-                    "ws_messenger:WSM.urptc: Client disconnected unexpectedly. Continuing."
-                )
+            )
 
     @staticmethod
     def update_refreshed_page_trump(round_id, ws):
@@ -226,7 +226,7 @@ class WebSocketMessenger:
         :type exclude:  str, optional
         """
         # If no registrations have occurred or none for the supplied game, continue.
-        if not self.client_sockets or not self.client_sockets[game_id]:
+        if not self.client_sockets or game_id not in self.client_sockets:
             return
 
         for item in self.client_sockets[game_id]:
