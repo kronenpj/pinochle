@@ -1898,6 +1898,7 @@ def create_player_select_buttons(xpos, ypos) -> None:
     :param ypos:    Starting Y position
     :type ypos:     float
     """
+    g_canvas.deleteAll()
     # added_button = False
     for item in g_player_dict:
         mylog.warning("player_dict[item]=%s", g_player_dict[item])
