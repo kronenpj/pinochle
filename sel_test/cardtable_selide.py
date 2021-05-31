@@ -3,33 +3,114 @@ import json
 import time
 from copy import deepcopy
 from random import choice
+from typing import Dict, List, Tuple
 
 import requests
 from selenium import webdriver
 from selenium.common.exceptions import (
     MoveTargetOutOfBoundsException,
     NoSuchElementException,
+    TimeoutException,
     WebDriverException,
 )
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 from pinochle.cards.const import SUITS
+from tests.test_utils import PLAYER_NAMES, TEAM_NAMES
 
 G_SELENIUM_HOST = "172.16.42.10"
 G_SELENIUM_STANDALONE_URI = f"http://{G_SELENIUM_HOST}:444"
 G_SELENIUM_HUB_URL = f"http://{G_SELENIUM_HOST}:4444"
 # G_BROWSER_LIST = ['firefox', 'chrome','MicrosoftEdge']
-G_BROWSER_LIST = ["chrome", "MicrosoftEdge"]
+G_BROWSER_LIST = ["chrome"]
 G_BROWSER = G_BROWSER_LIST[0]
-g_player_ids = []
-g_player_names = []
 BASE_URL = "http://172.16.42.10:5000"
-# For some reason placing this in the class causes stored values to be lost.
+
+# For some reason placing these in the class causes stored values to be lost.
 g_driver_bid_winner = -1
+g_game_id = ""
+g_player_ids = []
+g_players = {}
 
 
-def retrieve_player_ids():
+def setup_new_game() -> Tuple[str, List[str]]:
+    player_ids = []
+    team_ids = []
+    game_id = ""
+    round_id = ""
+
+    # Create players and store the returned UUID for later use.
+    for player in PLAYER_NAMES:
+        data = {"name": player}
+        response = requests.post(
+            f"{BASE_URL}/api/player",
+            json=data,
+            headers={"Content-Type": "application/json"},
+        )
+        assert response.status_code == 201
+        r_data = json.loads(response.text)
+        player_ids.append(r_data["player_id"])
+    assert len(player_ids) == 4
+
+    # Create teams and store the returned UUID for later use.
+    for team in TEAM_NAMES:
+        data = {"name": team}
+        response = requests.post(
+            f"{BASE_URL}/api/team",
+            json=data,
+            headers={"Content-Type": "application/json"},
+        )
+        assert response.status_code == 201
+        r_data = json.loads(response.text)
+        team_ids.append(r_data["team_id"])
+
+    # Attach players to the new teams.
+    for t_idx in [0, 1]:
+        for p_idx in [0, 1]:
+            data = {"player_id": player_ids[p_idx + 2 * t_idx]}
+            response = requests.post(
+                f"{BASE_URL}/api/team/{team_ids[t_idx]}",
+                json=data,
+                headers={"Content-Type": "application/json"},
+            )
+            assert response.status_code == 201
+
+    # Create game with a kitty size of 4 cards.
+    response = requests.post(
+        f"{BASE_URL}/api/game?kitty_size=4",
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 201
+    r_data = json.loads(response.text)
+    game_id = r_data["game_id"]
+    print(f"Created game {game_id}")
+
+    # Create round.
+    response = requests.post(
+        f"{BASE_URL}/api/game/{game_id}/round",
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 201
+    r_data = json.loads(response.text)
+    round_id = r_data["round_id"]
+
+    # Attach teams to the new round.
+    data = team_ids
+    response = requests.post(
+        f"{BASE_URL}/api/round/{round_id}",
+        json=data,
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 201
+
+    # Start the game.
+    response = requests.post(f"{BASE_URL}/api/round/{round_id}/start")
+
+    return game_id, player_ids
+
+
+def retrieve_player_names(player_id_list: List[str]) -> Dict[str, str]:
     """
     GIVEN a Flask application configured for testing
     WHEN the '/api/player' page is requested (POST)
@@ -44,39 +125,30 @@ def retrieve_player_ids():
     response_data = json.loads(response_str)
     # print(f"{response_str=}")
     # print(f"{response_data=}")
-    for i in response_data:
-        g_player_ids.append(i.get("player_id"))
-        g_player_names.append(i.get("name"))
-    assert len(g_player_ids) == 4
-    assert len(g_player_names) == 4
+    player_names = {
+        i.get("player_id"): i.get("name")
+        for i in response_data
+        if i.get("player_id") in player_id_list
+    }
+    assert len(player_names) == 4
+    return player_names
 
 
 class TestSelectPerson:
     driver = []
-    players = []
-    player_ids = []
-    vars = {}
+    handles = {}
 
     def setup_class(self):
-        # print("In TestSelectPerson:setup_class")
-        retrieve_player_ids()
-
-        for counter, p_id in enumerate(g_player_ids):
-            self.player_ids.append(p_id)
-            self.players.append(g_player_names[counter])
-        assert self.player_ids == g_player_ids
-        assert self.players == g_player_names
-
         # t_options = webdriver.FirefoxOptions()
-        t_options = webdriver.ChromeOptions()
+        # t_options = webdriver.ChromeOptions()
         # t_options.headless = False
-        for seq in range(len(self.player_ids)):
+        for seq in range(4):
             driver = webdriver.Remote(
                 # command_executor=f"{G_SELENIUM_STANDALONE_URI}{seq+1}",
                 command_executor=G_SELENIUM_HUB_URL,
-                desired_capabilities={"browserName": G_BROWSER},
-                # desired_capabilities={"browserName": choice(G_BROWSER_LIST)},
-                options=t_options,
+                desired_capabilities={"browserName": choice(G_BROWSER_LIST)},
+                # desired_capabilities={"browserName": G_BROWSER_LIST[0]},
+                # options=t_options,
             )
             self.driver.append(driver)
 
@@ -87,75 +159,134 @@ class TestSelectPerson:
     def wait_for_window(self, timeout=2000):
         time.sleep(round(timeout / 1000))
         wh_now = self.driver[len(self.driver)].window_handles
-        wh_then = self.vars["window_handles"]
+        wh_then = self.handles["window_handles"]
         if len(wh_now) > len(wh_then):
             return set(wh_now).difference(set(wh_then)).pop()
 
-    def test_100_start_browsers(self):
+    def test_050_start_browsers(self):
         """
         Navigate to the BASE_URL
         """
-        for driver in self.driver:
-            driver.get(f"{BASE_URL}/")
+        global g_game_id, g_players, g_player_ids
+        # Create new game.
+        print("Creating new game.")
+        g_game_id, g_player_ids = setup_new_game()
 
-    def test_110_browser_wait(self):
+        g_players = retrieve_player_names(g_player_ids)
+        assert len(g_players) == len(g_player_ids)
+
+        assert self.driver
+        for t_driver in self.driver:
+            t_driver.get(f"{BASE_URL}/")
+
+    def test_100_browser_wait(self):
         """
         Wait for the basic page to be rendered.
         """
-        for driver in self.driver:
-            WebDriverWait(driver, 240, poll_frequency=2).until(
-                expected_conditions.presence_of_element_located(
-                    (By.XPATH, "(/html/body/div[2]/div[2])")
-                )
-            )
+        assert len(g_players) > 0
+        assert len(g_player_ids) > 0
+        assert len(g_players) == len(g_player_ids)
 
-    def test_130_browser_find_first(self):
+        limit = 8  # About 64 seconds.
+        while limit:
+            counter = len(self.driver)
+            try:
+                for driver in self.driver:
+                    WebDriverWait(driver, 2).until(
+                        expected_conditions.presence_of_element_located(
+                            (By.XPATH, "//*[@id='card_table']")
+                        )
+                    )
+                    # print(f"Browser {self.driver.index(driver)} succeeded.")
+                    counter -= 1
+                if not counter:
+                    limit = 0
+            except TimeoutException:
+                print(f"Retrying browsers. {counter} left.")
+                limit -= 1
+            except NoSuchElementException:
+                print(f"Retrying browsers. {counter} left.")
+                limit -= 1
+
+    def test_110_browser_wait(self):
         """
-        Locate the player buttons
+        See if the 'no games found' button appears.
         """
-        for driver in self.driver:
-            elements = driver.find_elements(
-                By.XPATH, "(/html/body/div[2]/div[2]//*[1]/*[1])"
-            )
-            assert len(elements) > 0
+        try:
+            for driver in self.driver:
+                WebDriverWait(driver, 2).until(
+                    expected_conditions.presence_of_element_located(
+                        (By.XPATH, "//*[@id='nogame']")
+                    )
+                )
+        except NoSuchElementException:
+            return
+        except TimeoutException:
+            return
+
+        assert not "There should be a game created."
+
+    def test_120_browser_find_game(self):
+        """
+        Locate the game buttons
+        """
+        # print(f"Looking for game id: {g_game_id}")
+        assert self.driver
+        try:
+            for driver in self.driver:
+                element = WebDriverWait(driver, 15).until(
+                    expected_conditions.presence_of_element_located(
+                        (By.XPATH, f"//*[@id='{g_game_id}']")
+                    )
+                )
+                # element = driver.find_element(By.XPATH, f"//*[@id='{g_game_id}']")
+                assert element
+                element.click()
+            # print("Selected desired game.")
+        except NoSuchElementException:
+            assert not "Could not locate desired game."
+        except TimeoutException:
+            # The UI skips listing games if there's only one in the database.
+            pass
 
     def test_140_browser_wait(self):
         """
         Wait for the list of players to appear.
         """
         for driver in self.driver:
-            WebDriverWait(driver, 120).until(
+            WebDriverWait(driver, 15).until(
                 expected_conditions.presence_of_element_located(
                     (By.XPATH, '(//*[@id="canvas" and contains(.,"Player:")])')
                 )
             )
 
-    def test_150_browser_find_name(self):
+    def test_150_browser_find_and_click_name(self):
         """
         Locate the player's button corresponding to the sequence of the driver / player_id
         """
         for counter, driver in enumerate(self.driver):
-            elements = driver.find_elements(
+            element = driver.find_element(
                 By.XPATH,
                 '(//*[@id="canvas" and contains(.,"Player: {}")])'.format(
-                    self.players[counter]
+                    g_players[g_player_ids[counter]]
                 ),
             )
-            assert len(elements) > 0
+            assert element
+            element.click()
 
     def test_160_browser_click_on_name(self):
         """
         Locate and click on the button corresponding to the player_id in the array.
         """
-        assert self.player_ids
-        # print(f"player_ids: {self.player_ids}")
-        for counter, entry in enumerate(self.player_ids):
-            button_element = self.driver[counter].find_element(
-                By.XPATH, f"//*[@id='{entry}']"
+        for counter, driver in enumerate(self.driver):
+            button_element = driver.find_element(
+                By.XPATH, f"//*[@id='{g_player_ids[counter]}']"
             )
-            webdriver.ActionChains(self.driver[counter]).move_to_element(
-                button_element
-            ).click().perform()
+            assert button_element
+            # webdriver.ActionChains(driver).move_to_element(
+            #     button_element
+            # ).click().perform()
+            button_element.click()
 
     def test_170_browser_wait_for_score(self):
         """
@@ -172,15 +303,21 @@ class TestSelectPerson:
         """
         Verify the player name we expect based on the player_id appears.
         """
+        assert len(g_players) >= len(self.driver)
         for counter, driver in enumerate(self.driver):
-            WebDriverWait(driver, 5).until(
-                expected_conditions.presence_of_element_located(
-                    (
-                        By.XPATH,
-                        f"//*[@id='player_name']/span[contains(.,'{self.players[counter]}')]",
+            try:
+                # print(f"Looking for player {g_players[g_player_ids[counter]]}.")
+                WebDriverWait(driver, 10).until(
+                    expected_conditions.presence_of_element_located(
+                        (
+                            By.XPATH,
+                            f"//*[@id='player_name']/span[contains(.,'{g_players[g_player_ids[counter]]}')]",
+                        )
                     )
                 )
-            )
+                # print(f"Player {g_players[g_player_ids[counter]]} found.")
+            except TimeoutException:
+                print(f"Player {g_players[g_player_ids[counter]]} not found.")
 
     def test_190_wait_for_bid_dialog(self):
         """
@@ -200,7 +337,7 @@ class TestSelectPerson:
         global g_driver_bid_winner
 
         loop_limit = 0
-        t_player_ids = deepcopy(self.player_ids)
+        t_player_ids = deepcopy(g_player_ids)
         t_empty = ["blank" for _ in range(len(t_player_ids))]
         bid_occurred = False
 
@@ -236,7 +373,7 @@ class TestSelectPerson:
             loop_limit += 1
         assert g_driver_bid_winner >= 0
         # print(f"Driver array index = {g_driver_bid_winner}")
-        # print(f"Bid winner = {self.players[g_driver_bid_winner]}")
+        # print(f"Bid winner = {g_players[g_driver_bid_winner]}")
 
     def test_210_bury_cards_and_select_trump(self):
         """
@@ -344,6 +481,10 @@ class TestSelectPerson:
             # Acknowledge as final meld.
             t_dialog = driver.find_element(By.XPATH, "//button[text()='Yes']")
             t_dialog.click()
+
+    # def test_900_delete_game(self):
+    #     response = requests.delete(f"{BASE_URL}/game/{g_game_id}")
+    #     assert response.status_code == 200
 
     def test_990_sleep(self):
         """
