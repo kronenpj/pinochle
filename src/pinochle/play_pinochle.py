@@ -657,9 +657,9 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
 
     # Associate the player with that player's hand.
     player_temp: Optional[Player] = utils.query_player(player_id=player_id)
-    player_hand_id = str(player_temp.hand_id)
-    player_hand = utils.query_hand_list(player_hand_id)
-    player_hand_list = [x.card for x in player_hand]
+    player_hand_id: str = str(player_temp.hand_id)
+    player_hand: List[Hand] = utils.query_hand_list(player_hand_id)
+    player_hand_list: List[str] = [x.card for x in player_hand]
 
     # print(f"play_trick_card: player_hand={player_hand_list}")
     # print(f"play_trick_card: card_list={card_list}")
@@ -670,7 +670,9 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
     # TODO: Make sure the player hasn't already sent a card for this trick.
 
     # Determine the order of the players
-    ordered_player_id_list = reorder_players(str(round_id), str(a_trick.trick_starter))
+    ordered_player_id_list: List[str] = reorder_players(
+        str(round_id), str(a_trick.trick_starter)
+    )
 
     # Obtain trick hand ID
     trick_hand_id = str(a_trick.hand_id)
@@ -692,12 +694,12 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
 
     # Determine if the trick is complete (all players submitted cards) and if so, declare
     # trick winner.
-    trick_hand_list = utils.query_hand_list(trick_hand_id)
+    trick_hand_list: List[Hand] = utils.query_hand_list(trick_hand_id)
 
     # print(f"play_trick_card: trick_hand_list={trick_hand_list}")
     if len(trick_hand_list) == len(ordered_player_id_list):
         # print(f"play_trick_card: trick_hand_list={trick_hand_list}")
-        winning_card = find_winning_trick_card(
+        winning_card: str = find_winning_trick_card(
             trick_hand_list, f"{a_round.trump.capitalize()}s"
         )
         # print(f"play_trick_card: Winning card: {winning_card}")
@@ -713,7 +715,7 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
         # print(f"play_trick_card: winning_card_index={winning_card_index}")
 
         # Determine the player_id who won the trick and their team_id.
-        winning_player_id = ordered_player_id_list[winning_card_index]
+        winning_player_id: str = ordered_player_id_list[winning_card_index]
         a_roundteam_list = utils.query_roundteam_list(round_id)
         team_id_list = [x.team_id for x in a_roundteam_list]
         winning_team_id = None
@@ -805,20 +807,17 @@ def notify_round_complete(
     """
     # Collect data needed for notification.
     a_roundteam_list = utils.query_roundteam_list(round_id)
-    team_id_list = [x.team_id for x in a_roundteam_list]
-    t_hand_id_list = [x.hand_id for x in a_roundteam_list]
+    team_id_list = [str(x.team_id) for x in a_roundteam_list]
+    t_hand_id_list = [str(x.hand_id) for x in a_roundteam_list]
 
     # Score the team hands
     trick_score = {}
     assert t_hand_id_list
     # print(f"t_hand_id_list={t_hand_id_list}")
     for index, h_id in enumerate(t_hand_id_list):
-        t_h_id = str(h_id)
-        # print(f"  h_id: {hand.read_one(h_id)}")
-        # print(f"t_h_id: {hand.read_one(t_h_id)}")
-        if hand.read_one(t_h_id):
+        if hand.read_one(h_id):
             trick_score[team_id_list[index]] = score_tricks.score(
-                card_utils.convert_from_svg_names(hand.read_one(t_h_id)["cards"])
+                card_utils.convert_from_svg_names(hand.read_one(h_id)["cards"])
             )
             if str(team_id_list[index]) == str(winning_team_id):
                 trick_score[team_id_list[index]] += 1
