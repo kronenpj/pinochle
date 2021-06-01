@@ -482,6 +482,43 @@ class TestSelectPerson:
             t_dialog = driver.find_element(By.XPATH, "//button[text()='Yes']")
             t_dialog.click()
 
+    def test_240_play_tricks(self):
+        """
+        Play tricks until players are out of cards.
+        """
+        keep_going = True
+        while keep_going:
+            # Create associations between drivers and the list of cards.
+            for driver in self.driver:
+                t_cards = driver.find_elements(
+                    By.XPATH, "//*[@id='canvas']/*[contains(@id, 'player')]"
+                )
+                t_cards = [x for x in t_cards if "button" not in x.get_attribute("id")]
+                if not t_cards:
+                    keep_going = False
+                    break
+                # print("Choosing from ")
+                # print(", ".join(x.get_attribute('id') for x in t_cards))
+
+                # Choose a random card, click on it, and remove it from consideration
+                t_card = choice(t_cards)
+                # print(f"Moving {t_card.get_attribute('id')}")
+
+                # Drag the card up a sufficient amount.
+                webdriver.ActionChains(driver).drag_and_drop_by_offset(
+                    t_card, 0, -200
+                ).perform()
+
+            for driver in self.driver:
+                try:
+                    # Acknowledge to continue playing
+                    t_dialog = driver.find_element(
+                        By.XPATH, "//button[text()='Next trick']"
+                    )
+                    t_dialog.click()
+                except NoSuchElementException:
+                    pass
+
     # def test_900_delete_game(self):
     #     response = requests.delete(f"{BASE_URL}/game/{g_game_id}")
     #     assert response.status_code == 200
