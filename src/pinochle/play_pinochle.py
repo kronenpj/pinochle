@@ -652,7 +652,7 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
     # Retrieve trick data
     a_trick: Trick = utils.query_trick_for_round_id(round_id)
     if a_trick is None or a_trick == {}:
-        print(f"play_trick_card: utils.query_all_tricks()={utils.query_all_tricks()}")
+        # print(f"play_trick_card: utils.query_all_tricks()={utils.query_all_tricks()}")
         abort(409, f"Trick could not be found for round {round_id}.")
 
     # Associate the player with that player's hand.
@@ -705,7 +705,7 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
         # print(f"play_trick_card: Trick cards: {[x.card for x in trick_hand_list]}")
         # print(f"play_trick_card: Determining winning card index for {winning_card}:")
         for index, t_hand in enumerate(trick_hand_list):
-            print(f"play_trick_card: index: {index} = {t_hand.card}")
+            # print(f"play_trick_card: index: {index} = {t_hand.card}")
             if winning_card == t_hand.card:
                 winning_card_index = index
                 break
@@ -811,21 +811,21 @@ def notify_round_complete(
     # Score the team hands
     trick_score = {}
     assert t_hand_id_list
-    print(f"t_hand_id_list={t_hand_id_list}")
+    # print(f"t_hand_id_list={t_hand_id_list}")
     for index, h_id in enumerate(t_hand_id_list):
         t_h_id = str(h_id)
-        print(f"  h_id: {hand.read_one(h_id)}")
-        print(f"t_h_id: {hand.read_one(t_h_id)}")
+        # print(f"  h_id: {hand.read_one(h_id)}")
+        # print(f"t_h_id: {hand.read_one(t_h_id)}")
         if hand.read_one(t_h_id):
             trick_score[team_id_list[index]] = score_tricks.score(
                 card_utils.convert_from_svg_names(hand.read_one(t_h_id)["cards"])
             )
             if str(team_id_list[index]) == str(winning_team_id):
                 trick_score[team_id_list[index]] += 1
-            print(
-                f"Score for team {team_id_list[index]}: "
-                f"{trick_score[team_id_list[index]]}"
-            )
+            # print(
+            #     f"Score for team {team_id_list[index]}: "
+            #     f"{trick_score[team_id_list[index]]}"
+            # )
         else:
             # print(f"Zero score {index}/{t_h_id}")
             trick_score[team_id_list[index]] = 0
