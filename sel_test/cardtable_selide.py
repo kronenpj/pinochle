@@ -110,30 +110,6 @@ def setup_new_game() -> Tuple[str, List[str]]:
     return game_id, player_ids
 
 
-def retrieve_player_names(player_id_list: List[str]) -> Dict[str, str]:
-    """
-    GIVEN a Flask application configured for testing
-    WHEN the '/api/player' page is requested (POST)
-    THEN check that the response is a UUID and contains the expected information
-    """
-    response = requests.get(f"{BASE_URL}/api/player")
-    print(f"{response.text=}")
-    assert response.status_code == 200
-    assert response.text
-    # This is a JSON formatted STRING
-    response_str = response.text
-    response_data = json.loads(response_str)
-    print(f"{response_str=}")
-    print(f"{response_data=}")
-    player_names = {
-        i.get("player_id"): i.get("name")
-        for i in response_data
-        if i.get("player_id") in player_id_list
-    }
-    assert len(player_names) == 4
-    return player_names
-
-
 class TestSelectPerson:
     driver = []
     handles = {}
@@ -163,6 +139,30 @@ class TestSelectPerson:
         if len(wh_now) > len(wh_then):
             return set(wh_now).difference(set(wh_then)).pop()
 
+    @staticmethod
+    def retrieve_player_names(player_id_list: List[str]) -> Dict[str, str]:
+        """
+        GIVEN a Flask application configured for testing
+        WHEN the '/api/player' page is requested (POST)
+        THEN check that the response is a UUID and contains the expected information
+        """
+        response = requests.get(f"{BASE_URL}/api/player")
+        print(f"{response.text=}")
+        assert response.status_code == 200
+        assert response.text
+        # This is a JSON formatted STRING
+        response_str = response.text
+        response_data = json.loads(response_str)
+        print(f"{response_str=}")
+        print(f"{response_data=}")
+        player_names = {
+            i.get("player_id"): i.get("name")
+            for i in response_data
+            if i.get("player_id") in player_id_list
+        }
+        assert len(player_names) == 4
+        return player_names
+
     def test_050_start_browsers(self):
         """
         Navigate to the BASE_URL
@@ -172,7 +172,7 @@ class TestSelectPerson:
         print("Creating new game.")
         g_game_id, g_player_ids = setup_new_game()
 
-        g_players = retrieve_player_names(g_player_ids)
+        g_players = self.retrieve_player_names(g_player_ids)
         assert len(g_players) == len(g_player_ids)
 
         assert self.driver
