@@ -117,14 +117,14 @@ def retrieve_player_names(player_id_list: List[str]) -> Dict[str, str]:
     THEN check that the response is a UUID and contains the expected information
     """
     response = requests.get(f"{BASE_URL}/api/player")
-    # print(f"{response.text=}")
+    print(f"{response.text=}")
     assert response.status_code == 200
     assert response.text
     # This is a JSON formatted STRING
     response_str = response.text
     response_data = json.loads(response_str)
-    # print(f"{response_str=}")
-    # print(f"{response_data=}")
+    print(f"{response_str=}")
+    print(f"{response_data=}")
     player_names = {
         i.get("player_id"): i.get("name")
         for i in response_data
@@ -197,7 +197,7 @@ class TestSelectPerson:
                             (By.XPATH, "//*[@id='card_table']")
                         )
                     )
-                    # print(f"Browser {self.driver.index(driver)} succeeded.")
+                    print(f"Browser {self.driver.index(driver)} succeeded.")
                     counter -= 1
                 if not counter:
                     limit = 0
@@ -230,33 +230,41 @@ class TestSelectPerson:
         """
         Locate the game buttons
         """
-        # print(f"Looking for game id: {g_game_id}")
+        print(f"Looking for game id: {g_game_id}")
         assert self.driver
-        try:
-            for driver in self.driver:
-                element = WebDriverWait(driver, 15).until(
-                    expected_conditions.presence_of_element_located(
-                        (By.XPATH, f"//*[@id='{g_game_id}']")
+        t_drivers = self.driver[:]
+        for __ in range(7):  # maximum 20 seconds wait x n iterations
+            try:
+                for driver in t_drivers:
+                    element = WebDriverWait(driver, 5).until(
+                        expected_conditions.presence_of_element_located(
+                            (By.XPATH, f"//*[@id='{g_game_id}']")
+                        )
                     )
-                )
-                # element = driver.find_element(By.XPATH, f"//*[@id='{g_game_id}']")
-                assert element
-                element.click()
-            # print("Selected desired game.")
-        except NoSuchElementException:
-            assert not "Could not locate desired game."
-        except TimeoutException:
-            # The UI skips listing games if there's only one in the database.
-            pass
+                    # element = driver.find_element(By.XPATH, f"//*[@id='{g_game_id}']")
+                    assert element
+                    element.click()
+                    t_drivers.remove(driver)
+                print("Selected desired game.")
+            except NoSuchElementException as e:
+                print("Could not locate desired game.")
+                assert not "Could not locate desired game."
+                raise NoSuchElementException from e
+            except TimeoutException:
+                # The UI skips listing games if there's only one in the database.
+                print("Caught TimeoutException. Continuing...")
+                pass
+            if not t_drivers:
+                break
 
     def test_140_browser_wait(self):
         """
         Wait for the list of players to appear.
         """
         for driver in self.driver:
-            WebDriverWait(driver, 15).until(
+            WebDriverWait(driver, 5).until(
                 expected_conditions.presence_of_element_located(
-                    (By.XPATH, '(//*[@id="canvas" and contains(.,"Player:")])')
+                    (By.XPATH, "(//*[@id='canvas' and contains(.,'Player:')])")
                 )
             )
 
@@ -283,9 +291,6 @@ class TestSelectPerson:
                 By.XPATH, f"//*[@id='{g_player_ids[counter]}']"
             )
             assert button_element
-            # webdriver.ActionChains(driver).move_to_element(
-            #     button_element
-            # ).click().perform()
             button_element.click()
 
     def test_170_browser_wait_for_score(self):
@@ -295,29 +300,29 @@ class TestSelectPerson:
         for driver in self.driver:
             WebDriverWait(driver, 5).until(
                 expected_conditions.presence_of_element_located(
-                    (By.XPATH, "//*[@id='game_status']/span[contains(.,'Score:')]")
+                    (
+                        By.XPATH,
+                        "//*[@id='game_status']/span[not(contains(@style,'visibility: hidden'))]",
+                    )
                 )
             )
 
     def test_180_check_player_name(self):
         """
-        Verify the player name we expect based on the player_id appears.
+        Verify the player name we expect appears, based on the chosen player_id.
         """
         assert len(g_players) >= len(self.driver)
         for counter, driver in enumerate(self.driver):
-            try:
-                # print(f"Looking for player {g_players[g_player_ids[counter]]}.")
-                WebDriverWait(driver, 10).until(
-                    expected_conditions.presence_of_element_located(
-                        (
-                            By.XPATH,
-                            f"//*[@id='player_name']/span[contains(.,'{g_players[g_player_ids[counter]]}')]",
-                        )
+            print(f"Looking for player {g_players[g_player_ids[counter]]}.")
+            WebDriverWait(driver, 10).until(
+                expected_conditions.presence_of_element_located(
+                    (
+                        By.XPATH,
+                        "//*[@id='player_name']/span[not(contains(@style,'visibility: hidden'))]",
                     )
                 )
-                # print(f"Player {g_players[g_player_ids[counter]]} found.")
-            except TimeoutException:
-                print(f"Player {g_players[g_player_ids[counter]]} not found.")
+            )
+            print(f"Player {g_players[g_player_ids[counter]]} found.")
 
     def test_190_wait_for_bid_dialog(self):
         """
@@ -341,9 +346,9 @@ class TestSelectPerson:
         t_empty = ["blank" for _ in range(len(t_player_ids))]
         bid_occurred = False
 
-        # print(f"t_empty: {t_empty}")
+        print(f"t_empty: {t_empty}")
         while t_player_ids != t_empty and loop_limit < 100:
-            # print(f"t_player_ids: {t_player_ids}")
+            print(f"t_player_ids: {t_player_ids}")
             for counter, driver in enumerate(self.driver):
                 try:
                     element = driver.find_element(
@@ -372,8 +377,8 @@ class TestSelectPerson:
                     bid_button.click()
             loop_limit += 1
         assert g_driver_bid_winner >= 0
-        # print(f"Driver array index = {g_driver_bid_winner}")
-        # print(f"Bid winner = {g_players[g_driver_bid_winner]}")
+        print(f"Driver array index = {g_driver_bid_winner}")
+        print(f"Bid winner = {g_players[g_player_ids[g_driver_bid_winner]]}")
 
     def test_210_bury_cards_and_select_trump(self):
         """
@@ -410,36 +415,34 @@ class TestSelectPerson:
             ):
                 assert card_ids
                 t_id = choice(card_ids)
-                # print(f"Attempting to move {t_id}")
+                print(f"Attempting to move {t_id}")
                 element = driver.find_element(By.ID, t_id)
                 assert element
 
                 # Choose another card to be buried.
                 try:
-                    webdriver.ActionChains(driver).move_to_element(
-                        element
-                    ).click().perform()
+                    webdriver.ActionChains(driver).drag_and_drop_by_offset(
+                        element, 0, 150
+                    ).perform()
                     card_ids.remove(t_id)
                 except MoveTargetOutOfBoundsException as e:
-                    # print(f"Caught MTOOBE exception...{e}")
+                    print(f"Caught MTOOBE exception...{e}")
                     card_ids.remove(t_id)
                 except WebDriverException as e1:
-                    # print(f"Ignoring WDE exception: {e1}")
-                    pass
+                    print(f"Ignoring WDE exception: {e1}")
+                    # pass
 
                 trump_elements = trump_dialog.find_elements(
                     By.XPATH, f"//*[@id='{declared_trump}']"
                 )
-                # print(f"Elements found: {len(elements)}")
+                print(f"Elements found: {len(trump_elements)}")
                 for element in trump_elements:
-                    # print(f"attribute: {element.get_attribute('id')}")
+                    print(f"select_trump - attribute: {element.get_attribute('id')}")
                     try:
-                        webdriver.ActionChains(driver).move_to_element(
-                            element
-                        ).click().perform()
+                        element.click()
                     except WebDriverException as e:
-                        # print(f"Ignoring exception: {e}")
-                        pass
+                        print(f"Ignoring exception: {e}")
+                        # pass
         except NoSuchElementException:
             # This is expected when the dialog box disappears.
             pass
@@ -467,9 +470,7 @@ class TestSelectPerson:
             send_meld_button = driver.find_element(
                 By.XPATH, "//*[@id='button_send_meld']",
             )
-            webdriver.ActionChains(driver).move_to_element(
-                send_meld_button
-            ).click().perform()
+            send_meld_button.click()
 
         # Wait for prompt to acknowledge as final meld.
         for driver in self.driver:
@@ -497,12 +498,12 @@ class TestSelectPerson:
                 if not t_cards:
                     keep_going = False
                     break
-                # print("Choosing from ")
-                # print(", ".join(x.get_attribute('id') for x in t_cards))
+                print("Choosing from ")
+                print(", ".join(x.get_attribute("id") for x in t_cards))
 
                 # Choose a random card, click on it, and remove it from consideration
                 t_card = choice(t_cards)
-                # print(f"Moving {t_card.get_attribute('id')}")
+                print(f"Moving {t_card.get_attribute('id')}")
 
                 # Drag the card up a sufficient amount.
                 webdriver.ActionChains(driver).drag_and_drop_by_offset(

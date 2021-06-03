@@ -2252,11 +2252,6 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
     mode = GAME_MODES[g_game_mode]
     mylog.error("Entering update_display. (mode=%s)", mode)
 
-    # FIXME: I don't think this should be needed.
-    if g_player_id != "" and not g_players_hand:
-        get(f"/player/{g_player_id}/hand", on_complete_player_cards)
-        return
-
     # Place the desired decks on the display.
     if not g_canvas.objectDict:
         if mode in ["game"] and g_game_id == "":  # Choose game, player
