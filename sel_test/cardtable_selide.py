@@ -520,6 +520,28 @@ class TestSelectPerson:
                 except NoSuchElementException:
                     pass
 
+    def test_250_locate_next_round_button(self):
+        """
+        Submit meld without choosing any cards.
+        """
+        acknowledged=False
+        # Wait for prompt to acknowledge as final meld.
+        for driver in self.driver:
+            try:
+                WebDriverWait(driver, 5).until(
+                    expected_conditions.presence_of_element_located(
+                        (By.XPATH, "//button[text()='Next Round']")
+                    )
+                )
+                # # Acknowledge as final meld.
+                # t_dialog = driver.find_element(By.XPATH, "//button[text()='Next Round']")
+                # t_dialog.click()
+                # acknowledged=True
+            except NoSuchElementException:
+                pass
+
+        assert acknowledged
+
     # def test_900_delete_game(self):
     #     response = requests.delete(f"{BASE_URL}/game/{g_game_id}")
     #     assert response.status_code == 200
