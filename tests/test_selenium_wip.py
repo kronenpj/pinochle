@@ -1,8 +1,12 @@
 # Currently just used for the temporary hack to quit the phantomjs process
 # see below in quit_driver.
-import signal
+import time
 import threading
 import wsgiref.simple_server
+
+from selenium.common.exceptions import (
+    WebDriverException,
+)
 
 import flask
 import pytest
@@ -12,6 +16,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 
 # Declare this entire module as being a 'work-in-progress' test.
 pytestmark = pytest.mark.wip
+# pytestmark = pytest.mark.slow
 
 # @pytest.fixture()
 class ServerThread(threading.Thread):
@@ -39,7 +44,7 @@ class BrowserClient(object):
     """Interacts with a running instance of the application via animating a
     browser."""
 
-    def __init__(self, browser="firefox", hub_host="", options=None):
+    def __init__(self, browser="chrome", hub_host="", options=None):
         driver_class = {
             "chrome": webdriver.Chrome,
             "firefox": webdriver.Firefox,
@@ -47,9 +52,15 @@ class BrowserClient(object):
         }.get(browser)
         print("BrowserClient.init: driver_class set")
         if hub_host:
-            print(f"Setting command_executor={hub_host}")
-            self.driver = driver_class(command_executor=hub_host, options=options)
+            print(f"BrowserClient.init: Setting command_executor={hub_host}")
+            self.driver = driver_class(
+                command_executor=hub_host,
+                desired_capabilities={"browserName": "chrome"},
+                options=options,
+            )
+            print(f"BrowserClient.init: Set command_executor={hub_host}")
         else:
+            print("BrowserClient.init: Starting local selenium browser session.")
             self.driver = driver_class()
         print("BrowserClient.init: driver instantiated")
         # self.driver.set_window_size(1200, 760)
@@ -83,34 +94,49 @@ def make_url(app, endpoint, **kwargs):
 # browser client.
 def test_server(app):
     # Start server
-    # server_thread = ServerThread()
-    # server_thread.setup(app)
-    # server_thread.start()
-    # print("Server started...")
+    server_thread = ServerThread()
+    server_thread.setup(app)
+    server_thread.start()
+    print("Server started...")
 
-    firefox_options = webdriver.FirefoxOptions()
-    print("Firefox options set...")
-
-    client = BrowserClient(
-        browser="remote", hub_host="http://172.16.42.10:4444", options=firefox_options
-    )
-    driver = client.driver
-    print("Browser started...")
+    # firefox_options = webdriver.FirefoxOptions()
+    # print("Firefox options set...")
 
     try:
+        client = BrowserClient(
+            browser="remote",
+            hub_host="http://172.16.42.10:4444",  # options=firefox_options
+        )
+        driver = client.driver
+        print("Browser started...")
+
         port = app.config["TEST_SERVER_PORT"]
         # app.config["SERVER_NAME"] = "172.16.42.10:{}".format(port)
         app.config["SERVER_NAME"] = "172.16.42.166:{}".format(port)
+        # url = make_url(app, "/")
+        url = "http://" + app.config["SERVER_NAME"] + "/"
 
-        url = make_url(app, '/')
-        print(f"{url=}")
-        driver.get(url)
+        print("url={}".format(url))
+        for __ in range(5):
+            try:
+                driver.get(url)
+            except WebDriverException:
+                time.sleep(5)
+                continue
+            break
         assert "Pinochle" in driver.page_source
-
+    except KeyError as e:
+        print("KeyError: {}".format(e))
+        raise KeyError from e
+    except Exception as ex:
+        print("Exception: {}".format(ex))
+        raise Exception from ex
     finally:
-        # server_thread.stop()
-        # server_thread.join()
+        server_thread.stop()
+        server_thread.join()
         try:
             client.finalise()
         except selenium.common.exceptions.InvalidSessionIdException:
+            pass
+        except UnboundLocalError:
             pass
