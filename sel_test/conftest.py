@@ -58,3 +58,28 @@ def patch_geventws(monkeypatch):
 def patch_ws_messenger_to_MM():
     WSM.websocket_broadcast = MagicMock()
     WSM.websocket_broadcast.assert_has_calls
+
+# Support and automatically skip 'slow' and 'wip' tests unless the appropriate options
+# are given.
+def pytest_addoption(parser):
+    parser.addoption(
+        "--runslow", action="store_true", default=False, help="run slow tests"
+    )
+    parser.addoption(
+        "--runwip", action="store_true", default=False, help="run WIP tests"
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    if not config.getoption("--runslow"):
+        # --runslow given in cli: do not skip slow tests
+        skip_slow = pytest.mark.skip(reason="need --runslow option to run")
+        for item in items:
+            if "slow" in item.keywords:
+                item.add_marker(skip_slow)
+    if not config.getoption("--runwip"):
+        # --runeip given in cli: do not skip WIP tests
+        skip_wip = pytest.mark.skip(reason="need --runwip option to run")
+        for item in items:
+            if "wip" in item.keywords:
+                item.add_marker(skip_wip)

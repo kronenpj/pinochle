@@ -5,6 +5,7 @@ from copy import deepcopy
 from random import choice
 from typing import Dict, List, Tuple
 
+import pytest
 import requests
 from selenium import webdriver
 from selenium.common.exceptions import (
@@ -18,6 +19,9 @@ from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 from pinochle.cards.const import SUITS
 from tests.test_utils import PLAYER_NAMES, TEAM_NAMES
+
+# Declare this entire module as being a 'slow' test.
+pytestmark = pytest.mark.slow
 
 G_SELENIUM_HOST = "172.16.42.10"
 G_SELENIUM_STANDALONE_URI = f"http://{G_SELENIUM_HOST}:444"
@@ -551,4 +555,4 @@ class TestSelectPerson:
         Sleep at the end so interaction with the browsers is possible.
         """
         print("\nSleeping...")
-        time.sleep(0.5)
+        time.sleep(60)

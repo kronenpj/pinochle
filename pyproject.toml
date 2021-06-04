@@ -116,6 +116,13 @@ depends =
     pypy3
 """
 
+[tool.pytest.ini_options]
+addopts = "--strict-markers"
+markers = [
+    'wip: Tests for features currently in-work',
+    'slow: Mark slow tests to ignore them for development'
+]
+
 [tool.black]
 line-length = 88
 target-version = ['py38']
