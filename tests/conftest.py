@@ -17,13 +17,13 @@ from pinochle.ws_messenger import WebSocketMessenger as WSM
 
 # Possible scopes:
 # function, class, module, package, session
-# Only package and sesion work with in-memory SQLite database.
+# Only package and session work with in-memory SQLite database.
 @pytest.fixture(scope="package")
 def app():
     """
         Fixture to create an in-memory database and make it available only for the set of
-    import flask
-        tests that call for this fixture. The database is re-created according to the scope.
+        import flask tests that call for this fixture. The database is re-created
+        according to the scope.
 
         :yield: The application being tested with the temporary database.
         :rtype: FlaskApp
@@ -58,6 +58,7 @@ def patch_geventws(monkeypatch):
 def patch_ws_messenger_to_MM():
     WSM.websocket_broadcast = MagicMock()
     WSM.websocket_broadcast.assert_has_calls
+
 
 # Support and automatically skip 'slow' and 'wip' tests unless the appropriate options
 # are given.
