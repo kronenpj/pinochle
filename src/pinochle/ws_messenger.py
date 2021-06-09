@@ -78,9 +78,7 @@ class WebSocketMessenger:
             self.update_refreshed_player_page(game_id, player_id, ws)
         except geventwebsocket.exceptions.WebSocketError:
             # Client disconnected unexpectedly.
-            self.mylog.warning(
-                "Client disconnected unexpectedly. Continuing."
-            )
+            self.mylog.warning("Client disconnected unexpectedly. Continuing.")
 
     def update_refreshed_player_page(self, game_id, player_id, ws):
         # Send this player information about the game, as appropriate, in case they've
