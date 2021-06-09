@@ -266,6 +266,7 @@ class PlayingCard(SVG.UseObject):
         if add_only and "card-base" not in receiving_deck:
             receiving_deck.append("card-base")
         if GAME_MODES[g_game_mode] not in ["trick"]:
+            # TODO: Transition to game_state 3 (), this causes an exception: ValueError: 'card-base' is not in list.
             placement = receiving_deck.index("card-base")
         else:
             p_list = order_player_id_list_for_trick()
@@ -534,11 +535,10 @@ class MeldFinalDialog:
 
 class TrickWonDialog:
     trick_won_dialog = None
-    last_bid = -1
 
     def on_click_trick_won_dialog(self, event=None):
         """
-        Handle the click event for the bid/pass buttons.
+        Handle the click event for the next trick/ok buttons.
 
         :param event: [description], defaults to None
         :type event: [type], optional
@@ -546,6 +546,7 @@ class TrickWonDialog:
         if not event.currentTarget.text:
             return
 
+        mylog.error("In on_click_trick_won_dialog")
         # Convey to the server that play is continuing.
         put(f"/play/{g_round_id}/next_trick?player_id={g_player_id}")
         self.trick_won_dialog.close()
@@ -560,16 +561,14 @@ class TrickWonDialog:
         if not event.currentTarget.text:
             return
 
+        mylog.error("In on_click_final_trick_won_dialog")
         # Convey to the server that to start the next round.
         put(f"/game/{g_game_id}?state=true", advance_mode_callback, False)
         self.trick_won_dialog.close()
 
     def display_trick_won_dialog(self):
         """
-        Display the meld hand submitted by a player in a pop-up.
-
-        :param bid_data: Data from the event as a JSON string.
-        :type bid_data: str
+        Display the trick has been won dialog to the player who won the trick.
         """
         mylog.error("Entering display_trick_won_dialog.")
 
@@ -653,7 +652,7 @@ def find_protocol_server():
     :rtype: (str, str)
     """
     start = os.environ["HOME"].find("//") + 2
-    end = os.environ["HOME"].find("/", start=start) + 1
+    end = os.environ["HOME"].find("/", start) + 1
     proto = os.environ["HOME"][: start - 3]
     if end <= start:
         hostname = os.environ["HOME"][start:]
@@ -716,42 +715,42 @@ def on_ws_event(event=None):
     mylog.error("In on_ws_event.")
     global g_game_mode, g_player_list  # pylint: disable=invalid-name
 
+    t_data = json.loads(event.data)
     mylog.warning("on_ws_event: %s", event.data)
 
-    if "action" not in event.data:
+    if "action" not in t_data:
         return
-    if "game_start" in event.data:
-        data = json.loads(event.data)
-        g_game_mode = data["state"]
+    if "game_start" in t_data["action"]:
+        g_game_mode = t_data["state"]
         mylog.warning("on_ws_event: game_start: g_player_list=%r", g_player_list)
         clear_globals_for_round_change()
-    elif "notification_player_list" in event.data:
+    elif "notification_player_list" in t_data["action"]:
         update_player_names(event.data)
-    elif "game_state" in event.data:
-        g_game_mode = json.loads(event.data)["state"]
+    elif "game_state" in t_data["action"]:
+        g_game_mode = t_data["state"]
         display_game_options()
-    elif "bid_prompt" in event.data:
+    elif "bid_prompt" in t_data["action"]:
         bid_dialog = BidDialog()
         bid_dialog.display_bid_dialog(event.data)
-    elif "bid_winner" in event.data:
+    elif "bid_winner" in t_data["action"]:
         display_bid_winner(event.data)
-    elif "reveal_kitty" in event.data:
+    elif "reveal_kitty" in t_data["action"]:
         reveal_kitty_card(event.data)
-    elif "trump_selected" in event.data:
+    elif "trump_selected" in t_data["action"]:
         record_trump_selection(event.data)
-    elif "trump_buried" in event.data:
+    elif "trump_buried" in t_data["action"]:
         notify_trump_buried(event.data)
-    elif "meld_update" in event.data:
+    elif "meld_update" in t_data["action"]:
         display_player_meld(event.data)
-    elif "team_score" in event.data:
+    elif "team_score" in t_data["action"]:
         update_team_scores(event.data)
-    elif "trick_card" in event.data:
+    elif "trick_card" in t_data["action"]:
         update_trick_card(event.data)
-    elif "trick_won" in event.data:
+    elif "trick_won" in t_data["action"]:
         update_trick_winner(event.data)
-    elif "trick_next" in event.data:
+    elif "trick_next" in t_data["action"]:
         clear_globals_for_trick_change()
-    elif "round_score" in event.data:
+    elif "score_round" in t_data["action"]:
         update_round_final_score(event.data)
 
 
@@ -762,48 +761,64 @@ def update_round_final_score(event=None):
     :param event: [description], defaults to None
     :type event: [type], optional
     """
-    mylog.error("Entering update_trick_final_score.")
+    mylog.error("Entering update_round_final_score.")
     global g_round_bid_trick_winner, g_my_team_score, g_other_team_score
 
     data = json.loads(event)
-    mylog.warning("update_trick_final_score: data=%s", data)
+    mylog.warning("update_round_final_score: data=%s", data)
     assert isinstance(data, dict)
     t_player_id = data["player_id"]
     t_team_trick_scores = data["team_trick_scores"]
     t_team_scores = data["team_scores"]
-    mylog.warning("update_trick_final_score: t_player_id=%s", t_player_id)
+    mylog.warning("update_round_final_score: t_player_id=%s", t_player_id)
     mylog.warning(
-        "update_trick_final_score: t_team_trick_scores=%r", t_team_trick_scores
+        "update_round_final_score: t_team_trick_scores=%r", t_team_trick_scores
     )
-    mylog.warning("update_trick_final_score: t_team_scores=%r", t_team_scores)
+    mylog.warning("update_round_final_score: t_team_scores=%r", t_team_scores)
 
     # Record that information.
-    g_round_bid_trick_winner = t_player_id
+    g_round_bid_trick_winner = str(t_player_id)
 
-    my_team = g_team_dict[g_team_id]["name"].capitalize()
-    other_team = [g_team_dict[x]["name"] for x in g_team_dict if x != g_team_id][
+    # Obtain the other team's ID
+    t_other_team_id = [x for x in g_team_dict if x != g_team_id][0]
+
+    mylog.warning("update_round_final_score: Setting my team name")
+    my_team = g_team_dict[g_team_id]["team_name"].capitalize()
+    mylog.warning("update_round_final_score: Setting other team's name")
+    other_team = [g_team_dict[x]["team_name"] for x in g_team_dict if x != g_team_id][
         0
     ].capitalize()
+    mylog.warning("update_round_final_score: Setting score variables")
     my_scores, other_scores = (
-        t_team_trick_scores[my_team],
-        t_team_trick_scores[other_team],
+        t_team_trick_scores[g_team_id],
+        t_team_trick_scores[t_other_team_id],
     )
 
     # TODO: Handle case where bid winner's team doesn't make the bid.
+    mylog.warning("update_round_final_score: Setting global team scores.")
     g_my_team_score, g_other_team_score = (
-        t_team_scores[my_team],
-        t_team_scores[other_team],
+        t_team_scores[g_team_id],
+        t_team_scores[t_other_team_id],
     )
 
+    mylog.warning(
+        "g_player_id=%s / t_player_id=%s", repr(g_player_id), repr(t_player_id)
+    )
     if str(g_player_id) == str(t_player_id):
+        mylog.warning(
+            "update_round_final_score: Displaying final trick dialog for this player."
+        )
         TrickWonDialog().display_final_trick_dialog(
             my_team, my_scores, other_team, other_scores
         )
     else:
+        mylog.warning(
+            "update_round_final_score: Displaying generic final trick dialog for this player."
+        )
         InfoDialog(
             "Last Trick Won",
             f"{g_player_dict[t_player_id]['name'].capitalize()} won the final trick. "
-            f"Trick Scores: {my_team}: {my_scores} points / {other_team}: {other_scores} points",
+            + f"Trick Scores: {my_team}: {my_scores} points / {other_team}: {other_scores} points",
             top=25,
             left=25,
         )
@@ -824,14 +839,14 @@ def update_trick_winner(event=None):
     assert isinstance(data, dict)
     t_player_id = data["player_id"]
     t_card = data["winning_card"]
-    mylog.critical("update_trick_winner: t_player_id=%s", t_player_id)
-    mylog.critical("update_trick_winner: t_card=%s", t_card)
+    mylog.warning("update_trick_winner: t_player_id=%s", t_player_id)
+    mylog.warning("update_trick_winner: t_card=%s", t_card)
 
     # Find the first instance of the winning card in the list.
     card_index = discard_deck.index(t_card)
     # Correlate that to the player_id who threw it.
     t_player_id = order_player_id_list_for_trick()[card_index]
-    mylog.critical("update_trick_winner: t_player_id=%s", t_player_id)
+    mylog.warning("update_trick_winner: t_player_id=%s", t_player_id)
     # Record that information.
     g_round_bid_trick_winner = t_player_id
 
@@ -877,10 +892,9 @@ def update_team_scores(event=None):
     mylog.error("Entering update_team_scores.")
     global g_my_team_score, g_other_team_score, g_meld_score  # pylint: disable=invalid-name
     data = json.loads(event)
-    mylog.warning(f"update_team_scores: {data=}")
+    mylog.warning("update_team_scores: data=%r", data)
     assert isinstance(data, dict)
-    t_team_id = data["team_id"]
-    if g_team_id == t_team_id:
+    if g_team_id == str(data["team_id"]):
         g_my_team_score = data["score"]
         g_meld_score = data["meld_score"]
     else:  # Other team
@@ -898,22 +912,22 @@ def notify_trump_buried(event=None):
     """
     mylog.error("Entering notify_trump_buried.")
     data = json.loads(event)
-    mylog.warning(f"notify_trump_buried: {data=}")
+    mylog.warning("notify_trump_buried: data=%r", data)
     assert isinstance(data, dict)
     if "player_id" in data:
         mylog.warning("notify_trump_buried: About to retrieve player_id from data")
         t_player_id = data["player_id"]
     else:
         t_player_id = "00000000-0000-4000-0000-000000000000"
-    mylog.warning(f"notify_trump_buried: {t_player_id=}")
+    mylog.warning("notify_trump_buried: t_player_id=%r", t_player_id)
     player_name = ""
     if t_player_id == g_player_id:
         player_name = "You have"
     else:
         player_name = "{} has".format(g_player_dict[t_player_id]["name"])
-    mylog.warning(f"notify_trump_buried: {player_name=}")
+    mylog.warning("notify_trump_buried: player_name=%s", player_name)
     count = data["count"]
-    mylog.warning(f"notify_trump_buried: {count=}")
+    mylog.warning("notify_trump_buried: count=%d", count)
 
     InfoDialog(
         "Trump Buried",
@@ -954,7 +968,7 @@ def reveal_kitty_card(event=None):
     revealed_card = str(data["card"])
 
     if revealed_card not in g_kitty_deck:
-        print(f"{revealed_card=} is not in {g_kitty_deck=}")
+        mylog.warning("%s is not in %r", revealed_card, g_kitty_deck)
         return
 
     for (objid, node) in g_canvas.objectDict.items():
@@ -2094,7 +2108,7 @@ def display_game_options():
                 )
                 if g_player_id in g_team_dict[_temp]["player_ids"]:
                     g_team_id = g_team_dict[_temp]["team_id"]
-                    mylog.warning(f"dgo: Set {g_team_id=}")
+                    mylog.warning("dgo: Set g_team_id=%s", g_team_id)
 
         rebuild_display()
 

@@ -1,5 +1,7 @@
 import json
+import logging
 import socket
+import sys
 import threading
 import time
 from copy import deepcopy
@@ -18,6 +20,7 @@ from selenium.common.exceptions import (
     WebDriverException,
 )
 from selenium.webdriver.common.by import By
+from selenium.webdriver.edge.options import Options as EdgeOptions
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 
@@ -125,9 +128,24 @@ class ServerThread(threading.Thread):
         self.app.config["TEST_SERVER_PORT"] = G_TEST_SERVER_PORT
         self.port = app.config["TEST_SERVER_PORT"]
 
+        self.root_logger = logging.getLogger()
+        self.root_logger.setLevel(logging.WARNING)
+
+        handler = logging.StreamHandler(sys.stderr)
+        handler.setLevel(self.root_logger.getEffectiveLevel())
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+        handler.setFormatter(formatter)
+        self.root_logger.addHandler(handler)
+
     def run(self):
         self.httpd = pywsgi.WSGIServer(
-            ("", G_TEST_SERVER_PORT), wsgi.application, handler_class=WebSocketHandler,
+            ("", G_TEST_SERVER_PORT),
+            wsgi.application,
+            handler_class=WebSocketHandler,
+            log=self.root_logger,
+            error_log=self.root_logger,
         )
         self.httpd.serve_forever()
 
@@ -195,16 +213,16 @@ class TestSingleRound:
         TestSingleRound.server_thread.setup(app)
         TestSingleRound.server_thread.start()
 
+        # t_options = EdgeOptions()
         # t_options = webdriver.FirefoxOptions()
-        # t_options = webdriver.ChromeOptions()
+        t_options = webdriver.ChromeOptions()
         # t_options.headless = False
+        t_options.set_capability("goog:loggingPrefs", {"browser": "ALL"})
         for seq in range(4):
             driver = webdriver.Remote(
                 # command_executor=f"{G_SELENIUM_STANDALONE_URI}{seq+1}",
                 command_executor=G_SELENIUM_HUB_URL,
-                desired_capabilities={"browserName": choice(G_BROWSER_LIST)},
-                # desired_capabilities={"browserName": G_BROWSER_LIST[0]},
-                # options=t_options,
+                options=t_options,
             )
             self.driver.append(driver)
 
@@ -309,7 +327,7 @@ class TestSingleRound:
         Wait for the list of players to appear.
         """
         for driver in self.driver:
-            WebDriverWait(driver, 5).until(
+            WebDriverWait(driver, 10).until(
                 expected_conditions.presence_of_element_located(
                     (By.XPATH, "(//*[@id='canvas' and contains(.,'Player:')])")
                 )
@@ -476,7 +494,7 @@ class TestSingleRound:
             ):
                 assert card_ids
                 t_id = choice(card_ids)
-                print(f"Attempting to move {t_id}")
+                # print(f"Attempting to move {t_id}")
                 element = driver.find_element(By.ID, t_id)
                 assert element
 
@@ -503,7 +521,7 @@ class TestSingleRound:
                         element.click()
                     except WebDriverException as e:
                         print(f"Ignoring exception: {e}")
-                        # pass
+                        pass
         except NoSuchElementException:
             # This is expected when the dialog box disappears.
             pass
@@ -550,6 +568,7 @@ class TestSingleRound:
         """
         keep_going = True
         while keep_going:
+            time.sleep(0.1)
             # Create associations between drivers and the list of cards.
             for driver in self.driver:
                 # Locate elements that start with 'player' in the ID attribute.
@@ -559,19 +578,20 @@ class TestSingleRound:
                 # If the list is empty, flag to stop looping.
                 if not t_cards:
                     keep_going = False
-                    break
-                print("Choosing from ")
-                print(", ".join(x.get_attribute("id") for x in t_cards))
+                    return
+                # print("Choosing from ")
+                # print(", ".join(x.get_attribute("id") for x in t_cards))
 
                 # Choose a random card, click on it, and remove it from consideration
                 t_card = choice(t_cards)
-                print(f"Moving {t_card.get_attribute('id')}")
+                # print(f"Moving {t_card.get_attribute('id')}")
 
                 # Drag the card up a sufficient amount.
                 webdriver.ActionChains(driver).drag_and_drop_by_offset(
                     t_card, 0, -200
                 ).perform()
 
+            time.sleep(0.2)
             for driver in self.driver:
                 try:
                     # Acknowledge to continue playing
@@ -584,27 +604,35 @@ class TestSingleRound:
 
     def test_250_locate_next_round_button(self):
         """
-        Submit meld without choosing any cards.
+        Acknowledge last trick in the round.
         """
         acknowledged = False
-        # Wait for prompt to acknowledge as final meld.
+        # Wait for prompt to acknowledge as final trick in the round.
         for driver in self.driver:
             try:
-                t_dialog = WebDriverWait(driver, 5).until(
-                    expected_conditions.presence_of_element_located(
-                        (By.XPATH, "//button[text()='Next Round']")
-                    )
+                # Acknowledge to continue playing
+                t_dialog = driver.find_element(
+                    By.XPATH, "//button[text()='Next round']"
                 )
-                # Acknowledge as final meld.
-                # t_dialog = driver.find_element(By.XPATH, "//button[text()='Next Round']")
                 t_dialog.click()
                 acknowledged = True
+                break
             except NoSuchElementException:
                 # This will occur three out of four times as the prompt is only
                 # presented to the winner of the last trick.
                 pass
 
         assert acknowledged
+
+    # def test_899_collect_browser_logs(self):
+    #     """
+    #     Collect and print logs from the browsers.
+    #     """
+    #     for idx, driver in enumerate(self.driver):
+    #         message = [x for x in driver.get_log("browser")]
+    #         print("Log for browser: {}".format(idx))
+    #         print("\n".join(x["message"] for x in message[:-5]))
+    #         print()
 
     # def test_900_delete_game(self):
     #     response = requests.delete(f"{BASE_URL}/game/{g_game_id}")

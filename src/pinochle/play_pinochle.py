@@ -67,7 +67,7 @@ def deal_pinochle(player_ids: list, kitty_len: int = 0, kitty_id: str = None) ->
 
 def set_players_bidding(player_ids: list) -> None:
     """
-    Update each player's record to indicate they are participating in this round's 
+    Update each player's record to indicate they are participating in this round's
     bidding.
 
     :param player_ids: [description]
@@ -80,7 +80,7 @@ def set_players_bidding(player_ids: list) -> None:
 
 def set_player_pass(player_id: str) -> None:
     """
-    Update supplied player's record to indicate they are no longer participating in this 
+    Update supplied player's record to indicate they are no longer participating in this
     round's bidding.
 
     :param player_id: [description]
@@ -290,7 +290,7 @@ def determine_next_bidder_player_id(player_id: str, ordered_player_list: List[st
 
 def send_bid_message(message_type: str, game_id: str, player_id: str, bid: int):
     """
-    Send a websocket message to all players with a bid-related message with the 
+    Send a websocket message to all players with a bid-related message with the
     information about the next bidder and current bid, or who has won the bid.
 
     :param message_type: Type of bid messsage
@@ -570,7 +570,7 @@ def start_next_trick(round_id: str, player_id: str) -> Response:
     :return:              Response to the web request originating the request.
     :rtype:               Response
     """
-    # print(f"\play_trick_card: round_id={round_id}")
+    # print(f"\nIn start_next_trick: round_id={round_id}")
     # Get the round requested
     a_round: Round = utils.query_round(round_id)
     round_player_list: List[str] = utils.query_player_ids_for_round(round_id)
@@ -635,7 +635,7 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
     :return:              Response to the web request originating the request.
     :rtype:               Response
     """
-    # print(f"\play_trick_card: round_id={round_id}")
+    # print(f"\nplay_trick_card: round_id={round_id}")
     # Get the round requested
     a_round: Round = utils.query_round(round_id)
     a_player: Optional[Player] = utils.query_player(player_id)
@@ -738,6 +738,7 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
 
         # Check to see if a player has cards left in their hand.
         if hand.read_one(player_hand_id):
+            # print("Sending trick_won message.")
             # Send played card to other players via Websocket
             message = {
                 "action": "trick_won",
@@ -748,8 +749,10 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
             ws_mess = WSM.get_instance()
             ws_mess.websocket_broadcast(game_id, message)
         else:
+            # print("Calling notify_round_complete.")
             # The last trick for this round has been played.
             notify_round_complete(game_id, round_id, winning_player_id, winning_team_id)
+        # print("Exiting play_trick_card, when trick is complete.")
 
     return make_response("Card accepted", 200)
 
@@ -805,6 +808,7 @@ def notify_round_complete(
     :param winning_player_id: The ID of the player who won the last trick.
     :type winning_player_id: str
     """
+    # print("In notify_round_complete.")
     # Collect data needed for notification.
     a_roundteam_list = utils.query_roundteam_list(round_id)
     team_id_list = [str(x.team_id) for x in a_roundteam_list]
@@ -813,7 +817,7 @@ def notify_round_complete(
     # Score the team hands
     trick_score = {}
     assert t_hand_id_list
-    # print(f"t_hand_id_list={t_hand_id_list}")
+    # print(f"notify_round_complete: t_hand_id_list={t_hand_id_list}")
     for index, h_id in enumerate(t_hand_id_list):
         if hand.read_one(h_id):
             trick_score[team_id_list[index]] = score_tricks.score(
@@ -822,11 +826,11 @@ def notify_round_complete(
             if str(team_id_list[index]) == str(winning_team_id):
                 trick_score[team_id_list[index]] += 1
             # print(
-            #     f"Score for team {team_id_list[index]}: "
+            #     f"notify_round_complete: Score for team {team_id_list[index]}: "
             #     f"{trick_score[team_id_list[index]]}"
             # )
         else:
-            # print(f"Zero score {index}/{t_h_id}")
+            # print(f"notify_round_complete: Zero score {index}/{h_id}")
             trick_score[team_id_list[index]] = 0
 
     # Update the overall team scores
@@ -840,10 +844,13 @@ def notify_round_complete(
 
     # Notify the players of the final trick score.
     message = {
-        "action": "round_score",
+        "action": "score_round",
         "game_id": game_id,
+        "player_id": winning_player_id,
         "team_trick_scores": trick_score,
         "team_scores": team_scores,
     }
+    # print("notify_round_complete: Sending WSM to clients. {}".format(message))
     ws_mess = WSM.get_instance()
     ws_mess.websocket_broadcast(game_id, message)
+    # print("Exiting notify_round_complete.")
