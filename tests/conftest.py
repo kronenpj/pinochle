@@ -1,13 +1,15 @@
 """
 Module to hold test fixtures.
-
-License: GPLv3
 """
 
+import socket
 from unittest.mock import MagicMock
 
 import geventwebsocket
 import pytest
+from selenium import webdriver
+from selenium.webdriver.edge.options import Options as EdgeOptions
+
 from pinochle import wsgi
 from pinochle.models.core import db
 from pinochle.ws_messenger import WebSocketMessenger as WSM
@@ -36,6 +38,27 @@ def app():
 
     # print("conftest.app, removing db session")
     db.session.remove()
+
+
+class SeleniumConfig:
+    COLLECT_VIDEO = False
+    COLLECT_BROWSER_LOGS = False
+    USE_SELENIUM_STANDALONE = False
+    # Re-define this for your environment
+    SELENIUM_HOST = "172.16.42.10"
+    SELENIUM_STANDALONE_URI = f"http://{SELENIUM_HOST}:444"
+    SELENIUM_HUB_URL = f"http://{SELENIUM_HOST}:4444"
+    # Trim / adjust this list based on the available browsers in your environment.
+    BROWSER_LIST = {
+        "chrome": webdriver.ChromeOptions,
+        "MicrosoftEdge": EdgeOptions,
+        # "firefox": webdriver.FirefoxOptions, # Firefox is broken in many ways.
+    }
+    # Change this to another host if you want to test against an existing server.
+    _HOST_NAME = socket.gethostname()
+    _HOST_IP = socket.gethostbyname(_HOST_NAME)
+    TEST_SERVER_PORT = 5001
+    BASE_URL = "http://" + _HOST_IP + ":" + str(TEST_SERVER_PORT)
 
 
 def do_nothing(*args, **kwargs):  # pylint: disable=unused-argument

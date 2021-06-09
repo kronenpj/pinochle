@@ -1,6 +1,12 @@
+"""
+Invoke selenium in four separate browsers and step through one complete round from
+beginning to end.
+
+Requires a Selenium Grid or four standalone selenium instances.
+Configuration available in conftest.py's SeleniumConfig class.
+"""
 import json
 import logging
-import socket
 import sys
 import threading
 import time
@@ -20,29 +26,18 @@ from selenium.common.exceptions import (
     WebDriverException,
 )
 from selenium.webdriver.common.by import By
-from selenium.webdriver.edge.options import Options as EdgeOptions
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 
 from pinochle import wsgi
 from pinochle.cards.const import SUITS
+from tests.conftest import SeleniumConfig
 from tests.test_utils import PLAYER_NAMES, TEAM_NAMES
 
 # pylint: disable=attribute-defined-outside-init
 
 # Declare this entire module as being a 'slow' test.
 pytestmark = pytest.mark.slow
-
-G_SELENIUM_HOST = "172.16.42.10"
-G_SELENIUM_STANDALONE_URI = f"http://{G_SELENIUM_HOST}:444"
-G_SELENIUM_HUB_URL = f"http://{G_SELENIUM_HOST}:4444"
-# G_BROWSER_LIST = ['firefox', 'chrome','MicrosoftEdge']
-G_BROWSER_LIST = ["chrome"]
-G_BROWSER = G_BROWSER_LIST[0]
-G_HOST_NAME = socket.gethostname()
-G_HOST_IP = socket.gethostbyname(G_HOST_NAME)
-G_TEST_SERVER_PORT = 5001
-G_BASE_URL = "http://" + G_HOST_IP + ":" + str(G_TEST_SERVER_PORT)
 
 
 def setup_new_game() -> Tuple[str, List[str]]:
@@ -55,7 +50,7 @@ def setup_new_game() -> Tuple[str, List[str]]:
     for player in PLAYER_NAMES:
         data = {"name": player}
         response = requests.post(
-            f"{G_BASE_URL}/api/player",
+            f"{SeleniumConfig.BASE_URL}/api/player",
             json=data,
             headers={"Content-Type": "application/json"},
         )
@@ -68,7 +63,7 @@ def setup_new_game() -> Tuple[str, List[str]]:
     for team in TEAM_NAMES:
         data = {"name": team}
         response = requests.post(
-            f"{G_BASE_URL}/api/team",
+            f"{SeleniumConfig.BASE_URL}/api/team",
             json=data,
             headers={"Content-Type": "application/json"},
         )
@@ -81,7 +76,7 @@ def setup_new_game() -> Tuple[str, List[str]]:
         for p_idx in [0, 1]:
             data = {"player_id": player_ids[p_idx + 2 * t_idx]}
             response = requests.post(
-                f"{G_BASE_URL}/api/team/{team_ids[t_idx]}",
+                f"{SeleniumConfig.BASE_URL}/api/team/{team_ids[t_idx]}",
                 json=data,
                 headers={"Content-Type": "application/json"},
             )
@@ -89,7 +84,7 @@ def setup_new_game() -> Tuple[str, List[str]]:
 
     # Create game with a kitty size of 4 cards.
     response = requests.post(
-        f"{G_BASE_URL}/api/game?kitty_size=4",
+        f"{SeleniumConfig.BASE_URL}/api/game?kitty_size=4",
         headers={"Content-Type": "application/json"},
     )
     assert response.status_code == 201
@@ -99,7 +94,7 @@ def setup_new_game() -> Tuple[str, List[str]]:
 
     # Create round.
     response = requests.post(
-        f"{G_BASE_URL}/api/game/{game_id}/round",
+        f"{SeleniumConfig.BASE_URL}/api/game/{game_id}/round",
         headers={"Content-Type": "application/json"},
     )
     assert response.status_code == 201
@@ -109,14 +104,14 @@ def setup_new_game() -> Tuple[str, List[str]]:
     # Attach teams to the new round.
     data = team_ids
     response = requests.post(
-        f"{G_BASE_URL}/api/round/{round_id}",
+        f"{SeleniumConfig.BASE_URL}/api/round/{round_id}",
         json=data,
         headers={"Content-Type": "application/json"},
     )
     assert response.status_code == 201
 
     # Start the game.
-    response = requests.post(f"{G_BASE_URL}/api/round/{round_id}/start")
+    response = requests.post(f"{SeleniumConfig.BASE_URL}/api/round/{round_id}/start")
 
     return game_id, player_ids
 
@@ -125,7 +120,7 @@ class ServerThread(threading.Thread):
     def setup(self, app):
         self.app = app
         self.app.config["TESTING"] = True
-        self.app.config["TEST_SERVER_PORT"] = G_TEST_SERVER_PORT
+        self.app.config["TEST_SERVER_PORT"] = SeleniumConfig.TEST_SERVER_PORT
         self.port = app.config["TEST_SERVER_PORT"]
 
         self.root_logger = logging.getLogger()
@@ -141,7 +136,7 @@ class ServerThread(threading.Thread):
 
     def run(self):
         self.httpd = pywsgi.WSGIServer(
-            ("", G_TEST_SERVER_PORT),
+            ("", SeleniumConfig.TEST_SERVER_PORT),
             wsgi.application,
             handler_class=WebSocketHandler,
             log=self.root_logger,
@@ -159,11 +154,24 @@ class ServerThread(threading.Thread):
 
 
 class TestSingleRound:
-    driver = []
+    driver: List[webdriver.Remote] = []
     handles = {}
     server_thread = None
 
     def teardown_class(self):
+        # Collect logs before quitting browsers.
+        if SeleniumConfig.COLLECT_BROWSER_LOGS:
+            for idx, driver in enumerate(self.driver):
+                if "firefox" not in driver.name:
+                    message = [x for x in driver.get_log("browser")]
+                    print("Log for browser: {}/{}".format(idx, driver.name))
+                    print("\n".join(x["message"] for x in message[:-5]))
+                else:
+                    print("Log for browser: {}/{}".format(idx, driver.name))
+                    print("Not collecting logs from firefox - throws:")
+                    print("    WebDriverException: Message: HTTP method not allowed")
+                print()
+
         # time.sleep(60)
         try:
             # Stop all browsers
@@ -189,7 +197,7 @@ class TestSingleRound:
         WHEN the '/api/player' page is requested (POST)
         THEN check that the response is a UUID and contains the expected information
         """
-        response = requests.get(f"{G_BASE_URL}/api/player")
+        response = requests.get(f"{SeleniumConfig.BASE_URL}/api/player")
         print(f"response.text={response.text}")
         assert response.status_code == 200
         assert response.text
@@ -213,17 +221,36 @@ class TestSingleRound:
         TestSingleRound.server_thread.setup(app)
         TestSingleRound.server_thread.start()
 
-        # t_options = EdgeOptions()
-        # t_options = webdriver.FirefoxOptions()
-        t_options = webdriver.ChromeOptions()
-        # t_options.headless = False
-        t_options.set_capability("goog:loggingPrefs", {"browser": "ALL"})
         for seq in range(4):
-            driver = webdriver.Remote(
-                # command_executor=f"{G_SELENIUM_STANDALONE_URI}{seq+1}",
-                command_executor=G_SELENIUM_HUB_URL,
-                options=t_options,
-            )
+            t_browser = choice(list(SeleniumConfig.BROWSER_LIST.keys()))
+            t_options = SeleniumConfig.BROWSER_LIST[t_browser]()
+            t_options.set_capability("platform", "ANY")
+            t_options.set_capability("se:timeZone", "US/Eastern")
+
+            # Can't select video on standalone containers.
+            if (
+                not SeleniumConfig.USE_SELENIUM_STANDALONE
+                and SeleniumConfig.COLLECT_VIDEO
+            ):
+                t_options.set_capability("se:recordVideo", True)
+                t_options.set_capability("se:screenResolution", "1920x1080")
+
+            if SeleniumConfig.COLLECT_BROWSER_LOGS:
+                if t_browser == "chrome":
+                    t_options.set_capability("goog:loggingPrefs", {"browser": "ALL"})
+                else:
+                    t_options.set_capability("loggingPrefs", {"browser": "ALL"})
+
+            if SeleniumConfig.USE_SELENIUM_STANDALONE:
+                driver = webdriver.Remote(
+                    command_executor=f"{SeleniumConfig.SELENIUM_STANDALONE_URI}{seq+1}",
+                    options=t_options,
+                )
+            else:
+                driver = webdriver.Remote(
+                    command_executor=SeleniumConfig.SELENIUM_HUB_URL, options=t_options,
+                )
+
             self.driver.append(driver)
 
     def test_050_start_browsers(self):
@@ -240,7 +267,9 @@ class TestSingleRound:
 
         assert self.driver
         for t_driver in self.driver:
-            t_driver.get(f"{G_BASE_URL}/")
+            t_driver.get(f"{SeleniumConfig.BASE_URL}/")
+            t_driver.maximize_window()
+            # t_driver.fullscreen_window()
 
     def test_100_browser_wait(self):
         """
@@ -260,7 +289,9 @@ class TestSingleRound:
                             (By.XPATH, "//*[@id='card_table']")
                         )
                     )
-                    print(f"Browser {self.driver.index(driver)} succeeded.")
+                    print(
+                        f"Browser {self.driver.index(driver)} ({driver.name}) located card_table."
+                    )
                     counter -= 1
                 if not counter:
                     limit = 0
@@ -289,39 +320,6 @@ class TestSingleRound:
 
         assert not "There should be a game created."
 
-    # This method of testing creates a new database and game when starting the test.
-    # This means the list of games will never show up and we can avoid looking for it.
-    # def test_120_browser_find_game(self):
-    #     """
-    #     Locate the game buttons
-    #     """
-    #     print(f"Looking for game id: {g_game_id}")
-    #     assert self.driver
-    #     t_drivers = self.driver[:]
-    #     for __ in range(7):  # maximum 20 seconds wait x n iterations
-    #         try:
-    #             for driver in t_drivers:
-    #                 element = WebDriverWait(driver, 5).until(
-    #                     expected_conditions.presence_of_element_located(
-    #                         (By.XPATH, f"//*[@id='{g_game_id}']")
-    #                     )
-    #                 )
-    #                 # element = driver.find_element(By.XPATH, f"//*[@id='{g_game_id}']")
-    #                 assert element
-    #                 element.click()
-    #                 t_drivers.remove(driver)
-    #             print("Selected desired game.")
-    #         except NoSuchElementException as e:
-    #             print("Could not locate desired game.")
-    #             assert not "Could not locate desired game."
-    #             raise NoSuchElementException from e
-    #         except TimeoutException:
-    #             # The UI skips listing games if there's only one in the database.
-    #             print("Caught TimeoutException. Continuing...")
-    #             pass
-    #         if not t_drivers:
-    #             break
-
     def test_140_browser_wait(self):
         """
         Wait for the list of players to appear.
@@ -338,6 +336,11 @@ class TestSingleRound:
         Locate the player's button corresponding to the sequence of the driver / player_id
         """
         for counter, driver in enumerate(self.driver):
+            # NOTE: Firefox throws:
+            # selenium.common.exceptions.ElementNotInteractableException: Message:
+            # Element <g id="x"> could not be scrolled into view.
+            # Since this is a crucial bit of the test, it can't be worked around like the
+            # remainder of the problems FF has.
             element = driver.find_element(
                 By.XPATH,
                 '(//*[@id="canvas" and contains(.,"Player: {}")])'.format(
@@ -472,15 +475,15 @@ class TestSingleRound:
         )
 
         # Choose a trump suit.
-        declared_trump = choice(SUITS)  # Chrome-Works, Edge-Works
+        if "firefox" not in driver.name:
+            declared_trump = choice(SUITS)  # Chrome & Edge work
+        else:
+            # Deal with Firefox's displaced glyphs
+            # In Firefox, only 'spade' works due to the displacement between where Firefox
+            # displays the glyph and where it shows the glyph being positioned in the
+            # developer utility / programmatically.
+            declared_trump = "Spades"
         declared_trump = declared_trump.lower().rstrip("s")
-        # In Firefox, only 'spade' works due to the displacement between where Firefox
-        # displays the glyph and where it shows the glyph being positioned in the
-        # developer utility / programmatically.
-        # declared_trump = "spade"  # FF-Works
-        # declared_trump = "heart" # FF-Broken
-        # declared_trump = "club" # FF-Broken
-        # declared_trump = "diamond" # FF-Broken
 
         trump_dialog = driver.find_element(By.CLASS_NAME, "brython-dialog-title")
         card_elements = driver.find_elements(By.XPATH, "//*[contains(@id,'player')]")
@@ -623,16 +626,6 @@ class TestSingleRound:
                 pass
 
         assert acknowledged
-
-    # def test_899_collect_browser_logs(self):
-    #     """
-    #     Collect and print logs from the browsers.
-    #     """
-    #     for idx, driver in enumerate(self.driver):
-    #         message = [x for x in driver.get_log("browser")]
-    #         print("Log for browser: {}".format(idx))
-    #         print("\n".join(x["message"] for x in message[:-5]))
-    #         print()
 
     # def test_900_delete_game(self):
     #     response = requests.delete(f"{BASE_URL}/game/{g_game_id}")
