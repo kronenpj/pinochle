@@ -1,8 +1,8 @@
 ### TEMPORARY UNTIL I CAN SEE IF I WANT THESE IN GIT
 *graeco_latin*
 classes_Pinochle.svg
-container-compose.yml
 curl_inserts.sh
+docker-compose.yml
 dragdrop-refinements-fail.patch
 echo.html
 geckodriver
