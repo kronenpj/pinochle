@@ -7,7 +7,7 @@ Modernized and modified for Pinochle by Paul Kronenwetter
 """
 
 from copy import deepcopy
-from typing import List
+from typing import List, Tuple
 
 from .. import score_meld, score_tricks
 from ..exceptions import InvalidDeckError, InvalidSuitError
@@ -34,7 +34,7 @@ def populate_deck():
 @log_decorator
 def deal_hands(
     deck: PinochleDeck = None, players=4, kitty_cards=0
-) -> (List[PinochleDeck], PinochleDeck):
+) -> Tuple[List[PinochleDeck], PinochleDeck]:
     if deck is None:
         deck = populate_deck()
 
@@ -79,7 +79,7 @@ def deal_hands(
             hand[index] += deck.deal()
 
     # Make sure everyone has the same size hand
-    for index in range(0, players - 1):
+    for index in range(players - 1):
         assert hand[index].size == hand[index + 1].size
 
     return hand, kitty
