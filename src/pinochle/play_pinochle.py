@@ -19,6 +19,7 @@ from . import (
     score_tricks,
     team,
     trick,
+    setup_logging,
 )
 from .cards import utils as card_utils
 from .cards.const import SUITS
@@ -33,6 +34,8 @@ from .models.round_ import Round
 from .models.roundteam import RoundTeam
 from .models.trick import Trick
 from .ws_messenger import WebSocketMessenger as WSM
+
+LOG = setup_logging()
 
 # Also contained in cardtable.py
 #                0      1        2           3        4       5
@@ -54,7 +57,7 @@ def deal_pinochle(player_ids: list, kitty_len: int = 0, kitty_id: str = None) ->
     # three cards dealt from the top of the stack, occassionally contribuing one to the
     # kitty, if applicable. It shouldn't make an actual difference, but...
 
-    # print(f"player_ids={player_ids}")
+    LOG.debug(f"player_ids={player_ids}")
     hand_decks, kitty_deck = deal_hands(players=len(player_ids), kitty_cards=kitty_len)
 
     if kitty_len > 0 and kitty_id is not None:
@@ -73,7 +76,7 @@ def set_players_bidding(player_ids: list) -> None:
     :param player_ids: [description]
     :type player_ids: list
     """
-    # print(f"player_ids={player_ids}")
+    LOG.debug(f"player_ids={player_ids}")
     for player_id in player_ids:
         player.update(player_id, {"bidding": True})
 
@@ -86,7 +89,7 @@ def set_player_pass(player_id: str) -> None:
     :param player_id: [description]
     :type player_id: str
     """
-    # print(f"player_id={player_id}")
+    LOG.debug(f"set_playerplayer_id={player_id}")
     player.update(player_id, {"bidding": False})
 
 
@@ -114,7 +117,7 @@ def submit_bid(round_id: str, player_id: str, bid: int):
     :return:           200 on successful delete, 404 if not found,
                        409 if requirements are not satisfied.
     """
-    # print(f"\nround_id={round_id}, player_id={player_id}")
+    LOG.debug(f"\nround_id={round_id}, player_id={player_id}")
     # Get the round requested
     a_round: Round = utils.query_round(str(round_id))
     a_player: Optional[Player] = utils.query_player(str(player_id))
@@ -202,7 +205,7 @@ def finalize_meld(round_id: str, player_id: str):
     :return:           200 on successful delete, 404 if not found,
                        409 if requirements are not satisfied.
     """
-    # print(f"finalize_meld: round_id={round_id}, player_id={player_id}")
+    LOG.debug(f"finalize_meld: round_id={round_id}, player_id={player_id}")
     # Get the round requested
     a_round: Round = utils.query_round(str(round_id))
     a_player: Optional[Player] = utils.query_player(str(player_id))
@@ -236,7 +239,7 @@ def total_team_scores(round_id: str):
     :param round_id: Round ID in play
     :type round_id: str
     """
-    # print("finalize_bid: Totalling team scores")
+    LOG.debug("finalize_bid: Totalling team scores")
 
     ws_mess = WSM.get_instance()
     game_id = str(utils.query_gameround_for_round(round_id).game_id)
@@ -321,7 +324,7 @@ def set_trump(round_id: str, player_id: str, trump: str):
     :return:           200 on successful delete, 404 if not found,
                        409 if requirements are not satisfied.
     """
-    # print(f"\nround_id={round_id}, player_id={player_id}")
+    LOG.debug(f"\nround_id={round_id}, player_id={player_id}")
     # Get the round requested
     a_round: Round = utils.query_round(str(round_id))
     a_player: Optional[Player] = utils.query_player(str(player_id))
@@ -335,9 +338,9 @@ def set_trump(round_id: str, player_id: str, trump: str):
         abort(404, f"Player {player_id} not found.")
 
     # New trump must not be already be set.
-    # print("Bid winner=%s, player_id=%s" % (a_round.bid_winner, player_id))
+    LOG.debug("Bid winner=%s, player_id=%s" % (a_round.bid_winner, player_id))
     if str(a_round.bid_winner) != player_id:
-        # print(f"set_trump: Bid winner {a_round.bid_winner} must submit trump.")
+        LOG.debug(f"set_trump: Bid winner {a_round.bid_winner} must submit trump.")
         abort(409, f"Bid winner {a_round.bid_winner} must submit trump.")
 
     if "{}s".format(trump.capitalize()) not in SUITS:
@@ -364,7 +367,7 @@ def start(round_id: str):
     :return:           200 on successful delete, 404 if not found,
                        409 if requirements are not satisfied.
     """
-    # print(f"\nround_id={round_id}")
+    LOG.debug(f"\nround_id={round_id}")
     # Get the round requested
     a_round: Round = utils.query_round(round_id)
     a_gameround: GameRound = utils.query_gameround_for_round(round_id)
@@ -401,11 +404,9 @@ def start(round_id: str):
             player_hand_id[str(team_info.player_id)] = new_hand_id
             player.update(team_info.player_id, {"hand_id": new_hand_id})
 
-    # print(f"kitty={kitty}")
-    # print(f"player_hand_id={player_hand_id}")
-    # print(f"player_hand_ids: {list(player_hand_id.keys())}")
-    # print(f"player_list_ordered={player_list_ordered}")
-    # print(f"player_list_ordered={[utils.query_player(x).name for x in player_list_ordered]}")
+    LOG.debug(f"kitty={kitty}")
+    LOG.debug(f"player_hand_id={player_hand_id}")
+    LOG.debug(f"player_hand_ids: {list(player_hand_id.keys())}")
 
     if not utils.query_trick_for_round_id(round_id):
         # Create new trick for the round
@@ -458,7 +459,7 @@ def score_hand_meld(round_id: str, player_id: str, cards: str):
     :return:           200 on successful scoring of cards, 404 if not found,
                        409 if scoring isn't successful.
     """
-    # print(f"\nscore_hand_meld: round_id={round_id}")
+    LOG.debug(f"round_id={round_id}")
     # Get the round requested
     a_round: Round = utils.query_round(round_id)
     a_player: Optional[Player] = utils.query_player(player_id)
@@ -482,8 +483,8 @@ def score_hand_meld(round_id: str, player_id: str, cards: str):
         player_hand_list = [x.card for x in player_hand]
         card_list = cards.split(",")
 
-        # print(f"score_hand_meld: player_hand={player_hand_list}")
-        # print(f"score_hand_meld: card_list={card_list}")
+        LOG.debug(f"score_hand_meld: player_hand={player_hand_list}")
+        LOG.debug(f"score_hand_meld: card_list={card_list}")
 
         for item in card_list:
             if item not in player_hand_list:
@@ -498,7 +499,7 @@ def score_hand_meld(round_id: str, player_id: str, cards: str):
 
         # Set trump on the newly created deck, if it's been declared
         if temp_trump in SUITS:
-            # print(f"Called trump {temp_trump} in {SUITS}.")
+            LOG.debug(f"Called trump {temp_trump} in {SUITS}.")
             provided_deck = card_utils.set_trump(temp_trump, provided_deck)
 
         # Score the deck supplied.
@@ -516,7 +517,7 @@ def score_hand_meld(round_id: str, player_id: str, cards: str):
     }
     ws_mess = WSM.get_instance()
     ws_mess.websocket_broadcast(game_id, message, player_id)
-    # print(f"score_hand_meld: score={score}")
+    LOG.debug(f"score_hand_meld: score={score}")
     return make_response(json.dumps({"score": score}), 200)
 
 
@@ -533,7 +534,7 @@ def new_round(game_id: str, current_round: str) -> Response:
     """
     # Deactivate soon-to-be previous round.
     prev_seq: int = utils.query_round(current_round).round_seq
-    # print(f"new_round: prev_seq={prev_seq}")
+    LOG.debug(f"new_round: prev_seq={prev_seq}")
     prev_gameround: GameRound = utils.query_gameround(game_id, current_round)
     gameround.update(game_id, prev_gameround.round_id, {"active_flag": False})
 
@@ -550,7 +551,7 @@ def new_round(game_id: str, current_round: str) -> Response:
     roundteams.create(temp_round_id, [str(t.team_id) for t in cur_roundteam])
     # Increment the round_seq for the new round
     round_.update(temp_round_id, {"round_seq": prev_seq + 1})
-    # print(f"new_round: new_seq={utils.query_round(temp_round_id).round_seq}")
+    LOG.debug(f"new_round: new_seq={utils.query_round(temp_round_id).round_seq}")
 
     # Create new trick for the round
     trick.create(temp_round_id)
@@ -570,7 +571,7 @@ def start_next_trick(round_id: str, player_id: str) -> Response:
     :return:              Response to the web request originating the request.
     :rtype:               Response
     """
-    # print(f"\nIn start_next_trick: round_id={round_id}")
+    LOG.debug(f"\nIn start_next_trick: round_id={round_id}")
     # Get the round requested
     a_round: Round = utils.query_round(round_id)
     round_player_list: List[str] = utils.query_player_ids_for_round(round_id)
@@ -615,7 +616,7 @@ def reorder_players(round_id: str, winner_id: str) -> List[str]:
 
     # Locate the index of the winner in the player list
     starting_index = round_player_id_list.index(winner_id)
-    # print("reorder_players: starting_index={}".format(starting_index))
+    LOG.debug("reorder_players: starting_index={}".format(starting_index))
 
     # Generate a list of indices for the players, starting with the
     # player id passed in as winner_id.
@@ -635,7 +636,7 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
     :return:              Response to the web request originating the request.
     :rtype:               Response
     """
-    # print(f"\nplay_trick_card: round_id={round_id}")
+    LOG.debug(f"\nplay_trick_card: round_id={round_id}")
     # Get the round requested
     a_round: Round = utils.query_round(round_id)
     a_player: Optional[Player] = utils.query_player(player_id)
@@ -652,7 +653,7 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
     # Retrieve trick data
     a_trick: Trick = utils.query_trick_for_round_id(round_id)
     if a_trick is None or a_trick == {}:
-        # print(f"play_trick_card: utils.query_all_tricks()={utils.query_all_tricks()}")
+        LOG.debug(f"play_trick_card: utils.query_all_tricks()={utils.query_all_tricks()}")
         abort(409, f"Trick could not be found for round {round_id}.")
 
     # Associate the player with that player's hand.
@@ -661,8 +662,7 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
     player_hand: List[Hand] = utils.query_hand_list(player_hand_id)
     player_hand_list: List[str] = [x.card for x in player_hand]
 
-    # print(f"play_trick_card: player_hand={player_hand_list}")
-    # print(f"play_trick_card: card_list={card_list}")
+    LOG.debug(f"play_trick_card: player_hand={player_hand_list}")
 
     if card not in player_hand_list:
         abort(409, f"Card {card} not in player's hand.")
@@ -696,23 +696,23 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
     # trick winner.
     trick_hand_list: List[Hand] = utils.query_hand_list(trick_hand_id)
 
-    # print(f"play_trick_card: trick_hand_list={trick_hand_list}")
+    LOG.debug(f"play_trick_card: trick_hand_list={trick_hand_list}")
     if len(trick_hand_list) == len(ordered_player_id_list):
-        # print(f"play_trick_card: trick_hand_list={trick_hand_list}")
+        LOG.debug(f"play_trick_card: trick_hand_list={trick_hand_list}")
         winning_card: str = find_winning_trick_card(
             trick_hand_list, f"{a_round.trump.capitalize()}s"
         )
-        # print(f"play_trick_card: Winning card: {winning_card}")
+        LOG.debug(f"play_trick_card: Winning card: {winning_card}")
         winning_card_index = -1
-        # print(f"play_trick_card: Trick cards: {[x.card for x in trick_hand_list]}")
-        # print(f"play_trick_card: Determining winning card index for {winning_card}:")
+        LOG.debug(f"play_trick_card: Trick cards: {[x.card for x in trick_hand_list]}")
+        LOG.debug(f"play_trick_card: Determining winning card index for {winning_card}:")
         for index, t_hand in enumerate(trick_hand_list):
-            # print(f"play_trick_card: index: {index} = {t_hand.card}")
+            LOG.debug(f"play_trick_card: index: {index} = {t_hand.card}")
             if winning_card == t_hand.card:
                 winning_card_index = index
                 break
         assert winning_card_index != -1
-        # print(f"play_trick_card: winning_card_index={winning_card_index}")
+        LOG.debug(f"play_trick_card: winning_card_index={winning_card_index}")
 
         # Determine the player_id who won the trick and their team_id.
         winning_player_id: str = ordered_player_id_list[winning_card_index]
@@ -728,7 +728,7 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
         winning_team_hand_id = str(
             utils.query_roundteam(round_id, winning_team_id).hand_id
         )
-        # print(f"play_trick_card: Winning player: {winning_player_id}")
+        LOG.debug(f"play_trick_card: Winning player: {winning_player_id}")
 
         # Copy the cards in the trick hand to the winning player's team's hand.
         for a_hand in trick_hand_list:
@@ -738,7 +738,7 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
 
         # Check to see if a player has cards left in their hand.
         if hand.read_one(player_hand_id):
-            # print("play_trick_card: Sending trick_won message.")
+            LOG.debug("play_trick_card: Sending trick_won message.")
             # Send played card to other players via Websocket
             message = {
                 "action": "trick_won",
@@ -749,10 +749,10 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
             ws_mess = WSM.get_instance()
             ws_mess.websocket_broadcast(game_id, message)
         else:
-            # print("play_trick_card: Calling notify_round_complete.")
+            LOG.debug("play_trick_card: Calling notify_round_complete.")
             # The last trick for this round has been played.
             notify_round_complete(game_id, round_id, winning_player_id, winning_team_id)
-        # print("Exiting play_trick_card, when trick is complete.")
+        LOG.debug("Exiting play_trick_card, when trick is complete.")
 
     return make_response("Card accepted", 200)
 
@@ -778,17 +778,17 @@ def find_winning_trick_card(trick_card_list: List[Hand], trump: str) -> str:
     suit_led = winning_card.suit
 
     for card in trick_deck:
-        # print(f"card={card}  -  winning_card={winning_card}  -  trump={trump}")
+        LOG.debug(f"card={card}  -  winning_card={winning_card}  -  trump={trump}")
         if winning_card == card:
-            # print(f"{winning_card} == {card}")
+            LOG.debug(f"{winning_card} == {card}")
             continue
         if card.suit == trump and winning_card.suit != trump:
-            # print(f"{card.suit} == {trump} and {winning_card.suit} != {trump}")
+            LOG.debug(f"{card.suit} == {trump} and {winning_card.suit} != {trump}")
             winning_card = card
             suit_led = winning_card.suit
             continue
         if card.suit == suit_led and card > winning_card:
-            # print(f"{card.suit} == {suit_led} and {card.value} > {winning_card.value}")
+            LOG.debug(f"{card.suit} == {suit_led} and {card.value} > {winning_card.value}")
             winning_card = card
             continue
 
@@ -808,7 +808,7 @@ def notify_round_complete(
     :param winning_player_id: The ID of the player who won the last trick.
     :type winning_player_id: str
     """
-    # print("In notify_round_complete.")
+    LOG.debug("In notify_round_complete.")
     # Collect data needed for notification.
     a_roundteam_list = utils.query_roundteam_list(round_id)
     team_id_list = [str(x.team_id) for x in a_roundteam_list]
@@ -817,7 +817,7 @@ def notify_round_complete(
     # Score the team hands
     trick_score = {}
     assert t_hand_id_list
-    # print(f"notify_round_complete: t_hand_id_list={t_hand_id_list}")
+    LOG.debug(f"notify_round_complete: t_hand_id_list={t_hand_id_list}")
     for index, h_id in enumerate(t_hand_id_list):
         if hand.read_one(h_id):
             trick_score[team_id_list[index]] = score_tricks.score(
@@ -825,12 +825,12 @@ def notify_round_complete(
             )
             if str(team_id_list[index]) == str(winning_team_id):
                 trick_score[team_id_list[index]] += 1
-            # print(
-            #     f"notify_round_complete: Score for team {team_id_list[index]}: "
-            #     f"{trick_score[team_id_list[index]]}"
-            # )
+            LOG.debug(
+                f"notify_round_complete: Score for team {team_id_list[index]}: "
+                f"{trick_score[team_id_list[index]]}"
+            )
         else:
-            # print(f"notify_round_complete: Zero score {index}/{h_id}")
+            LOG.debug(f"notify_round_complete: Zero score {index}/{h_id}")
             trick_score[team_id_list[index]] = 0
 
     # Update the overall team scores
@@ -850,7 +850,7 @@ def notify_round_complete(
         "team_trick_scores": trick_score,
         "team_scores": team_scores,
     }
-    # print("notify_round_complete: Sending WSM to clients. {}".format(message))
+    LOG.debug("notify_round_complete: Sending WSM to clients. {}".format(message))
     ws_mess = WSM.get_instance()
     ws_mess.websocket_broadcast(game_id, message)
-    # print("Exiting notify_round_complete.")
+    LOG.debug("Exiting notify_round_complete.")
