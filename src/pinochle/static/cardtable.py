@@ -8,13 +8,15 @@ import os
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-import brySVG.dragcanvas as SVG
+import brySVG.dragcanvas as SVG  # pylint: disable=import-error
 from browser import ajax, document, html, websocket, window
 from browser.widgets.dialog import Dialog, InfoDialog
 
 # Disable some pylint complaints because this code is more like javascript than python.
 # pylint: disable=global-statement
 # pylint: disable=pointless-statement
+# Similarly, disable some pyright complaints
+# pyright: reportGeneralTypeIssues=false
 
 mylog = logging.getLogger("cardtable")
 mylog.setLevel(logging.CRITICAL)  # No output
@@ -24,8 +26,8 @@ mylog.setLevel(logging.CRITICAL)  # No output
 CARD_URL = "/static/playingcards.svg"
 
 # Intrinsic dimensions of the cards in the deck.
-CARD_WIDTH = 170  # pylint: disable=invalid-name
-CARD_HEIGHT = 245  # pylint: disable=invalid-name
+CARD_WIDTH = 170
+CARD_HEIGHT = 245
 CARD_SMALLER_WIDTH = CARD_WIDTH * 0.75
 CARD_SMALLER_HEIGHT = CARD_HEIGHT * 0.75
 
@@ -98,25 +100,25 @@ class GuId:
         return str(self.value)
 
 
-class Game_ID(GuId):
+class GameID(GuId):  # pylint: disable=too-few-public-methods
     """
     Game ID data
     """
 
 
-class Round_ID(GuId):
+class RoundID(GuId):  # pylint: disable=too-few-public-methods
     """
     Round ID data
     """
 
 
-class Team_ID(GuId):
+class TeamID(GuId):  # pylint: disable=too-few-public-methods
     """
     Team ID data
     """
 
 
-class Player_ID(GuId):
+class PlayerID(GuId):  # pylint: disable=too-few-public-methods
     """
     Player ID data
     """
@@ -201,8 +203,8 @@ class PlayingCard(SVG.UseObject):
             else:
                 add_only = True
                 card_tag = "player"
-                sending_deck = meld_deck  # Reference
-                receiving_deck = players_meld_deck  # Deep copy
+                sending_deck = g_meld_deck  # Reference
+                receiving_deck = g_players_meld_deck  # Deep copy
         elif GAME_MODES[g_game_mode] in ["trick"]:  # Trick
             sending_deck = g_players_hand  # Reference
             receiving_deck = discard_deck  # Reference
@@ -217,7 +219,7 @@ class PlayingCard(SVG.UseObject):
             # TODO: Transition to game_state 3 (), this causes an exception: ValueError: 'card-base' is not in list.
             placement = receiving_deck.index("card-base")
         else:
-            p_list: List[Player_ID] = order_player_id_list_for_trick()
+            p_list: List[PlayerID] = order_player_id_list_for_trick()
             placement: int = p_list.index(g_player_id)
         mylog.warning(
             "PlayingCard.play_handler: Locating %s%s\nPlayingCard.play_handler: %s: %s",
@@ -260,8 +262,10 @@ class PlayingCard(SVG.UseObject):
         Since the only time this is done is during the meld process, also call the API to
         notify it that a kitty card has been flipped over and which card that is.
         """
-        global g_players_hand, g_players_meld_deck  # pylint: disable=invalid-name
+        # pylint: disable=invalid-name
+        global g_players_hand, g_players_meld_deck
         mylog.error("Entering PlayingCard.card_click_handler()")
+
         if GAME_MODES[g_game_mode] in ["reveal"] and self.flippable:
             mylog.warning(
                 "PlayingCard.card_click_handler: flippable=%r", self.flippable
@@ -299,42 +303,42 @@ for _suit in SUITS:
 AJAX_URL_ENCODING = "application/x-www-form-urlencoded"
 
 # Game-related globals
-g_game_id: Game_ID = Game_ID()
+g_game_id: GameID = GameID()
 g_game_mode: int = -1
 g_hand_size: int = 0
 g_kitty_size: int = 0
 g_my_team_score: int = 0
 g_meld_score: int = 0
 g_other_team_score: int = 0
-g_player_id: Player_ID = Player_ID()
+g_player_id: PlayerID = PlayerID()
 g_players: int = 4
 g_round_bid: int = 0
-g_round_id: Round_ID = Round_ID()
-g_team_id: Team_ID = Team_ID()
+g_round_id: RoundID = RoundID()
+g_team_id: TeamID = TeamID()
 g_trump: str = ""
 
 # Various state globals
 g_ajax_outstanding_requests: int = 0
-g_game_dict: Dict[Game_ID, Dict[str, Any]] = {}
+g_game_dict: Dict[GameID, Dict[str, Any]] = {}
 g_kitty_deck: List[str] = []
 g_meld_deck: List[str] = []
-g_player_dict: Dict[Player_ID, Dict[str, str]] = {}
-g_player_list: List[Player_ID] = []
+g_player_dict: Dict[PlayerID, Dict[str, str]] = {}
+g_player_list: List[PlayerID] = []
 g_players_hand: List[str] = []
 g_players_meld_deck: List[str] = []
-g_team_dict: Dict[Team_ID, Dict[str, str]] = {}
-g_team_list: List[Team_ID] = []
+g_team_dict: Dict[TeamID, Dict[str, str]] = {}
+g_team_list: List[TeamID] = []
 
 # Track the user who is the round's bid winner, and each trick winner.
-g_round_bid_trick_winner: Player_ID  # pylint: disable=invalid-name
+g_round_bid_trick_winner: PlayerID  # pylint: disable=invalid-name
 
 button_advance_mode = None  # pylint: disable=invalid-name
 g_registered_with_server = False  # pylint: disable=invalid-name
 
 
-class CardTable(SVG.CanvasObject):
+class CardTable(SVG.CanvasObject):  # pylint: disable=too-few-public-methods
     """
-    CardTable class to encapsulate aspects of the card table.
+    Class to encapsulate aspects of the card table.
     """
 
     def __init__(self):
@@ -379,6 +383,10 @@ class CardTable(SVG.CanvasObject):
 
 
 class BidDialog:
+    """
+    Class to handle the bid dialog display
+    """
+
     bid_dialog = None
     last_bid = -1
 
@@ -411,7 +419,7 @@ class BidDialog:
         """
         mylog.error("Entering display_bid_dialog.")
         data = json.loads(bid_data)
-        player_id: Player_ID = Player_ID(data["player_id"])
+        player_id: PlayerID = PlayerID(data["player_id"])
         self.last_bid = int(data["bid"])
         player_name = g_player_dict[player_id]["name"].capitalize()
 
@@ -430,6 +438,7 @@ class BidDialog:
         self.bid_dialog = Dialog(
             "Bid or Pass", ok_cancel=["Bid", "Pass"], top=25, left=25,
         )
+        # pylint: disable=expression-not-assigned
         self.bid_dialog.panel <= html.DIV(
             f"{player_name}, enter your bid or pass: "
             + html.INPUT(value=f"{self.last_bid+1}")
@@ -440,6 +449,10 @@ class BidDialog:
 
 
 class TrumpSelectDialog:
+    """
+    Class to handle the trump dialog display
+    """
+
     trump_dialog = None
     d_canvas = None
 
@@ -530,6 +543,7 @@ class TrumpSelectDialog:
         glyph_width = 50
         xpos = 0
         for suit in SUITS:
+            # pylint: disable=expression-not-assigned
             self.d_canvas <= SVG.UseObject(
                 angle=180,
                 href=f"#{suit}",
@@ -544,6 +558,7 @@ class TrumpSelectDialog:
             instructions = f"{player_name}, please move {g_kitty_size} cards BELOW your hand, then select a suit to be trump."
         else:
             instructions = f"{player_name}, please select a suit to be trump."
+        # pylint: disable=expression-not-assigned
         self.trump_dialog.panel <= html.DIV(instructions + html.BR() + self.d_canvas)
         self.d_canvas.fitContents()
 
@@ -551,9 +566,13 @@ class TrumpSelectDialog:
 
 
 class MeldFinalDialog:
+    """
+    Class to handle the meld dialog display
+    """
+
     meld_final_dialog = None
 
-    def on_click_meld_dialog(self, event=None):
+    def on_click_meld_dialog(self, event=None):  # pylint: disable=unused-argument
         """
         Handle the click event for the OK button. Ignore the cancel button.
 
@@ -575,12 +594,17 @@ class MeldFinalDialog:
             "Is your meld submission final?", ok_cancel=["Yes", "No"]
         )
         player_name = g_player_dict[g_player_id]["name"].capitalize()
+        # pylint: disable=expression-not-assigned
         self.meld_final_dialog.panel <= html.DIV(f"{player_name}, Is your meld final?")
 
         self.meld_final_dialog.ok_button.bind("click", self.on_click_meld_dialog)
 
 
 class TrickWonDialog:
+    """
+    Class to handle the trick won dialog display
+    """
+
     trick_won_dialog = None
 
     def on_click_trick_won_dialog(self, event=None):
@@ -622,6 +646,7 @@ class TrickWonDialog:
         self.trick_won_dialog = Dialog(
             "Trick complete", ok_cancel=["Next trick", "Ok"], top=25,
         )
+        # pylint: disable=expression-not-assigned
         self.trick_won_dialog.panel <= html.DIV(
             f"{g_player_dict[g_player_id]['name']}, you won the trick!"
         )
@@ -652,6 +677,7 @@ class TrickWonDialog:
         self.trick_won_dialog = Dialog(
             "Final trick complete", ok_cancel=["Next round", "Ok"], top=25,
         )
+        # pylint: disable=expression-not-assigned
         self.trick_won_dialog.panel <= html.DIV(
             f"{g_player_dict[g_player_id]['name']}, you won the trick! "
             f"Trick Scores: {my_team}: {my_scores} points / {other_team}: {other_scores} points",
@@ -684,10 +710,10 @@ def dump_globals() -> None:
         "g_kitty_deck": g_kitty_deck,
     }
     for var_name, value in variables.items():
-        if value is None:
-            print(f"dgo: {var_name} is None")
-        else:
+        if value:
             print(f"dgo: {var_name}={value} ({type(value)})")
+        else:
+            print(f"dgo: {var_name} is None")
 
 
 def find_protocol_server():
@@ -717,7 +743,9 @@ def ws_open():
     if not websocket.supported:
         InfoDialog("websocket", "WebSocket is not supported by your browser")
         return
-    global g_websocket  # pylint: disable=global-statement
+    # pylint: disable=invalid-name
+    global g_websocket
+
     # open a web socket
     proto = PROTOCOL.replace("http", "ws")
     g_websocket = websocket.WebSocket(f"{proto}://{SERVER}/stream")
@@ -739,8 +767,10 @@ def on_ws_close(event=None):  # pylint: disable=unused-argument
     Callback for Websocket close event.
     """
     mylog.error("on_ws_close: Connection has closed")
-    global g_websocket  # pylint: disable=global-statement
+    global g_websocket, g_registered_with_server  # pylint: disable=invalid-name
+
     g_websocket = None
+    g_registered_with_server = False
     # set_timeout(ws_open, 1000)
 
 
@@ -754,13 +784,15 @@ def on_ws_error(event=None):
 
 def on_ws_event(event=None):
     """
-    Callback for Websocket event from server.
+    Callback for Websocket event from server. This method handles much of the state
+    change in the user interface.
 
-    :param evt: Event object from ws event.
-    :type evt: [type]
+    :param event: Event object from ws event.
+    :type event: [type]
     """
     mylog.error("In on_ws_event.")
-    global g_game_mode, g_player_list  # pylint: disable=invalid-name
+    # pylint: disable=invalid-name
+    global g_game_mode, g_player_list
 
     t_data = json.loads(event.data)
     mylog.warning("on_ws_event: %s", event.data)
@@ -809,25 +841,24 @@ def update_round_final_score(event=None):
     :type event: [type], optional
     """
     mylog.error("Entering update_round_final_score.")
+    # pylint: disable=invalid-name
     global g_round_bid_trick_winner, g_my_team_score, g_other_team_score
 
     data = json.loads(event)
     mylog.warning("update_round_final_score: data=%s", data)
     assert isinstance(data, dict)
-    t_player_id = Player_ID(data["player_id"])
+    t_player_id = PlayerID(data["player_id"])
     assert isinstance(data["team_trick_scores"], dict)
     mylog.warning(
         "update_round_final_score: data['team_trick_scores']: %r",
         data["team_trick_scores"],
     )
-    t_team_trick_scores = {
-        Team_ID(x): y for (x, y) in data["team_trick_scores"].items()
-    }
+    t_team_trick_scores = {TeamID(x): y for (x, y) in data["team_trick_scores"].items()}
     assert isinstance(data["team_scores"], dict)
     mylog.warning(
         "update_round_final_score: data['team_scores']: %r", data["team_scores"],
     )
-    t_team_scores = {Team_ID(x): y for (x, y) in data["team_scores"].items()}
+    t_team_scores = {TeamID(x): y for (x, y) in data["team_scores"].items()}
     mylog.warning("update_round_final_score: t_player_id=%s", t_player_id)
     mylog.warning(
         "update_round_final_score: t_team_trick_scores=%r", t_team_trick_scores
@@ -888,12 +919,13 @@ def update_trick_winner(event=None):
     :type event: [type], optional
     """
     mylog.error("Entering update_trick_winner.")
+    # pylint: disable=invalid-name
     global g_round_bid_trick_winner
 
     data = json.loads(event)
     mylog.warning("update_trick_winner: data=%s", data)
     assert isinstance(data, dict)
-    t_player_id = Player_ID(data["player_id"])
+    t_player_id = PlayerID(data["player_id"])
     t_card = data["winning_card"]
     mylog.warning("update_trick_winner: t_player_id=%s", t_player_id)
     mylog.warning("update_trick_winner: t_card=%s", t_card)
@@ -928,7 +960,7 @@ def update_trick_card(event=None):
     data = json.loads(event)
     mylog.warning("update_trick_card: data=%s", data)
     assert isinstance(data, dict)
-    t_player_id: Player_ID = Player_ID(data["player_id"])
+    t_player_id: PlayerID = PlayerID(data["player_id"])
     t_card = data["card"]
     mylog.warning("update_trick_card: t_player_id=%s", t_player_id)
     mylog.warning("update_trick_card: t_card=%s", t_card)
@@ -946,11 +978,12 @@ def update_team_scores(event=None):
     :type event: [type], optional
     """
     mylog.error("Entering update_team_scores.")
-    global g_my_team_score, g_other_team_score, g_meld_score  # pylint: disable=invalid-name
+    # pylint: disable=invalid-name
+    global g_my_team_score, g_other_team_score, g_meld_score
     data = json.loads(event)
     mylog.warning("update_team_scores: data=%r", data)
     assert isinstance(data, dict)
-    if g_team_id == Team_ID(data["team_id"]):
+    if g_team_id == TeamID(data["team_id"]):
         g_my_team_score = data["score"]
         g_meld_score = data["meld_score"]
     else:  # Other team
@@ -972,9 +1005,9 @@ def notify_trump_buried(event=None):
     assert isinstance(data, dict)
     if "player_id" in data:
         mylog.warning("notify_trump_buried: About to retrieve player_id from data")
-        t_player_id: Player_ID = Player_ID(data["player_id"])
+        t_player_id: PlayerID = PlayerID(data["player_id"])
     else:
-        t_player_id = Player_ID()
+        t_player_id = PlayerID()
     mylog.warning("notify_trump_buried: t_player_id=%r", t_player_id)
     player_name = ""
     if t_player_id == g_player_id:
@@ -1000,6 +1033,7 @@ def record_trump_selection(event=None):
     Convey the chosen trump to the user, as provided by the server.
     """
     mylog.error("Entering record_trump_selection.")
+    # pylint: disable=invalid-name
     global g_trump
     data = json.loads(event)
     g_trump = str(data["trump"])
@@ -1047,9 +1081,10 @@ def display_bid_winner(event=None):
     :type event: [type], optional
     """
     mylog.error("Entering display_bid_winner.")
+    # pylint: disable=invalid-name
     global g_round_bid_trick_winner, g_round_bid
     data = json.loads(event)
-    t_player_id = Player_ID(data["player_id"])
+    t_player_id = PlayerID(data["player_id"])
     player_name = g_player_dict[t_player_id]["name"]
     bid = int(data["bid"])
 
@@ -1078,7 +1113,7 @@ def display_player_meld(meld_data: str):
     """
     mylog.error("Entering display_player_meld.")
     data = json.loads(meld_data)
-    player_id = Player_ID(data["player_id"])
+    player_id = PlayerID(data["player_id"])
     player_name = g_player_dict[player_id]["name"]
     card_list = data["card_list"]
     try:
@@ -1092,6 +1127,7 @@ def display_player_meld(meld_data: str):
         xpos = 0.0
         d_canvas = SVG.CanvasObject("40vw", "20vh", "none", objid="dialog_canvas")
         for card in card_list:
+            # pylint: disable=expression-not-assigned
             d_canvas <= SVG.UseObject(href=f"#{card}", origin=(xpos, 0))
             xpos += CARD_WIDTH / 2.0
     except Exception as e:  # pylint: disable=invalid-name,broad-except
@@ -1125,11 +1161,12 @@ def update_player_names(player_data: str):
     :param player_data: JSON-formatted message from the server.
     :type player_data: str
     """
-    global g_registered_with_server, g_player_list  # pylint: disable=invalid-name
+    # pylint: disable=invalid-name
+    global g_registered_with_server, g_player_list
 
     data = json.loads(player_data)
-    g_player_list = [Player_ID(x) for x in data["player_order"]]
-    my_player_list = [Player_ID(x) for x in data["player_ids"]]
+    g_player_list = [PlayerID(x) for x in data["player_order"]]
+    my_player_list = [PlayerID(x) for x in data["player_ids"]]
     # Display the player's name in the UI
     if my_player_list != [] and g_player_id in my_player_list:
         mylog.warning("Players: %r", my_player_list)
@@ -1161,8 +1198,9 @@ def update_player_names(player_data: str):
 
 
 def update_status_line():
-    # TODO: Do something more useful like a line of names with color change when
-    # the player's client registers.
+    """
+    Update the player status line with current information from globals.
+    """
     document.getElementById("game_status").clear()
     document.getElementById("game_status").attach(html.BR())
     document.getElementById("game_status").attach(
@@ -1217,10 +1255,12 @@ def ajax_request_tracker(direction: int = 0):
     """
     Keep a tally of the currently outstanding AJAX requests.
 
-    :param direction: Whether to increase or decrease the counter, defaults to 0 which does not affect the counter.
+    :param direction: Whether to increase or decrease the counter,
+    defaults to 0 which does not affect the counter.
     :type direction: int, optional
     """
-    global g_ajax_outstanding_requests  # pylint: disable=invalid-name
+    # pylint: disable=invalid-name
+    global g_ajax_outstanding_requests
 
     if direction > 0:
         g_ajax_outstanding_requests += 1
@@ -1246,8 +1286,7 @@ def on_complete_games(req: ajax.Ajax):
     g_game_dict.clear()
     for item in temp:
         mylog.warning("on_complete_games: item=%s", item)
-        g_game_dict[Game_ID(item["game_id"])] = item
-        # game_list.append(item["game_id"])
+        g_game_dict[GameID(item["game_id"])] = item
 
     display_game_options()
 
@@ -1259,7 +1298,8 @@ def on_complete_rounds(req: ajax.Ajax):
     :param req: Request object from callback.
     :type req: [type]
     """
-    global g_round_id, g_team_list  # pylint: disable=invalid-name
+    # pylint: disable=invalid-name
+    global g_round_id, g_team_list
     mylog.error("Entering on_complete_rounds.")
 
     ajax_request_tracker(-1)
@@ -1270,7 +1310,7 @@ def on_complete_rounds(req: ajax.Ajax):
         return
 
     # Set the round ID.
-    g_round_id = Round_ID(temp["round_id"])
+    g_round_id = RoundID(temp["round_id"])
     mylog.warning("on_complete_rounds: round_id=%s", g_round_id)
 
     display_game_options()
@@ -1283,7 +1323,8 @@ def on_complete_teams(req: ajax.Ajax):
     :param req: Request object from callback.
     :type req: [type]
     """
-    global g_team_list  # pylint: disable=invalid-name
+    # pylint: disable=invalid-name
+    global g_team_list
     mylog.error("Entering on_complete_teams.")
 
     ajax_request_tracker(-1)
@@ -1293,7 +1334,7 @@ def on_complete_teams(req: ajax.Ajax):
 
     # Set the global list of teams for this round.
     g_team_list.clear()
-    g_team_list = [Team_ID(x) for x in temp["team_ids"]]
+    g_team_list = [TeamID(x) for x in temp["team_ids"]]
     mylog.warning("on_complete_teams: team_list=%r", g_team_list)
 
     # Clear the team dict here because of the multiple callbacks.
@@ -1309,7 +1350,8 @@ def on_complete_team_names(req: ajax.Ajax):
     :param req: Request object from callback.
     :type req: [type]
     """
-    global g_team_dict  # pylint: disable=invalid-name
+    # pylint: disable=invalid-name
+    global g_team_dict
     mylog.error("Entering on_complete_team_names.")
 
     ajax_request_tracker(-1)
@@ -1321,11 +1363,11 @@ def on_complete_team_names(req: ajax.Ajax):
     mylog.warning(
         "on_complete_team_names: Setting team_dict[%s]=%r", temp["team_id"], temp
     )
-    g_team_dict[Team_ID(temp["team_id"])] = temp
+    g_team_dict[TeamID(temp["team_id"])] = temp
     mylog.warning("on_complete_team_names: team_dict=%s", g_team_dict)
 
     # Only call API once per team, per player.
-    for item in g_team_dict[Team_ID(temp["team_id"])]["player_ids"]:
+    for item in g_team_dict[TeamID(temp["team_id"])]["player_ids"]:
         mylog.warning("on_complete_team_names: calling get/player/%s", item)
         get(f"/player/{item}", on_complete_players)
 
@@ -1345,7 +1387,7 @@ def on_complete_players(req: ajax.Ajax):
         return
 
     # Set the global dict of players for reference later.
-    g_player_dict[Player_ID(temp["player_id"])] = temp
+    g_player_dict[PlayerID(temp["player_id"])] = temp
     mylog.warning("In on_complete_players: player_dict=%s", g_player_dict)
     display_game_options()
 
@@ -1385,8 +1427,10 @@ def on_complete_getcookie(req: ajax.Ajax):
     :param req: Request object from callback.
     :type req: [type]
     """
+    # pylint: disable=invalid-name
+    global g_game_mode, g_game_id, g_player_id, g_kitty_size, g_team_id, g_kitty_deck
+    global g_hand_size, g_meld_deck
     mylog.error("Entering on_complete_getcookie.")
-    global g_game_mode, g_game_id, g_player_id, g_kitty_size, g_team_id, g_kitty_deck, g_hand_size, g_meld_deck  # pylint: disable=invalid-name
 
     ajax_request_tracker(-1)
     if req.status != 200:
@@ -1400,7 +1444,7 @@ def on_complete_getcookie(req: ajax.Ajax):
     # Set the global deck of cards for the player's hand.
     mylog.warning("on_complete_getcookie: response_data=%s", response_data)
     if "game_id" in response_data["kind"]:
-        g_game_id = Game_ID(response_data["ident"])
+        g_game_id = GameID(response_data["ident"])
         mylog.warning(
             "on_complete_getcookie: Setting GAME_ID=%s", response_data["ident"]
         )
@@ -1420,7 +1464,7 @@ def on_complete_getcookie(req: ajax.Ajax):
         g_meld_deck = ["card-base" for _ in range(g_hand_size)]
 
     elif "player_id" in response_data["kind"]:
-        g_player_id = Player_ID(response_data["ident"])
+        g_player_id = PlayerID(response_data["ident"])
         mylog.warning(
             "on_complete_getcookie: Setting PLAYER_ID=%s", response_data["ident"]
         )
@@ -1436,7 +1480,8 @@ def on_complete_kitty(req: ajax.Ajax):
     :param req: Request object from callback.
     :type req: [type]
     """
-    global g_kitty_deck  # pylint: disable=invalid-name
+    # pylint: disable=invalid-name
+    global g_kitty_deck
     mylog.error("Entering on_complete_kitty.")
 
     ajax_request_tracker(-1)
@@ -1464,7 +1509,8 @@ def on_complete_player_cards(req: ajax.Ajax):
     :param req: Request object from callback.
     :type req: [type]
     """
-    global g_players_hand, g_players_meld_deck  # pylint: disable=invalid-name
+    # pylint: disable=invalid-name
+    global g_players_hand, g_players_meld_deck
     mylog.error("Entering on_complete_player_cards.")
 
     ajax_request_tracker(-1)
@@ -1509,12 +1555,12 @@ def on_complete_get_meld_score(req: ajax.Ajax):
         )
         mfd = MeldFinalDialog()
         mfd.display_meld_final_dialog()
-        return temp
+        return
 
     mylog.warning("on_complete_get_meld_score: score: %r", req)
 
 
-def on_complete_common(req: ajax.Ajax):
+def on_complete_common(req: ajax.Ajax) -> Optional[str]:
     """
     Common function for AJAX callbacks.
 
@@ -1530,6 +1576,7 @@ def on_complete_common(req: ajax.Ajax):
         return json.loads(req.text)
 
     mylog.warning("on_complete_common: req=%s", req)
+    return None
 
 
 def order_player_index_list_for_trick() -> List[int]:
@@ -1548,7 +1595,7 @@ def order_player_index_list_for_trick() -> List[int]:
     return [(x + starting_index) % player_list_len for x in range(player_list_len)]
 
 
-def order_player_id_list_for_trick() -> List[Player_ID]:
+def order_player_id_list_for_trick() -> List[PlayerID]:
     """
     Generate a list of players from g_player_list starting with the current
     g_round_bid_trick_winner.
@@ -1573,7 +1620,6 @@ def order_player_name_list_for_trick() -> List[str]:
     ]
 
 
-# FIXME: This is temporary. The server will decide when to advance the game state.
 def advance_mode_callback(req: ajax.Ajax):
     """
     Routine to capture the response of the server when advancing the game mode.
@@ -1581,7 +1627,8 @@ def advance_mode_callback(req: ajax.Ajax):
     :param req:   The request response passed in during callback
     :type req:    Request
     """
-    global g_game_mode  # pylint: disable=invalid-name
+    # pylint: disable=invalid-name
+    global g_game_mode
     mylog.error(
         "Entering advance_mode_callback (current mode=%s)", GAME_MODES[g_game_mode]
     )
@@ -1610,7 +1657,6 @@ def advance_mode_callback(req: ajax.Ajax):
     remove_dialogs()
 
     display_game_options()
-    # FIXME: This is temporary. The server will decide when to advance the game state.
 
 
 def game_mode_query_callback(req: ajax.Ajax):
@@ -1620,7 +1666,8 @@ def game_mode_query_callback(req: ajax.Ajax):
     :param req:   The request response passed in during callback
     :type req:    Request
     """
-    global g_game_mode  # pylint: disable=invalid-name
+    # pylint: disable=invalid-name
+    global g_game_mode
     if g_game_mode is not None:
         mylog.error(
             "Entering game_mode_query_callback (current mode=%s)",
@@ -1765,10 +1812,11 @@ def clear_globals_for_round_change():
     """
     Clear some global variables in preparation for a new round.
     """
-    global discard_deck, g_round_id, g_round_bid_trick_winner, g_meld_deck  # pylint: disable=invalid-name
+    # pylint: disable=invalid-name
+    global discard_deck, g_round_id, g_round_bid_trick_winner, g_meld_deck
     mylog.error("Entering clear_globals_for_round_change.")
 
-    g_round_id = Round_ID()
+    g_round_id = RoundID()
     g_players_hand.clear()
     g_players_meld_deck.clear()
     g_meld_deck = ["card-base" for _ in range(g_hand_size)]
@@ -1780,7 +1828,8 @@ def clear_globals_for_trick_change():
     """
     Clear some global variables in preparation for a new round.
     """
-    global discard_deck  # pylint: disable=invalid-name
+    # pylint: disable=invalid-name
+    global discard_deck
     mylog.error("Entering clear_globals_for_trick_change.")
 
     discard_deck = ["card-base" for _ in range(len(g_player_list))]
@@ -1807,7 +1856,6 @@ def populate_canvas(deck, target_canvas, deck_type="player"):
         deck_type,
     )
 
-    # TODO: Need a "bury" display for bid winner.
     # DOM ID Counter
     for counter, card_value in enumerate(deck):
         flippable = False
@@ -1916,7 +1964,7 @@ def create_game_select_buttons(xpos, ypos) -> None:
     """
     mylog.error("Entering create_game_select_buttons")
     mylog.warning("create_game_select_buttons: game_dict=%s", g_game_dict)
-    # added_button = False
+
     if g_game_dict == {}:
         mylog.warning("cgsb: In g_game_dict={}")
         no_game_button = SVG.Button(
@@ -1928,15 +1976,16 @@ def create_game_select_buttons(xpos, ypos) -> None:
             objid="nogame",
         )
         g_canvas.attach(no_game_button)
-        # added_button = True
     else:
         mylog.warning("cgsb: Clearing canvas (%r)", g_canvas)
         g_canvas.deleteAll()
+
     # If there's only one game, choose that one.
     if len(g_game_dict) == 1:
         one_game_id = list(g_game_dict.keys())[0]
         get(f"/setcookie/game_id/{one_game_id.value}", on_complete_set_gamecookie)
         return
+
     mylog.warning("cgsb: Enumerating games for buttons (%d).", len(g_game_dict))
     for item, temp_dict in g_game_dict.items():
         mylog.warning("create_game_select_buttons: game_dict item: item=%s", item)
@@ -1949,9 +1998,8 @@ def create_game_select_buttons(xpos, ypos) -> None:
             objid=item.value,
         )
         g_canvas.attach(game_button)
-        # added_button = True
         ypos += 40
-    # if added_button:
+
     g_canvas.fitContents()
     mylog.warning("Exiting create_game_select_buttons")
 
@@ -1966,7 +2014,7 @@ def create_player_select_buttons(xpos, ypos) -> None:
     :type ypos:     float
     """
     g_canvas.deleteAll()
-    # added_button = False
+
     for item in g_player_dict:
         mylog.warning("player_dict[item]=%s", g_player_dict[item])
         if not document.getElementById(g_player_dict[item]["player_id"]):
@@ -1983,8 +2031,7 @@ def create_player_select_buttons(xpos, ypos) -> None:
             )
             g_canvas.attach(player_button)
         ypos += 40
-        # added_button = True
-    # if added_button:
+
     g_canvas.fitContents()
     mylog.warning("Exiting create_player_select_buttons")
 
@@ -2010,7 +2057,7 @@ def advance_mode(event=None):  # pylint: disable=unused-argument
     :type event: [type], optional
     """
     mylog.error("advance_mode: Calling API (current mode=%s)", GAME_MODES[g_game_mode])
-    if g_game_id != Game_ID() and g_player_id != Player_ID():
+    if g_game_id != GameID() and g_player_id != PlayerID():
         put(f"/game/{g_game_id.value}?state=true", advance_mode_callback, False)
     else:
         display_game_options()
@@ -2023,12 +2070,9 @@ def sort_player_cards(event=None):  # pylint: disable=unused-argument
     :param event: The event object passed in during callback, defaults to None
     :type event: Event(?), optional
     """
-    g_players_hand.sort(
-        key=lambda x: DECK_SORTED.index(x)  # pylint: disable=unnecessary-lambda
-    )
-    g_players_meld_deck.sort(
-        key=lambda x: DECK_SORTED.index(x)  # pylint: disable=unnecessary-lambda
-    )
+    # pylint: disable=unnecessary-lambda
+    g_players_hand.sort(key=lambda x: DECK_SORTED.index(x))
+    g_players_meld_deck.sort(key=lambda x: DECK_SORTED.index(x))
     display_game_options()
 
 
@@ -2113,19 +2157,21 @@ def display_game_options():
     Conditional ladder for early game data selection. This needs to be done better and
     have new game/team/player capability.
     """
-    global g_game_mode, g_team_id, g_meld_score, g_round_bid, g_round_bid_trick_winner, g_trump  # pylint: disable=invalid-name
+    # pylint: disable=invalid-name
+    global g_game_mode, g_team_id, g_meld_score, g_round_bid, g_round_bid_trick_winner, g_trump
+    mylog.error("Entering display_game_options.")
 
     xpos = 10
     ypos = 0
 
     # Grab the game_id, team_ids, and players. Display and allow player to choose.
-    if g_game_id == Game_ID():
+    if g_game_id == GameID():
         mylog.warning("dgo: In g_game_id=''")
         create_game_select_buttons(xpos, ypos)
     elif g_game_mode is None:
         mylog.warning("dgo: In g_game_mode is None")
         get(f"/game/{g_game_id.value}?state=false", game_mode_query_callback)
-    elif g_round_id == Round_ID():
+    elif g_round_id == RoundID():
         mylog.warning("dgo: In g_round_id=''")
         # Open the websocket if needed.
         if g_websocket is None:
@@ -2135,7 +2181,7 @@ def display_game_options():
     elif g_team_list == []:
         mylog.warning("dgo: In g_team_list=[]")
         get(f"/round/{g_round_id.value}/teams", on_complete_teams)
-    elif g_player_id == Player_ID():
+    elif g_player_id == PlayerID():
         mylog.warning("dgo: In g_player_id=''")
         create_player_select_buttons(xpos, ypos)
     elif g_players_hand == []:
@@ -2149,18 +2195,18 @@ def display_game_options():
         if g_game_mode == 1:
             g_meld_score = 0
             g_round_bid = 0
-            g_round_bid_trick_winner = Player_ID()
+            g_round_bid_trick_winner = PlayerID()
             g_trump = ""
             # update_status_line()
 
-        if g_team_id == Team_ID():
-            # Set the TEAM_ID variable based on the player id chosen.
+        if g_team_id == TeamID():
+            # Set the g_team_id variable based on the player id chosen.
             for _temp in g_team_dict:
                 mylog.warning(
                     "dgo: Key: %s Value: %r", _temp, g_team_dict[_temp]["player_ids"]
                 )
                 if g_player_id.value in g_team_dict[_temp]["player_ids"]:
-                    g_team_id = Team_ID(g_team_dict[_temp]["team_id"])
+                    g_team_id = TeamID(g_team_dict[_temp]["team_id"])
                     mylog.warning("dgo: Set g_team_id=%s", g_team_id)
 
         rebuild_display()
@@ -2175,7 +2221,8 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
     :param event: The event object passed in during callback, defaults to None
     :type event: Event(?), optional
     """
-    global g_game_mode, button_advance_mode, g_canvas  # pylint: disable=invalid-name
+    # pylint: disable=invalid-name
+    global g_game_mode, button_advance_mode, g_canvas
     mylog.error("Entering clear_display")
 
     if g_game_mode is None and not g_game_dict:
@@ -2303,6 +2350,7 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
         g_canvas.addObject(button_send_meld)
 
     g_canvas.fitContents()
+    # pylint: disable=attribute-defined-outside-init, invalid-name
     g_canvas.mouseMode = SVG.MouseMode.DRAG
     mylog.warning("Leaving clear_display")
 
@@ -2315,13 +2363,14 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
     :param event: The event object passed in during callback, defaults to None
     :type event: [type], optional
     """
-    global g_game_mode  # pylint: disable=invalid-name
+    # pylint: disable=invalid-name
+    global g_game_mode
     mode = GAME_MODES[g_game_mode]
     mylog.error("Entering update_display. (mode=%s)", mode)
 
     # Place the desired decks on the display.
     if not g_canvas.objectDict:
-        if mode in ["game"] and g_game_id == Game_ID():  # Choose game, player
+        if mode in ["game"] and g_game_id == GameID():  # Choose game, player
             display_game_options()
         if mode in ["bid", "bidfinal"]:  # Bid
             # Use empty deck to prevent peeking at the kitty.
@@ -2330,7 +2379,7 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
         if mode in ["bidfinal"]:  # Bid submitted
             # The kitty doesn't need to remain 'secret' now that the bidding is done.
             # Ask the server for the cards in the kitty.
-            if g_round_id != Round_ID():
+            if g_round_id != RoundID():
                 get(f"/round/{g_round_id.value}/kitty", on_complete_kitty)
         elif mode in ["reveal"]:  # Reveal
             populate_canvas(g_kitty_deck, g_canvas, "kitty")
@@ -2359,17 +2408,18 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
         place_cards(discard_deck, g_canvas, location="top", deck_type=mode)
         place_cards(g_players_hand, g_canvas, location="bottom", deck_type="player")
 
+    # pylint: disable=attribute-defined-outside-init, invalid-name
     g_canvas.mouseMode = SVG.MouseMode.DRAG
 
 
-def resize_canvas(event=None):
+def resize_canvas(event=None):  # pylint: disable=unused-argument
     """
     Resize the canvas to make use of available screen space.
     :param event: The event object passed in during callback, defaults to None
     """
     mylog.error("Entering resize_canvas")
-    h = 0.95 * window.innerHeight - document["game_header"].height
-    g_canvas.style.height = f"{h}px"
+    _height: float = 0.95 * window.innerHeight - document["game_header"].height
+    g_canvas.style.height = f"{_height}px"
     g_canvas.fitContents()
 
 
@@ -2379,8 +2429,7 @@ def resize_canvas(event=None):
 (PROTOCOL, SERVER) = find_protocol_server()
 
 # Make the clear_display function easily available to plain javascript code.
-# window.clear_display = clear_display No longer needed I think?
-window.bind("resize", resize_canvas)
+window.bind("resize", resize_canvas)  # pylint: disable=no-member
 
 # Fix the height of the space for player names by using dummy names
 document["player_name"].height = document["player_name"].offsetHeight
