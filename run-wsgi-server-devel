@@ -2,17 +2,26 @@
 
 export PYTHONPATH=$(pwd)/src
 
+# CRITICAL = 50
+# ERROR = 40
+# WARNING = 30
+# INFO = 20
+# DEBUG = 10
+# NOTSET = 0
+export GLOBAL_LOG_LEVEL=20
+
 for i in "$@"; do
   MYARGS[${#MYARGS[@]}]="$i"
 done
 
 if [ ${#MYARGS} -eq 0 ]; then
-  MYARGS[0]='--capture-output'
-  MYARGS[1]='--access-logfile'
-  MYARGS[2]='-'
+  MYARGS[0]='--log-level debug'
+  MYARGS[10]='--capture-output'
+  MYARGS[20]='--access-logfile'
+  MYARGS[21]='-'
 fi
 
-poetry run gunicorn --bind 0.0.0.0:5000 \
+poetry run python -m gunicorn --bind 0.0.0.0:5000 \
     --graceful-timeout 5 \
     -k flask_sockets.worker --reload "pinochle.wsgi:application" "${MYARGS[@]}"
     # --reload "pinochle.wsgi:application" "${MYARGS[@]}"

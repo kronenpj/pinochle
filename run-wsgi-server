@@ -2,5 +2,5 @@
 
 export PYTHONPATH=$(pwd)/src
 
-poetry run gunicorn --bind 0.0.0.0:9876 --workers 4 --threads 100 \
+poetry run python -O -m gunicorn --bind 0.0.0.0:9876 --workers 4 --threads 100 \
     -k flask_sockets.worker "pinochle.wsgi:application"
