@@ -2223,7 +2223,7 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
     """
     # pylint: disable=invalid-name
     global g_game_mode, button_advance_mode, g_canvas
-    mylog.error("Entering clear_display")
+    mylog.error("Entering rebuild_display")
 
     if g_game_mode is None and not g_game_dict:
         g_game_mode = 0
@@ -2238,9 +2238,11 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
     update_status_line()
 
     mode = GAME_MODES[g_game_mode]
-    mylog.warning("Current mode=%s", mode)
+    mylog.warning("rebuild_display: Current mode=%s", mode)
 
-    mylog.warning("Destroying canvas contents with mode: %s", g_canvas.mode)
+    mylog.warning(
+        "rebuild_display: Destroying canvas contents with mode: %s", g_canvas.mode
+    )
     g_canvas.deleteAll()
 
     # Set the current game mode in the canvas.
@@ -2249,70 +2251,71 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
     # Get the dimensions of the canvas and update the display.
     set_card_positions()
 
-    if g_game_mode != 0:
+    _buttons = {}  # Dict[str, SVG.Button]
+    if "game" not in GAME_MODES[g_game_mode]:
         # Update/create buttons
-        # Button to call advance_mode on demand
-        # FIXME: This is temporary. The server will decide when to advance the game state.
-        button_advance_mode = SVG.Button(
-            position=(-80 * 3.5, -40),
-            size=(70, 35),
-            text=GAME_MODES[g_game_mode].capitalize(),
-            onclick=advance_mode,
-            fontsize=18,
-            objid="button_advance_mode",
-        )
-        # Button to call update_display on demand
-        button_refresh = SVG.Button(
-            position=(-80 * 2.5, -40),
-            size=(70, 35),
-            text="Refresh",
-            onclick=set_card_positions,
-            fontsize=18,
-            objid="button_refresh",
-        )
 
-        # Button to call clear_display on demand
-        button_clear = SVG.Button(
-            position=(-80 * 1.5, -40),
-            size=(70, 35),
-            text="Clear",
-            onclick=rebuild_display,
-            fontsize=18,
-            objid="button_clear",
-        )
+        # # Button to call advance_mode on demand
+        # _buttons["button_advance_mode"] = SVG.Button(
+        #     position=(-80 * 3.5, -40),
+        #     size=(70, 35),
+        #     text=GAME_MODES[g_game_mode].capitalize(),
+        #     onclick=advance_mode,
+        #     fontsize=18,
+        #     objid="button_advance_mode",
+        # )
+        # # Button to call update_display on demand
+        # _buttons["button_refresh"] = SVG.Button(
+        #     position=(-80 * 2.5, -40),
+        #     size=(70, 35),
+        #     text="Refresh",
+        #     onclick=set_card_positions,
+        #     fontsize=18,
+        #     objid="button_refresh",
+        # )
 
-        # Button to call clear_game on demand
-        button_clear_game = SVG.Button(
-            position=(80 * 0.5, -40),
-            size=(70, 35),
-            text="Clear\nGame",
-            onclick=clear_game,
-            fontsize=16,
-            objid="button_clear_game",
-        )
+        # # Button to call clear_display on demand
+        # _buttons["button_clear"] = SVG.Button(
+        #     position=(-80 * 1.5, -40),
+        #     size=(70, 35),
+        #     text="Clear",
+        #     onclick=rebuild_display,
+        #     fontsize=18,
+        #     objid="button_clear",
+        # )
 
-        # Button to call clear_player on demand
-        button_clear_player = SVG.Button(
-            position=(80 * 1.5, -40),
-            size=(70, 35),
-            text="Clear\nPlayer",
-            onclick=clear_player,
-            fontsize=16,
-            objid="button_clear_player",
-        )
+        # # Button to call clear_game on demand
+        # _buttons["button_clear_game"] = SVG.Button(
+        #     position=(80 * 0.5, -40),
+        #     size=(70, 35),
+        #     text="Clear\nGame",
+        #     onclick=clear_game,
+        #     fontsize=16,
+        #     objid="button_clear_game",
+        # )
 
-        # Button to call window reload on demand
-        button_reload_page = SVG.Button(
-            position=(80 * 2.5, -40),
-            size=(70, 35),
-            text="Reload",
-            onclick=window.location.reload,  # pylint: disable=no-member
-            fontsize=16,
-            objid="button_reload_page",
-        )
+        # # Button to call clear_player on demand
+        # _buttons["button_clear_player"] = SVG.Button(
+        #     position=(80 * 1.5, -40),
+        #     size=(70, 35),
+        #     text="Clear\nPlayer",
+        #     onclick=clear_player,
+        #     fontsize=16,
+        #     objid="button_clear_player",
+        # )
+
+        # # Button to call window reload on demand
+        # _buttons["button_reload_page"] = SVG.Button(
+        #     position=(80 * 2.5, -40),
+        #     size=(70, 35),
+        #     text="Reload",
+        #     onclick=window.location.reload,  # pylint: disable=no-member
+        #     fontsize=16,
+        #     objid="button_reload_page",
+        # )
 
         # Button to call sort_player_cards on demand
-        button_sort_player = SVG.Button(
+        _buttons["button_sort_player"] = SVG.Button(
             position=(-80 * 0.5, CARD_HEIGHT * 1.1),
             size=(70, 35),
             text="Sort",
@@ -2321,25 +2324,14 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
             objid="button_sort_player",
         )
 
-        for item in [
-            button_clear,
-            button_refresh,
-            button_advance_mode,
-            button_clear_game,
-            button_clear_player,
-            button_reload_page,
-            button_sort_player,
-        ]:
-            g_canvas.addObject(item)
-
     if GAME_MODES[g_game_mode] in ["reveal"]:
-        mylog.warning("Creating trump selection dialog.")
+        mylog.warning("rebuild_display: Creating trump selection dialog.")
         tsd = TrumpSelectDialog()
         tsd.display_trump_dialog()
 
     if GAME_MODES[g_game_mode] in ["meld"]:
         # Button to call submit_meld on demand
-        button_send_meld = SVG.Button(
+        _buttons["button_send_meld"] = SVG.Button(
             position=(-80 * 0.5, -40),
             size=(70, 35),
             text="Send\nMeld",
@@ -2347,12 +2339,15 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
             fontsize=16,
             objid="button_send_meld",
         )
-        g_canvas.addObject(button_send_meld)
+
+    for item, button in _buttons.items():
+        mylog.warning("rebuild_display: Adding %s button to canvas.", item)
+        g_canvas.addObject(button)
 
     g_canvas.fitContents()
     # pylint: disable=attribute-defined-outside-init, invalid-name
     g_canvas.mouseMode = SVG.MouseMode.DRAG
-    mylog.warning("Leaving clear_display")
+    mylog.warning("Leaving rebuild_display")
 
 
 def set_card_positions(event=None):  # pylint: disable=unused-argument
