@@ -17,9 +17,9 @@ from browser.widgets.dialog import Dialog, InfoDialog
 # pylint: disable=pointless-statement
 
 mylog = logging.getLogger("cardtable")
-# mylog.setLevel(logging.CRITICAL)  # No output
+mylog.setLevel(logging.CRITICAL)  # No output
 # mylog.setLevel(logging.ERROR)  # Function entry/exit
-mylog.setLevel(logging.WARNING)  # Everything
+# mylog.setLevel(logging.WARNING)  # Everything
 
 CARD_URL = "/static/playingcards.svg"
 
