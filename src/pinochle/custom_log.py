@@ -20,6 +20,8 @@ class CustomFormatter(logging.Formatter):  # pragma: no cover
             record.funcName = record.func_name_override
         if hasattr(record, "file_name_override"):
             record.filename = record.file_name_override
+            if hasattr(record, "module"):
+                record.module = record.file_name_override.rstrip(".py")
         return super(CustomFormatter, self).format(record)
 
 
@@ -37,8 +39,11 @@ def get_logger() -> logging.Logger:  # pragma: no cover
     handler = logging.StreamHandler(stream=sys.stderr)
 
     handler.setFormatter(
+        # CustomFormatter(
+        #     "%(asctime)s:%(levelname)-10s:%(filename)s:%(funcName)s:%(message)s"
+        # )
         CustomFormatter(
-            "%(asctime)s:%(levelname)-10s:%(filename)s:%(funcName)s:%(message)s"
+            "[%(asctime)s] - %(module)s:%(funcName)s - %(levelname)s - %(message)s"
         )
     )
     logger.addHandler(handler)

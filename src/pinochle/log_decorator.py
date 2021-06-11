@@ -57,23 +57,23 @@ def log_decorator(_func=None) -> Any:  # pragma: no cover
 
             # Before to the function execution, log function details.
             logger_obj.info(
-                f"Begin function: Arguments: {formatted_arguments}", extra=extra_args
+                "Begin function: Arguments: %r",formatted_arguments , extra=extra_args
             )
             try:
                 # log return value from the function
                 value = func(self, *args, **kwargs)
                 logger_obj.info(
-                    f"End function  : Returned: {value!r}", extra=extra_args
+                    "End function  : Returned: %r",value, extra=extra_args
                 )
             except TypeError:
                 # log return value from the function
                 value = func(*args, **kwargs)
                 logger_obj.info(
-                    f"End function  : Returned: {value!r}", extra=extra_args
+                    "End function  : Returned: %r",value, extra=extra_args
                 )
             except Exception:
                 # log exception if occurs in function
-                logger_obj.error(f"Exception     : {str(sys.exc_info()[1])}")
+                logger_obj.error("Exception     : %s", str(sys.exc_info()[1]))
                 raise
             # Return function value
             return value
