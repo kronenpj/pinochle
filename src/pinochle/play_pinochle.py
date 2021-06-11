@@ -738,7 +738,7 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
 
         # Check to see if a player has cards left in their hand.
         if hand.read_one(player_hand_id):
-            # print("Sending trick_won message.")
+            # print("play_trick_card: Sending trick_won message.")
             # Send played card to other players via Websocket
             message = {
                 "action": "trick_won",
@@ -749,7 +749,7 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
             ws_mess = WSM.get_instance()
             ws_mess.websocket_broadcast(game_id, message)
         else:
-            # print("Calling notify_round_complete.")
+            # print("play_trick_card: Calling notify_round_complete.")
             # The last trick for this round has been played.
             notify_round_complete(game_id, round_id, winning_player_id, winning_team_id)
         # print("Exiting play_trick_card, when trick is complete.")

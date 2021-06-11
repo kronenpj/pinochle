@@ -5,6 +5,7 @@ import copy
 import json
 import logging
 import os
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 import brySVG.dragcanvas as SVG
@@ -14,6 +15,11 @@ from browser.widgets.dialog import Dialog, InfoDialog
 # Disable some pylint complaints because this code is more like javascript than python.
 # pylint: disable=global-statement
 # pylint: disable=pointless-statement
+
+mylog = logging.getLogger("cardtable")
+# mylog.setLevel(logging.CRITICAL)  # No output
+# mylog.setLevel(logging.ERROR)  # Function entry/exit
+mylog.setLevel(logging.WARNING)  # Everything
 
 CARD_URL = "/static/playingcards.svg"
 
@@ -73,105 +79,47 @@ DECK_CONFIG = {
 
 SUITS = ["spade", "heart", "club", "diamond"]
 
-# Websocket holder
-g_websocket: Optional[websocket.WebSocket] = None
-
-# Programmatically create a pre-sorted deck to compare to when sorting decks of cards.
-# Importing a statically-defined list from constants doesn't work for some reason.
-# "9", "jack", "queen", "king", "10", "ace"
-# "ace", "10", "king", "queen", "jack", "9"
-DECK_SORTED: List[str] = []
-for _suit in SUITS:
-    for _card in ["ace", "10", "king", "queen", "jack", "9"]:
-        DECK_SORTED.append(f"{_suit}_{_card}")
-
-mylog = logging.getLogger("cardtable")
-mylog.setLevel(logging.CRITICAL)  # No output
-# mylog.setLevel(logging.ERROR)  # Function entry/exit
-# mylog.setLevel(logging.WARNING)  # Everything
-
-# API "Constants"
-AJAX_URL_ENCODING = "application/x-www-form-urlencoded"
-
-# Game-related globals
-g_game_id: str = ""
-g_game_mode: int = -1
-g_hand_size: int = 0
-g_kitty_size: int = 0
-g_my_team_score: int = 0
-g_meld_score: int = 0
-g_other_team_score: int = 0
-g_player_id: str = ""
-g_players: int = 4
-g_round_bid: int = 0
-g_round_id: str = ""
-g_team_id: str = ""
-g_trump: str = ""
-
-# Various state globals
-g_ajax_outstanding_requests: int = 0
-g_game_dict: Dict[str, Dict[str, Any]] = {}
-g_kitty_deck: List[str] = []
-g_meld_deck: List[str] = []
-g_player_dict: Dict[str, Dict[str, str]] = {}
-g_player_list: List[str] = []
-g_players_hand: List[str] = []
-g_players_meld_deck: List[str] = []
-g_team_dict: Dict[str, Dict[str, str]] = {}
-g_team_list: List[str] = []
-
-# Track the user who is the round's bid winner, and each trick winner.
-g_round_bid_trick_winner = ""  # pylint: disable=invalid-name
-
-button_advance_mode = None  # pylint: disable=invalid-name
-g_registered_with_server = False  # pylint: disable=invalid-name
+ZEROS_UUID = "00000000-0000-0000-0000-000000000000"
 
 
-class CardTable(SVG.CanvasObject):
+@dataclass(frozen=True)
+class GuId:
     """
-    CardTable class to encapsulate aspects of the card table.
+    Parent container for string-ified GUIDs / UUIDs used as identifers by the card
+    service.
     """
 
-    def __init__(self):
-        super().__init__("95vw", "90vh", "none", objid="canvas")
-        self.mode = "initial"
-        self.bind("mouseup", self.move_handler)
-        self.bind("touchend", self.move_handler)
+    value: str
 
-    def move_handler(self, event=None):
-        """
-        Inspect the object's attributes and determine whether additional action needs to
-        be taken during a move action.
+    def __init__(self, value: str = ZEROS_UUID) -> None:
+        object.__setattr__(self, "value", str(value))
 
-        :param event: The event object passed in during callback, defaults to None
-        :type event: Event(?), optional
-        """
-        mylog.error("Entering CardTable.move_handler")
-        selected_card = self.getSelectedObject(event.target.id)
+    def __str__(self) -> str:
+        return str(self.value)
 
-        currentcoords = self.getSVGcoords(event)
-        offset = currentcoords - self.dragStartCoords
-        # Moving a card within a CARD_HEIGHT of the top "throws" that card.
-        if (
-            # Only play cards from player's hand
-            # Only throw cards that are face-up
-            selected_card
-            and selected_card.id.startswith("player")
-            and selected_card.show_face
-        ):
-            if offset == (0, 0):  # We have a click, not a drag
-                selected_card.card_click_handler()
-            else:  # It's a drag
-                selected_card.play_handler(event_type="drag")
-        elif (
-            # Check cards from kitty deck
-            # Only flip cards that are face-down
-            selected_card
-            and selected_card.id.startswith("kitty")
-            and not selected_card.show_face
-        ):
-            if offset == (0, 0):  # We have a click, not a drag
-                selected_card.card_click_handler()
+
+class Game_ID(GuId):
+    """
+    Game ID data
+    """
+
+
+class Round_ID(GuId):
+    """
+    Round ID data
+    """
+
+
+class Team_ID(GuId):
+    """
+    Team ID data
+    """
+
+
+class Player_ID(GuId):
+    """
+    Player ID data
+    """
 
 
 class PlayingCard(SVG.UseObject):
@@ -269,8 +217,8 @@ class PlayingCard(SVG.UseObject):
             # TODO: Transition to game_state 3 (), this causes an exception: ValueError: 'card-base' is not in list.
             placement = receiving_deck.index("card-base")
         else:
-            p_list = order_player_id_list_for_trick()
-            placement = p_list.index(g_player_id)
+            p_list: List[Player_ID] = order_player_id_list_for_trick()
+            placement: int = p_list.index(g_player_id)
         mylog.warning(
             "PlayingCard.play_handler: Locating %s%s\nPlayingCard.play_handler: %s: %s",
             card_tag,
@@ -300,7 +248,7 @@ class PlayingCard(SVG.UseObject):
             mylog.warning("Throwing card: %s", self.face_value)
             # Convey the played card to the server.
             put(
-                f"/play/{g_round_id}/play_card?player_id={g_player_id}&card={self.face_value}"
+                f"/play/{g_round_id.value}/play_card?player_id={g_player_id.value}&card={self.face_value}"
             )
 
         self.face_update_dom()
@@ -326,13 +274,108 @@ class PlayingCard(SVG.UseObject):
             send_websocket_message(
                 {
                     "action": "reveal_kitty",
-                    "game_id": str(g_game_id),
-                    "player_id": str(g_player_id),
+                    "game_id": g_game_id.value,
+                    "player_id": g_player_id.value,
                     "card": self.face_value,
                 }
             )
         if GAME_MODES[g_game_mode] in ["reveal", "meld"]:
             self.play_handler(event_type="click")
+
+
+# Websocket holder
+g_websocket: Optional[websocket.WebSocket] = None
+
+# Programmatically create a pre-sorted deck to compare to when sorting decks of cards.
+# Importing a statically-defined list from constants doesn't work for some reason.
+# "9", "jack", "queen", "king", "10", "ace"
+# "ace", "10", "king", "queen", "jack", "9"
+DECK_SORTED: List[str] = []
+for _suit in SUITS:
+    for _card in ["ace", "10", "king", "queen", "jack", "9"]:
+        DECK_SORTED.append(f"{_suit}_{_card}")
+
+# API "Constants"
+AJAX_URL_ENCODING = "application/x-www-form-urlencoded"
+
+# Game-related globals
+g_game_id: Game_ID = Game_ID()
+g_game_mode: int = -1
+g_hand_size: int = 0
+g_kitty_size: int = 0
+g_my_team_score: int = 0
+g_meld_score: int = 0
+g_other_team_score: int = 0
+g_player_id: Player_ID = Player_ID()
+g_players: int = 4
+g_round_bid: int = 0
+g_round_id: Round_ID = Round_ID()
+g_team_id: Team_ID = Team_ID()
+g_trump: str = ""
+
+# Various state globals
+g_ajax_outstanding_requests: int = 0
+g_game_dict: Dict[Game_ID, Dict[str, Any]] = {}
+g_kitty_deck: List[str] = []
+g_meld_deck: List[str] = []
+g_player_dict: Dict[Player_ID, Dict[str, str]] = {}
+g_player_list: List[Player_ID] = []
+g_players_hand: List[str] = []
+g_players_meld_deck: List[str] = []
+g_team_dict: Dict[Team_ID, Dict[str, str]] = {}
+g_team_list: List[Team_ID] = []
+
+# Track the user who is the round's bid winner, and each trick winner.
+g_round_bid_trick_winner: Player_ID  # pylint: disable=invalid-name
+
+button_advance_mode = None  # pylint: disable=invalid-name
+g_registered_with_server = False  # pylint: disable=invalid-name
+
+
+class CardTable(SVG.CanvasObject):
+    """
+    CardTable class to encapsulate aspects of the card table.
+    """
+
+    def __init__(self):
+        super().__init__("95vw", "90vh", "none", objid="canvas")
+        self.mode = "initial"
+        self.bind("mouseup", self.move_handler)
+        self.bind("touchend", self.move_handler)
+
+    def move_handler(self, event=None):
+        """
+        Inspect the object's attributes and determine whether additional action needs to
+        be taken during a move action.
+
+        :param event: The event object passed in during callback, defaults to None
+        :type event: Event(?), optional
+        """
+        mylog.error("Entering CardTable.move_handler")
+        selected_card = self.getSelectedObject(event.target.id)
+
+        currentcoords = self.getSVGcoords(event)
+        offset = currentcoords - self.dragStartCoords
+        # Moving a card within a CARD_HEIGHT of the top "throws" that card.
+        if selected_card:
+            if (
+                # Only play cards from player's hand
+                # Only throw cards that are face-up
+                selected_card.id.startswith("player")
+                and selected_card.show_face
+            ):
+                if offset == (0, 0):  # We have a click, not a drag
+                    selected_card.card_click_handler()
+                else:  # It's a drag
+                    selected_card.play_handler(event_type="drag")
+            elif (
+                # Check cards from kitty deck
+                # Only flip cards that are face-down
+                selected_card.id.startswith("kitty")
+                and not selected_card.show_face
+            ):
+                if offset == (0, 0):  # We have a click, not a drag
+                    selected_card.card_click_handler()
 
 
 class BidDialog:
@@ -355,7 +398,9 @@ class BidDialog:
             return
         self.last_bid = bid
         self.bid_dialog.close()
-        put(f"/play/{g_round_id}/submit_bid?player_id={g_player_id}&bid={bid}")
+        put(
+            f"/play/{g_round_id.value}/submit_bid?player_id={g_player_id.value}&bid={bid}"
+        )
 
     def display_bid_dialog(self, bid_data: str):
         """
@@ -366,7 +411,7 @@ class BidDialog:
         """
         mylog.error("Entering display_bid_dialog.")
         data = json.loads(bid_data)
-        player_id = str(data["player_id"])
+        player_id: Player_ID = Player_ID(data["player_id"])
         self.last_bid = int(data["bid"])
         player_name = g_player_dict[player_id]["name"].capitalize()
 
@@ -422,12 +467,14 @@ class TrumpSelectDialog:
             return
         self.trump_dialog.close()
         # Notify the server of trump.
-        put(f"/play/{g_round_id}/set_trump?player_id={g_player_id}&trump={trump}")
+        put(
+            f"/play/{g_round_id.value}/set_trump?player_id={g_player_id.value}&trump={trump}"
+        )
         # Transfer cards into the team's collection and out of the player's hand.
         buried_trump = 0
         for card in cards_buried:
-            put(f"/round/{g_round_id}/{g_team_id}?card={card}")
-            delete(f"/player/{g_player_id}/hand/{card}")
+            put(f"/round/{g_round_id.value}/{g_team_id.value}?card={card}")
+            delete(f"/player/{g_player_id.value}/hand/{card}")
             g_players_hand.remove(card)
             g_players_meld_deck.remove(card)
             if trump in card:
@@ -436,8 +483,8 @@ class TrumpSelectDialog:
             send_websocket_message(
                 {
                     "action": "trump_buried",
-                    "game_id": str(g_game_id),
-                    "player_id": str(g_player_id),
+                    "game_id": g_game_id.value,
+                    "player_id": g_player_id.value,
                     "count": buried_trump,
                 }
             )
@@ -515,7 +562,7 @@ class MeldFinalDialog:
         """
         mylog.error("Entering on_click_meld_dialog")
         # Notify the server of my meld is final.
-        put(f"/play/{g_round_id}/finalize_meld?player_id={g_player_id}")
+        put(f"/play/{g_round_id.value}/finalize_meld?player_id={g_player_id.value}")
         self.meld_final_dialog.close()
 
     def display_meld_final_dialog(self):
@@ -548,7 +595,7 @@ class TrickWonDialog:
 
         mylog.error("In on_click_trick_won_dialog")
         # Convey to the server that play is continuing.
-        put(f"/play/{g_round_id}/next_trick?player_id={g_player_id}")
+        put(f"/play/{g_round_id.value}/next_trick?player_id={g_player_id.value}")
         self.trick_won_dialog.close()
 
     def on_click_final_trick_won_dialog(self, event=None):
@@ -563,7 +610,7 @@ class TrickWonDialog:
 
         mylog.error("In on_click_final_trick_won_dialog")
         # Convey to the server that to start the next round.
-        put(f"/game/{g_game_id}?state=true", advance_mode_callback, False)
+        put(f"/game/{g_game_id.value}?state=true", advance_mode_callback, False)
         self.trick_won_dialog.close()
 
     def display_trick_won_dialog(self):
@@ -767,9 +814,20 @@ def update_round_final_score(event=None):
     data = json.loads(event)
     mylog.warning("update_round_final_score: data=%s", data)
     assert isinstance(data, dict)
-    t_player_id = data["player_id"]
-    t_team_trick_scores = data["team_trick_scores"]
-    t_team_scores = data["team_scores"]
+    t_player_id = Player_ID(data["player_id"])
+    assert isinstance(data["team_trick_scores"], dict)
+    mylog.warning(
+        "update_round_final_score: data['team_trick_scores']: %r",
+        data["team_trick_scores"],
+    )
+    t_team_trick_scores = {
+        Team_ID(x): y for (x, y) in data["team_trick_scores"].items()
+    }
+    assert isinstance(data["team_scores"], dict)
+    mylog.warning(
+        "update_round_final_score: data['team_scores']: %r", data["team_scores"],
+    )
+    t_team_scores = {Team_ID(x): y for (x, y) in data["team_scores"].items()}
     mylog.warning("update_round_final_score: t_player_id=%s", t_player_id)
     mylog.warning(
         "update_round_final_score: t_team_trick_scores=%r", t_team_trick_scores
@@ -777,7 +835,7 @@ def update_round_final_score(event=None):
     mylog.warning("update_round_final_score: t_team_scores=%r", t_team_scores)
 
     # Record that information.
-    g_round_bid_trick_winner = str(t_player_id)
+    g_round_bid_trick_winner = t_player_id
 
     # Obtain the other team's ID
     t_other_team_id = [x for x in g_team_dict if x != g_team_id][0]
@@ -801,10 +859,8 @@ def update_round_final_score(event=None):
         t_team_scores[t_other_team_id],
     )
 
-    mylog.warning(
-        "g_player_id=%s / t_player_id=%s", repr(g_player_id), repr(t_player_id)
-    )
-    if str(g_player_id) == str(t_player_id):
+    mylog.warning("g_player_id=%s / t_player_id=%s", g_player_id, t_player_id)
+    if g_player_id == t_player_id:
         mylog.warning(
             "update_round_final_score: Displaying final trick dialog for this player."
         )
@@ -837,7 +893,7 @@ def update_trick_winner(event=None):
     data = json.loads(event)
     mylog.warning("update_trick_winner: data=%s", data)
     assert isinstance(data, dict)
-    t_player_id = data["player_id"]
+    t_player_id = Player_ID(data["player_id"])
     t_card = data["winning_card"]
     mylog.warning("update_trick_winner: t_player_id=%s", t_player_id)
     mylog.warning("update_trick_winner: t_card=%s", t_card)
@@ -850,7 +906,7 @@ def update_trick_winner(event=None):
     # Record that information.
     g_round_bid_trick_winner = t_player_id
 
-    if str(g_player_id) == str(t_player_id):
+    if g_player_id == t_player_id:
         TrickWonDialog().display_trick_won_dialog()
     else:
         InfoDialog(
@@ -872,7 +928,7 @@ def update_trick_card(event=None):
     data = json.loads(event)
     mylog.warning("update_trick_card: data=%s", data)
     assert isinstance(data, dict)
-    t_player_id = data["player_id"]
+    t_player_id: Player_ID = Player_ID(data["player_id"])
     t_card = data["card"]
     mylog.warning("update_trick_card: t_player_id=%s", t_player_id)
     mylog.warning("update_trick_card: t_card=%s", t_card)
@@ -894,7 +950,7 @@ def update_team_scores(event=None):
     data = json.loads(event)
     mylog.warning("update_team_scores: data=%r", data)
     assert isinstance(data, dict)
-    if g_team_id == str(data["team_id"]):
+    if g_team_id == Team_ID(data["team_id"]):
         g_my_team_score = data["score"]
         g_meld_score = data["meld_score"]
     else:  # Other team
@@ -916,9 +972,9 @@ def notify_trump_buried(event=None):
     assert isinstance(data, dict)
     if "player_id" in data:
         mylog.warning("notify_trump_buried: About to retrieve player_id from data")
-        t_player_id = data["player_id"]
+        t_player_id: Player_ID = Player_ID(data["player_id"])
     else:
-        t_player_id = "00000000-0000-4000-0000-000000000000"
+        t_player_id = Player_ID()
     mylog.warning("notify_trump_buried: t_player_id=%r", t_player_id)
     player_name = ""
     if t_player_id == g_player_id:
@@ -993,8 +1049,8 @@ def display_bid_winner(event=None):
     mylog.error("Entering display_bid_winner.")
     global g_round_bid_trick_winner, g_round_bid
     data = json.loads(event)
-    player_id = str(data["player_id"])
-    player_name = g_player_dict[player_id]["name"]
+    t_player_id = Player_ID(data["player_id"])
+    player_name = g_player_dict[t_player_id]["name"]
     bid = int(data["bid"])
 
     remove_dialogs()
@@ -1009,7 +1065,7 @@ def display_bid_winner(event=None):
     )
 
     # You may have won...
-    g_round_bid_trick_winner = player_id
+    g_round_bid_trick_winner = t_player_id
     g_round_bid = bid
 
 
@@ -1022,18 +1078,18 @@ def display_player_meld(meld_data: str):
     """
     mylog.error("Entering display_player_meld.")
     data = json.loads(meld_data)
-    player_id = str(data["player_id"])
+    player_id = Player_ID(data["player_id"])
     player_name = g_player_dict[player_id]["name"]
     card_list = data["card_list"]
     try:
         # If a dialog already exists, delete it.
-        if existing_dialog := document.getElementById(f"dialog_{player_id}"):
+        if existing_dialog := document.getElementById(f"dialog_{player_id.value}"):
             existing_dialog.parentNode.removeChild(existing_dialog)
     except Exception as e:  # pylint: disable=invalid-name,broad-except
         mylog.warning("display_player_meld: Caught exception: %r", e)
     try:
         # Construct the new dialog to display the meld cards.
-        xpos = 0
+        xpos = 0.0
         d_canvas = SVG.CanvasObject("40vw", "20vh", "none", objid="dialog_canvas")
         for card in card_list:
             d_canvas <= SVG.UseObject(href=f"#{card}", origin=(xpos, 0))
@@ -1057,7 +1113,7 @@ def display_player_meld(meld_data: str):
         mylog.warning("display_player_meld: Item: %r", item)
         if not item.id:
             # Assume this is the one we just created.
-            item.id = f"dialog_{player_id}"
+            item.id = f"dialog_{player_id.value}"
 
     d_canvas.fitContents()
 
@@ -1072,8 +1128,8 @@ def update_player_names(player_data: str):
     global g_registered_with_server, g_player_list  # pylint: disable=invalid-name
 
     data = json.loads(player_data)
-    g_player_list = data["player_order"]
-    my_player_list = data["player_ids"]
+    g_player_list = [Player_ID(x) for x in data["player_order"]]
+    my_player_list = [Player_ID(x) for x in data["player_ids"]]
     # Display the player's name in the UI
     if my_player_list != [] and g_player_id in my_player_list:
         mylog.warning("Players: %r", my_player_list)
@@ -1139,8 +1195,8 @@ def send_registration():
     send_websocket_message(
         {
             "action": "register_client",
-            "game_id": str(g_game_id),
-            "player_id": str(g_player_id),
+            "game_id": g_game_id.value,
+            "player_id": g_player_id.value,
         }
     )
 
@@ -1190,7 +1246,7 @@ def on_complete_games(req: ajax.Ajax):
     g_game_dict.clear()
     for item in temp:
         mylog.warning("on_complete_games: item=%s", item)
-        g_game_dict[item["game_id"]] = item
+        g_game_dict[Game_ID(item["game_id"])] = item
         # game_list.append(item["game_id"])
 
     display_game_options()
@@ -1214,7 +1270,7 @@ def on_complete_rounds(req: ajax.Ajax):
         return
 
     # Set the round ID.
-    g_round_id = temp["round_id"]
+    g_round_id = Round_ID(temp["round_id"])
     mylog.warning("on_complete_rounds: round_id=%s", g_round_id)
 
     display_game_options()
@@ -1237,7 +1293,7 @@ def on_complete_teams(req: ajax.Ajax):
 
     # Set the global list of teams for this round.
     g_team_list.clear()
-    g_team_list = temp["team_ids"]
+    g_team_list = [Team_ID(x) for x in temp["team_ids"]]
     mylog.warning("on_complete_teams: team_list=%r", g_team_list)
 
     # Clear the team dict here because of the multiple callbacks.
@@ -1265,11 +1321,11 @@ def on_complete_team_names(req: ajax.Ajax):
     mylog.warning(
         "on_complete_team_names: Setting team_dict[%s]=%r", temp["team_id"], temp
     )
-    g_team_dict[temp["team_id"]] = temp
+    g_team_dict[Team_ID(temp["team_id"])] = temp
     mylog.warning("on_complete_team_names: team_dict=%s", g_team_dict)
 
     # Only call API once per team, per player.
-    for item in g_team_dict[temp["team_id"]]["player_ids"]:
+    for item in g_team_dict[Team_ID(temp["team_id"])]["player_ids"]:
         mylog.warning("on_complete_team_names: calling get/player/%s", item)
         get(f"/player/{item}", on_complete_players)
 
@@ -1289,7 +1345,7 @@ def on_complete_players(req: ajax.Ajax):
         return
 
     # Set the global dict of players for reference later.
-    g_player_dict[temp["player_id"]] = temp
+    g_player_dict[Player_ID(temp["player_id"])] = temp
     mylog.warning("In on_complete_players: player_dict=%s", g_player_dict)
     display_game_options()
 
@@ -1344,7 +1400,7 @@ def on_complete_getcookie(req: ajax.Ajax):
     # Set the global deck of cards for the player's hand.
     mylog.warning("on_complete_getcookie: response_data=%s", response_data)
     if "game_id" in response_data["kind"]:
-        g_game_id = response_data["ident"]
+        g_game_id = Game_ID(response_data["ident"])
         mylog.warning(
             "on_complete_getcookie: Setting GAME_ID=%s", response_data["ident"]
         )
@@ -1364,11 +1420,11 @@ def on_complete_getcookie(req: ajax.Ajax):
         g_meld_deck = ["card-base" for _ in range(g_hand_size)]
 
     elif "player_id" in response_data["kind"]:
-        g_player_id = response_data["ident"]
+        g_player_id = Player_ID(response_data["ident"])
         mylog.warning(
             "on_complete_getcookie: Setting PLAYER_ID=%s", response_data["ident"]
         )
-        get(f"/player/{g_player_id}/hand", on_complete_player_cards)
+        get(f"/player/{g_player_id.value}/hand", on_complete_player_cards)
 
     display_game_options()
 
@@ -1492,7 +1548,7 @@ def order_player_index_list_for_trick() -> List[int]:
     return [(x + starting_index) % player_list_len for x in range(player_list_len)]
 
 
-def order_player_id_list_for_trick() -> List[str]:
+def order_player_id_list_for_trick() -> List[Player_ID]:
     """
     Generate a list of players from g_player_list starting with the current
     g_round_bid_trick_winner.
@@ -1712,7 +1768,7 @@ def clear_globals_for_round_change():
     global discard_deck, g_round_id, g_round_bid_trick_winner, g_meld_deck  # pylint: disable=invalid-name
     mylog.error("Entering clear_globals_for_round_change.")
 
-    g_round_id = ""
+    g_round_id = Round_ID()
     g_players_hand.clear()
     g_players_meld_deck.clear()
     g_meld_deck = ["card-base" for _ in range(g_hand_size)]
@@ -1725,7 +1781,7 @@ def clear_globals_for_trick_change():
     Clear some global variables in preparation for a new round.
     """
     global discard_deck  # pylint: disable=invalid-name
-    mylog.error("Entering clear_globals_for_round_change.")
+    mylog.error("Entering clear_globals_for_trick_change.")
 
     discard_deck = ["card-base" for _ in range(len(g_player_list))]
     display_game_options()
@@ -1751,11 +1807,9 @@ def populate_canvas(deck, target_canvas, deck_type="player"):
         deck_type,
     )
 
-    # DOM ID Counters
-    counter = 0
-
     # TODO: Need a "bury" display for bid winner.
-    for card_value in deck:
+    # DOM ID Counter
+    for counter, card_value in enumerate(deck):
         flippable = False
         movable = True
         show_face = True
@@ -1800,7 +1854,6 @@ def populate_canvas(deck, target_canvas, deck_type="player"):
                     f"{player_name}", fontsize=24, objid=f"t_{deck_type}{counter}",
                 )
                 target_canvas.addObject(text, fixed=True)
-        counter += 1
 
 
 def place_cards(deck, target_canvas, location="top", deck_type="player"):
@@ -1882,7 +1935,7 @@ def create_game_select_buttons(xpos, ypos) -> None:
     # If there's only one game, choose that one.
     if len(g_game_dict) == 1:
         one_game_id = list(g_game_dict.keys())[0]
-        get(f"/setcookie/game_id/{one_game_id}", on_complete_set_gamecookie)
+        get(f"/setcookie/game_id/{one_game_id.value}", on_complete_set_gamecookie)
         return
     mylog.warning("cgsb: Enumerating games for buttons (%d).", len(g_game_dict))
     for item, temp_dict in g_game_dict.items():
@@ -1893,7 +1946,7 @@ def create_game_select_buttons(xpos, ypos) -> None:
             text=f"Game: {temp_dict['timestamp'].replace('T',' ')}",
             onclick=choose_game,
             fontsize=18,
-            objid=item,
+            objid=item.value,
         )
         g_canvas.attach(game_button)
         # added_button = True
@@ -1957,8 +2010,8 @@ def advance_mode(event=None):  # pylint: disable=unused-argument
     :type event: [type], optional
     """
     mylog.error("advance_mode: Calling API (current mode=%s)", GAME_MODES[g_game_mode])
-    if g_game_id != "" and g_player_id != "":
-        put(f"/game/{g_game_id}?state=true", advance_mode_callback, False)
+    if g_game_id != Game_ID() and g_player_id != Player_ID():
+        put(f"/game/{g_game_id.value}?state=true", advance_mode_callback, False)
     else:
         display_game_options()
 
@@ -1990,13 +2043,13 @@ def send_meld(event=None):  # pylint: disable=unused-argument
 
     mylog.error(
         "send_meld: /round/%s/score_meld?player_id=%s&cards=%s",
-        g_round_id,
-        g_player_id,
+        g_round_id.value,
+        g_player_id.value,
         card_string,
     )
 
     get(
-        f"/round/{g_round_id}/score_meld?player_id={g_player_id}&cards={card_string}",
+        f"/round/{g_round_id.value}/score_meld?player_id={g_player_id.value}&cards={card_string}",
         on_complete_get_meld_score,
     )
 
@@ -2066,28 +2119,28 @@ def display_game_options():
     ypos = 0
 
     # Grab the game_id, team_ids, and players. Display and allow player to choose.
-    if g_game_id == "":
+    if g_game_id == Game_ID():
         mylog.warning("dgo: In g_game_id=''")
         create_game_select_buttons(xpos, ypos)
     elif g_game_mode is None:
         mylog.warning("dgo: In g_game_mode is None")
-        get(f"/game/{g_game_id}?state=false", game_mode_query_callback)
-    elif g_round_id == "":
+        get(f"/game/{g_game_id.value}?state=false", game_mode_query_callback)
+    elif g_round_id == Round_ID():
         mylog.warning("dgo: In g_round_id=''")
         # Open the websocket if needed.
         if g_websocket is None:
             ws_open()
 
-        get(f"/game/{g_game_id}/round", on_complete_rounds)
+        get(f"/game/{g_game_id.value}/round", on_complete_rounds)
     elif g_team_list == []:
         mylog.warning("dgo: In g_team_list=[]")
-        get(f"/round/{g_round_id}/teams", on_complete_teams)
-    elif g_player_id == "":
+        get(f"/round/{g_round_id.value}/teams", on_complete_teams)
+    elif g_player_id == Player_ID():
         mylog.warning("dgo: In g_player_id=''")
         create_player_select_buttons(xpos, ypos)
     elif g_players_hand == []:
         mylog.warning("dgo: In g_players_hand=[]")
-        get(f"/player/{g_player_id}/hand", on_complete_player_cards)
+        get(f"/player/{g_player_id.value}/hand", on_complete_player_cards)
     else:
         mylog.warning("dgo: In else clause")
         # Send the registration message.
@@ -2096,18 +2149,18 @@ def display_game_options():
         if g_game_mode == 1:
             g_meld_score = 0
             g_round_bid = 0
-            g_round_bid_trick_winner = ""
+            g_round_bid_trick_winner = Player_ID()
             g_trump = ""
             # update_status_line()
 
-        if not g_team_id:
+        if g_team_id == Team_ID():
             # Set the TEAM_ID variable based on the player id chosen.
             for _temp in g_team_dict:
                 mylog.warning(
                     "dgo: Key: %s Value: %r", _temp, g_team_dict[_temp]["player_ids"]
                 )
-                if g_player_id in g_team_dict[_temp]["player_ids"]:
-                    g_team_id = g_team_dict[_temp]["team_id"]
+                if g_player_id.value in g_team_dict[_temp]["player_ids"]:
+                    g_team_id = Team_ID(g_team_dict[_temp]["team_id"])
                     mylog.warning("dgo: Set g_team_id=%s", g_team_id)
 
         rebuild_display()
@@ -2268,7 +2321,7 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
 
     # Place the desired decks on the display.
     if not g_canvas.objectDict:
-        if mode in ["game"] and g_game_id == "":  # Choose game, player
+        if mode in ["game"] and g_game_id == Game_ID():  # Choose game, player
             display_game_options()
         if mode in ["bid", "bidfinal"]:  # Bid
             # Use empty deck to prevent peeking at the kitty.
@@ -2277,8 +2330,8 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
         if mode in ["bidfinal"]:  # Bid submitted
             # The kitty doesn't need to remain 'secret' now that the bidding is done.
             # Ask the server for the cards in the kitty.
-            if g_round_id != "":
-                get(f"/round/{g_round_id}/kitty", on_complete_kitty)
+            if g_round_id != Round_ID():
+                get(f"/round/{g_round_id.value}/kitty", on_complete_kitty)
         elif mode in ["reveal"]:  # Reveal
             populate_canvas(g_kitty_deck, g_canvas, "kitty")
             populate_canvas(g_players_hand, g_canvas, "player")
