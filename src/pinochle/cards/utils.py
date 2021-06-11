@@ -86,6 +86,7 @@ def deal_hands(
 
 
 @log_decorator
+# pylint: disable=unused-argument
 def build_cards(jokers=False, num_jokers=0):
     """
     Builds a list containing a single (half) pinochle deck of 24 Card instances. The
@@ -185,6 +186,7 @@ def deck_list_summary(
     output += "-" * (25 * players) + "\n"
     output += r"  9  P  M  J  Q  K  A  R|" * players
     output += "\n"
+    # pylint: disable=protected-access
     for index in range(players):
         output += " %2d " % score_meld._nines(hands[index])
         output += "%2d " % score_meld._pinochle(hands[index])
@@ -238,6 +240,7 @@ def hand_summary_score(hand: Hand) -> str:  # pragma: no cover
 
     output = r"  9  P  M  J  Q  K  A  R|" * len(player_list)
     output += "\n"
+    # pylint: disable=protected-access
     for __, e_player in enumerate(player_list):
         output += " %2d " % score_meld._nines(e_player.hand)
         output += "%2d " % score_meld._pinochle(e_player.hand)
@@ -279,6 +282,7 @@ def convert_from_svg_names(deck: list) -> PinochleDeck:
         return_deck.add(convert_from_svg_name(p_card))
 
     return return_deck
+
 
 @log_decorator
 def convert_from_svg_name(card: str) -> PinochleCard:
