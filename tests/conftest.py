@@ -80,7 +80,7 @@ def patch_geventws(monkeypatch):
 @pytest.fixture(scope="function")
 def patch_ws_messenger_to_MM():
     WSM.websocket_broadcast = MagicMock()
-    WSM.websocket_broadcast.assert_has_calls
+    WSM.websocket_broadcast.assert_has_calls  # pylint: disable=pointless-statement, no-member
 
 
 # Support and automatically skip 'slow' and 'wip' tests unless the appropriate options
