@@ -831,14 +831,16 @@ def on_ws_event(event=None):
     if "action" not in t_data:
         return
     if "game_start" in t_data["action"]:
-        g_game_mode = t_data["state"]
-        mylog.warning("on_ws_event: game_start: g_player_list=%r", g_player_list)
-        clear_globals_for_round_change()
+        # g_game_mode = t_data["state"]
+        # mylog.warning("on_ws_event: game_start: g_player_list=%r", g_player_list)
+        # clear_globals_for_round_change()
+        start_game_and_clear_round_globals(t_data)
     elif "notification_player_list" in t_data["action"]:
         update_player_names(t_data)
     elif "game_state" in t_data["action"]:
-        g_game_mode = t_data["state"]
-        display_game_options()
+        # g_game_mode = t_data["state"]
+        # display_game_options()
+        set_game_state_from_server(t_data)
     elif "bid_prompt" in t_data["action"]:
         BidDialog().display_bid_dialog(t_data)
     elif "bid_winner" in t_data["action"]:
@@ -1226,6 +1228,35 @@ def update_player_names(data: Dict):
             ).text = "Waiting for all players to join the game."
         else:
             document.getElementById("please_wait").remove()
+
+
+def set_game_state_from_server(data: Dict):
+    """
+    Set game state from webservice message.
+
+    :param data: Data from the webservice message.
+    :type data: Dict
+    """
+    global g_game_mode  # pylint: disable=invalid-name
+    mylog.error("In set_game_state_from_server.")
+
+    g_game_mode = data["state"]
+    display_game_options()
+
+
+def start_game_and_clear_round_globals(data: Dict):
+    """
+    Start game and clear round globals.
+
+    :param data: Data from the webservice message.
+    :type data: Dict
+    """
+    global g_game_mode  # pylint: disable=invalid-name
+    mylog.error("In start_game_and_clear_round_globals.")
+
+    g_game_mode = data["state"]
+    mylog.warning("on_ws_event: game_start: g_player_list=%r", g_player_list)
+    clear_globals_for_round_change()
 
 
 def update_status_line():
