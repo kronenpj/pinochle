@@ -1,7 +1,7 @@
 """
 Module to hold test fixtures.
 """
-
+import os
 import socket
 from unittest.mock import MagicMock
 
@@ -41,8 +41,10 @@ def app():
 
 
 class SeleniumConfig:
-    COLLECT_VIDEO = False
-    COLLECT_BROWSER_LOGS = False
+    _temp = os.environ.get("COLLECT_VIDEO", "False")
+    COLLECT_VIDEO = _temp.lower() == "true"
+    _temp = os.environ.get("COLLECT_BROWSER_LOGS", "False")
+    COLLECT_BROWSER_LOGS = _temp.lower() == "true"
     USE_SELENIUM_STANDALONE = False
     # Re-define this for your environment
     SELENIUM_HOST = "172.16.42.10"
@@ -56,8 +58,8 @@ class SeleniumConfig:
     }
     # Change this to another host if you want to test against an existing server.
     _HOST_NAME = socket.gethostname()
-    _HOST_IP = socket.gethostbyname(_HOST_NAME)
-    TEST_SERVER_PORT = 5001
+    _HOST_IP = os.environ.get("SERVER_IP", socket.gethostbyname(_HOST_NAME))
+    TEST_SERVER_PORT = int(os.environ.get("SERVER_PORT", 5001))
     BASE_URL = "http://" + _HOST_IP + ":" + str(TEST_SERVER_PORT)
 
 
