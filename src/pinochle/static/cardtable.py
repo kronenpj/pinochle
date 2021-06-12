@@ -435,7 +435,7 @@ class BidDialog:
             f"/play/{g_round_id.value}/submit_bid?player_id={g_player_id.value}&bid={bid}"
         )
 
-    def display_bid_dialog(self, bid_data: str):
+    def display_bid_dialog(self, data: Dict):
         """
         Display the meld hand submitted by a player in a pop-up.
 
@@ -443,7 +443,6 @@ class BidDialog:
         :type bid_data: str
         """
         mylog.error("Entering display_bid_dialog.")
-        data = json.loads(bid_data)
         player_id: PlayerID = PlayerID(data["player_id"])
         self.last_bid = int(data["bid"])
         player_name = g_player_dict[player_id]["name"].capitalize()
@@ -836,36 +835,35 @@ def on_ws_event(event=None):
         mylog.warning("on_ws_event: game_start: g_player_list=%r", g_player_list)
         clear_globals_for_round_change()
     elif "notification_player_list" in t_data["action"]:
-        update_player_names(event.data)
+        update_player_names(t_data)
     elif "game_state" in t_data["action"]:
         g_game_mode = t_data["state"]
         display_game_options()
     elif "bid_prompt" in t_data["action"]:
-        bid_dialog = BidDialog()
-        bid_dialog.display_bid_dialog(event.data)
+        BidDialog().display_bid_dialog(t_data)
     elif "bid_winner" in t_data["action"]:
-        display_bid_winner(event.data)
+        display_bid_winner(t_data)
     elif "reveal_kitty" in t_data["action"]:
-        reveal_kitty_card(event.data)
+        reveal_kitty_card(t_data)
     elif "trump_selected" in t_data["action"]:
-        record_trump_selection(event.data)
+        record_trump_selection(t_data)
     elif "trump_buried" in t_data["action"]:
-        notify_trump_buried(event.data)
+        notify_trump_buried(t_data)
     elif "meld_update" in t_data["action"]:
-        display_player_meld(event.data)
+        display_player_meld(t_data)
     elif "team_score" in t_data["action"]:
-        update_team_scores(event.data)
+        update_team_scores(t_data)
     elif "trick_card" in t_data["action"]:
-        update_trick_card(event.data)
+        update_trick_card(t_data)
     elif "trick_won" in t_data["action"]:
-        update_trick_winner(event.data)
+        update_trick_winner(t_data)
     elif "trick_next" in t_data["action"]:
-        clear_globals_for_trick_change()
+        clear_globals_for_trick_change(t_data)
     elif "score_round" in t_data["action"]:
-        update_round_final_score(event.data)
+        update_round_final_score(t_data)
 
 
-def update_round_final_score(event=None):
+def update_round_final_score(data: Dict):
     """
     Notify players that the final trick has been won.
 
@@ -876,7 +874,6 @@ def update_round_final_score(event=None):
     # pylint: disable=invalid-name
     global g_round_bid_trick_winner, g_my_team_score, g_other_team_score
 
-    data = json.loads(event)
     mylog.warning("update_round_final_score: data=%s", data)
     assert isinstance(data, dict)
     t_player_id = PlayerID(data["player_id"])
@@ -943,7 +940,7 @@ def update_round_final_score(event=None):
         )
 
 
-def update_trick_winner(event=None):
+def update_trick_winner(data: Dict):
     """
     Notify players that the trick has been won.
 
@@ -953,9 +950,8 @@ def update_trick_winner(event=None):
     # pylint: disable=invalid-name
     global g_round_bid_trick_winner
     mylog.error("In update_trick_winner.")
-
-    data = json.loads(event)
     mylog.warning("update_trick_winner: data=%s", data)
+
     assert isinstance(data, dict)
     t_player_id = PlayerID(data["player_id"])
     t_card = data["winning_card"]
@@ -981,7 +977,7 @@ def update_trick_winner(event=None):
         )
 
 
-def update_trick_card(event=None):
+def update_trick_card(data: Dict):
     """
     Place the thrown card in the player's slot for this trick.
 
@@ -989,8 +985,8 @@ def update_trick_card(event=None):
     :type event: [type], optional
     """
     mylog.error("Entering update_trick_card.")
-    data = json.loads(event)
     mylog.warning("update_trick_card: data=%s", data)
+
     assert isinstance(data, dict)
     t_player_id: PlayerID = PlayerID(data["player_id"])
     t_card = data["card"]
@@ -1002,7 +998,7 @@ def update_trick_card(event=None):
     rebuild_display()
 
 
-def update_team_scores(event=None):
+def update_team_scores(data: Dict):
     """
     Notify players that trump has been buried.
 
@@ -1011,7 +1007,7 @@ def update_team_scores(event=None):
     """
     # pylint: disable=invalid-name
     global g_my_team_score, g_other_team_score, g_meld_score
-    data = json.loads(event)
+
     mylog.warning("update_team_scores: data=%r", data)
     assert isinstance(data, dict)
     if g_team_id == TeamID(data["team_id"]):
@@ -1023,7 +1019,7 @@ def update_team_scores(event=None):
     update_status_line()
 
 
-def notify_trump_buried(event=None):
+def notify_trump_buried(data: Dict):
     """
     Notify players that trump has been buried.
 
@@ -1031,7 +1027,6 @@ def notify_trump_buried(event=None):
     :type event: [type], optional
     """
     mylog.error("Entering notify_trump_buried.")
-    data = json.loads(event)
     mylog.warning("notify_trump_buried: data=%r", data)
 
     assert isinstance(data, dict)
@@ -1060,13 +1055,13 @@ def notify_trump_buried(event=None):
     )
 
 
-def record_trump_selection(event=None):
+def record_trump_selection(data: Dict):
     """
     Convey the chosen trump to the user, as provided by the server.
     """
     # pylint: disable=invalid-name
     global g_trump
-    data = json.loads(event)
+
     g_trump = str(data["trump"])
 
     remove_dialogs()
@@ -1080,12 +1075,12 @@ def record_trump_selection(event=None):
     )
 
 
-def reveal_kitty_card(event=None):
+def reveal_kitty_card(data: Dict):
     """
     Reveal the provided card in the kitty.
     """
     mylog.error("Entering reveal_kitty_card.")
-    data = json.loads(event)
+
     revealed_card = str(data["card"])
 
     if revealed_card not in g_kitty_deck:
@@ -1104,7 +1099,7 @@ def reveal_kitty_card(event=None):
             node.face_update_dom()
 
 
-def display_bid_winner(event=None):
+def display_bid_winner(data: Dict):
     """
     Display the round's bid winner.
 
@@ -1113,7 +1108,7 @@ def display_bid_winner(event=None):
     """
     # pylint: disable=invalid-name
     global g_round_bid_trick_winner, g_round_bid
-    data = json.loads(event)
+
     t_player_id = PlayerID(data["player_id"])
     player_name = g_player_dict[t_player_id]["name"]
     bid = int(data["bid"])
@@ -1134,7 +1129,7 @@ def display_bid_winner(event=None):
     g_round_bid = bid
 
 
-def display_player_meld(meld_data: str):
+def display_player_meld(data: Dict):
     """
     Display the meld hand submitted by a player in a pop-up.
 
@@ -1142,7 +1137,7 @@ def display_player_meld(meld_data: str):
     :type meld_data: str
     """
     mylog.error("Entering display_player_meld.")
-    data = json.loads(meld_data)
+
     player_id = PlayerID(data["player_id"])
     player_name = g_player_dict[player_id]["name"]
     card_list = data["card_list"]
@@ -1184,7 +1179,7 @@ def display_player_meld(meld_data: str):
     d_canvas.fitContents()
 
 
-def update_player_names(player_data: str):
+def update_player_names(data: Dict):
     """
     Update the player names in the UI.
 
@@ -1195,7 +1190,6 @@ def update_player_names(player_data: str):
     global g_registered_with_server, g_player_list
     mylog.error("In update_player_names.")
 
-    data = json.loads(player_data)
     g_player_list = [PlayerID(x) for x in data["player_order"]]
     my_player_list = [PlayerID(x) for x in data["player_ids"]]
     # Display the player's name in the UI
@@ -1882,7 +1876,7 @@ def clear_globals_for_round_change():
     display_game_options()
 
 
-def clear_globals_for_trick_change():
+def clear_globals_for_trick_change(__: Any):
     """
     Clear some global variables in preparation for a new round.
     """
