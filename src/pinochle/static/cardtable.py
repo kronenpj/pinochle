@@ -1899,9 +1899,26 @@ def populate_canvas(deck, target_canvas, deck_type="player"):
             mylog.warning("%s %s", counter, order_player_name_list_for_trick()["name"])
             for player_name in order_player_name_list_for_trick()[counter]:
                 text = SVG.TextObject(
-                    f"{player_name}", fontsize=24, objid=f"t_{deck_type}{counter}",
+
+def generate_place_static_box(canvas: SVG.CanvasObject):
+    """
+    Generate and place an SVG box that is the same size as a full player's hand.
+    This should prevent excessive resizing of the display as the player's hand depletes
+    during trick play.
+    """
+    start_y = 2.25 * CARD_HEIGHT
+    xincr = CARD_WIDTH / 2
+    start_x = -xincr * (g_hand_size / 2 + 0.5)
+
+    # pylint: disable=expression-not-assigned
+    canvas <= SVG.RectangleObject(
+        pointlist=[
+            (start_x - 10, start_y - 10),
+            (start_x + 10 + (xincr * (g_hand_size + 1)), start_y + 10),
+        ],
+        fillcolour="#076324",
+        linecolour="#076324",
                 )
-                target_canvas.addObject(text, fixed=True)
 
 
 def place_cards(deck, target_canvas, location="top", deck_type="player"):
