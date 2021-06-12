@@ -138,6 +138,8 @@ class PlayingCard(SVG.UseObject):
     def __init__(
         self, href=None, objid=None, face_value="back", show_face=True, flippable=False,
     ):
+        mylog.error("In PlayingCard.__init__.")
+
         # Set the initial face to be shown.
         if href is None:
             href = "#back"
@@ -152,7 +154,7 @@ class PlayingCard(SVG.UseObject):
         Function to update the document object model for the PlayingCard object,
         depending on the state of show_face.
         """
-        mylog.error("Entering PlayingCard.face_update_dom()")
+        mylog.error("In PlayingCard.face_update_dom.")
 
         # Display the correct card face.
         if self.show_face:
@@ -171,6 +173,8 @@ class PlayingCard(SVG.UseObject):
         :param event_type: Whether the event is a click or a drag
         :type event: string
         """
+        mylog.error("In PlayingCard: play_handler.")
+
         (__, new_y) = self.origin
 
         # Determine whether the card is now in a position to be considered thrown.
@@ -229,6 +233,8 @@ class PlayingCard(SVG.UseObject):
     def handle_discard_placement(
         self, sending_deck, receiving_deck, card_tag, parent_canvas
     ):
+        mylog.error("In PlayingCard: handle_discard_placement.")
+
         # Cards are placed in a specific order when in trick mode. Otherwise,
         # the first available empty (card-base) slot is used.
         if GAME_MODES[g_game_mode] in ["trick"]:
@@ -279,7 +285,7 @@ class PlayingCard(SVG.UseObject):
         """
         # pylint: disable=invalid-name
         global g_players_hand, g_players_meld_deck
-        mylog.error("Entering PlayingCard.card_click_handler()")
+        mylog.error("In PlayingCard.card_click_handler()")
 
         if GAME_MODES[g_game_mode] in ["reveal"] and self.flippable:
             mylog.warning(
@@ -357,6 +363,8 @@ class CardTable(SVG.CanvasObject):  # pylint: disable=too-few-public-methods
     """
 
     def __init__(self):
+        mylog.error("In CardTable.__init__.")
+
         super().__init__("95vw", "90vh", "none", objid="canvas")
         self.mode = "initial"
         self.bind("mouseup", self.move_handler)
@@ -370,9 +378,9 @@ class CardTable(SVG.CanvasObject):  # pylint: disable=too-few-public-methods
         :param event: The event object passed in during callback, defaults to None
         :type event: Event(?), optional
         """
-        mylog.error("Entering CardTable.move_handler")
-        selected_card = self.getSelectedObject(event.target.id)
+        mylog.error("In CardTable.move_handler")
 
+        selected_card = self.getSelectedObject(event.target.id)
         currentcoords = self.getSVGcoords(event)
         offset = currentcoords - self.dragStartCoords
         # Moving a card within a CARD_HEIGHT of the top "throws" that card.
@@ -412,6 +420,8 @@ class BidDialog:
         :param event: [description], defaults to None
         :type event: [type], optional
         """
+        mylog.error("In BidDialog.on_click_bid_dialog.")
+
         if "Pass" in event.currentTarget.text:
             bid = -1
         else:
@@ -478,7 +488,8 @@ class TrumpSelectDialog:
         :param event: [description], defaults to None
         :type event: [type], optional
         """
-        mylog.error("Entering on_click_trump_dialog")
+        mylog.error("In TrumpSelectDialog.on_click_trump_dialog")
+
         trump = event.target.id
         cards_buried = locate_cards_below_hand()
         mylog.warning("on_click_trump_dialog: You buried these cards: %r", cards_buried)
@@ -521,7 +532,7 @@ class TrumpSelectDialog:
         """
         Prompt the player to select trump.
         """
-        mylog.error("Entering display_trump_dialog.")
+        mylog.error("In TrumpSelectDialog.display_trump_dialog.")
 
         # Clear previous dialog_trump instances.
         try:
@@ -594,7 +605,8 @@ class MeldFinalDialog:
         :param event: [description], defaults to None
         :type event: [type], optional
         """
-        mylog.error("Entering on_click_meld_dialog")
+        mylog.error("In MeldFinalDialog.on_click_meld_dialog")
+
         # Notify the server of my meld is final.
         put(f"/play/{g_round_id.value}/finalize_meld?player_id={g_player_id.value}")
         self.meld_final_dialog.close()
@@ -603,7 +615,7 @@ class MeldFinalDialog:
         """
         Prompt the player to select whether their meld is final.
         """
-        mylog.error("Entering display_meld_final_dialog.")
+        mylog.error("In MeldFinalDialog.display_meld_final_dialog.")
 
         self.meld_final_dialog = Dialog(
             "Is your meld submission final?", ok_cancel=["Yes", "No"]
@@ -629,10 +641,11 @@ class TrickWonDialog:
         :param event: [description], defaults to None
         :type event: [type], optional
         """
+        mylog.error("In TrickWonDialog.on_click_trick_won_dialog.")
+
         if not event.currentTarget.text:
             return
 
-        mylog.error("In on_click_trick_won_dialog")
         # Convey to the server that play is continuing.
         put(f"/play/{g_round_id.value}/next_trick?player_id={g_player_id.value}")
         self.trick_won_dialog.close()
@@ -644,10 +657,11 @@ class TrickWonDialog:
         :param event: [description], defaults to None
         :type event: [type], optional
         """
+        mylog.error("In TrickWonDialog.on_click_final_trick_won_dialog")
+
         if not event.currentTarget.text:
             return
 
-        mylog.error("In on_click_final_trick_won_dialog")
         # Convey to the server that to start the next round.
         put(f"/game/{g_game_id.value}?state=true", advance_mode_callback, False)
         self.trick_won_dialog.close()
@@ -656,7 +670,7 @@ class TrickWonDialog:
         """
         Display the trick has been won dialog to the player who won the trick.
         """
-        mylog.error("Entering display_trick_won_dialog.")
+        mylog.error("In TrickWonDialog.display_trick_won_dialog.")
 
         self.trick_won_dialog = Dialog(
             "Trick complete", ok_cancel=["Next trick", "Ok"], top=25,
@@ -687,7 +701,7 @@ class TrickWonDialog:
         :param other_scores: The other team's trick score
         :type other_scores: int
         """
-        mylog.error("Entering display_final_trick_dialog.")
+        mylog.error("In TrickWonDialog.display_final_trick_dialog.")
 
         self.trick_won_dialog = Dialog(
             "Final trick complete", ok_cancel=["Next round", "Ok"], top=25,
@@ -739,6 +753,8 @@ def find_protocol_server():
     :return: Tuple with strings representing protocol and server with port.
     :rtype: (str, str)
     """
+    mylog.error("In find_protocol_server.")
+
     start = os.environ["HOME"].find("//") + 2
     end = os.environ["HOME"].find("/", start) + 1
     proto = os.environ["HOME"][: start - 3]
@@ -754,12 +770,13 @@ def ws_open():
     """
     Open a websocket connection back to the originating server.
     """
+    # pylint: disable=invalid-name
+    global g_websocket
     mylog.error("In ws_open.")
+
     if not websocket.supported:
         InfoDialog("websocket", "WebSocket is not supported by your browser")
         return
-    # pylint: disable=invalid-name
-    global g_websocket
 
     # open a web socket
     proto = PROTOCOL.replace("http", "ws")
@@ -781,8 +798,8 @@ def on_ws_close(event=None):  # pylint: disable=unused-argument
     """
     Callback for Websocket close event.
     """
-    mylog.error("on_ws_close: Connection has closed")
     global g_websocket, g_registered_with_server  # pylint: disable=invalid-name
+    mylog.error("on_ws_close: Connection has closed")
 
     g_websocket = None
     g_registered_with_server = False
@@ -794,7 +811,7 @@ def on_ws_error(event=None):
     Callback for Websocket error event.
     """
     mylog.error("on_ws_error: Connection has experienced an error")
-    mylog.warning("%r", event)
+    mylog.warning("on_ws_error: event=%r", event)
 
 
 def on_ws_event(event=None):
@@ -855,7 +872,7 @@ def update_round_final_score(event=None):
     :param event: [description], defaults to None
     :type event: [type], optional
     """
-    mylog.error("Entering update_round_final_score.")
+    mylog.error("In update_round_final_score.")
     # pylint: disable=invalid-name
     global g_round_bid_trick_winner, g_my_team_score, g_other_team_score
 
@@ -933,9 +950,9 @@ def update_trick_winner(event=None):
     :param event: [description], defaults to None
     :type event: [type], optional
     """
-    mylog.error("Entering update_trick_winner.")
     # pylint: disable=invalid-name
     global g_round_bid_trick_winner
+    mylog.error("In update_trick_winner.")
 
     data = json.loads(event)
     mylog.warning("update_trick_winner: data=%s", data)
@@ -992,7 +1009,6 @@ def update_team_scores(event=None):
     :param event: [description], defaults to None
     :type event: [type], optional
     """
-    mylog.error("Entering update_team_scores.")
     # pylint: disable=invalid-name
     global g_my_team_score, g_other_team_score, g_meld_score
     data = json.loads(event)
@@ -1017,6 +1033,7 @@ def notify_trump_buried(event=None):
     mylog.error("Entering notify_trump_buried.")
     data = json.loads(event)
     mylog.warning("notify_trump_buried: data=%r", data)
+
     assert isinstance(data, dict)
     if "player_id" in data:
         mylog.warning("notify_trump_buried: About to retrieve player_id from data")
@@ -1047,7 +1064,6 @@ def record_trump_selection(event=None):
     """
     Convey the chosen trump to the user, as provided by the server.
     """
-    mylog.error("Entering record_trump_selection.")
     # pylint: disable=invalid-name
     global g_trump
     data = json.loads(event)
@@ -1095,7 +1111,6 @@ def display_bid_winner(event=None):
     :param event: [description], defaults to None
     :type event: [type], optional
     """
-    mylog.error("Entering display_bid_winner.")
     # pylint: disable=invalid-name
     global g_round_bid_trick_winner, g_round_bid
     data = json.loads(event)
@@ -1178,6 +1193,7 @@ def update_player_names(player_data: str):
     """
     # pylint: disable=invalid-name
     global g_registered_with_server, g_player_list
+    mylog.error("In update_player_names.")
 
     data = json.loads(player_data)
     g_player_list = [PlayerID(x) for x in data["player_order"]]
@@ -1222,6 +1238,8 @@ def update_status_line():
     """
     Update the player status line with current information from globals.
     """
+    mylog.error("In update_status_line.")
+
     document.getElementById("game_status").clear()
     document.getElementById("game_status").attach(html.BR())
     document.getElementById("game_status").attach(
@@ -1248,6 +1266,7 @@ def send_registration():
     Send registration structure to server.
     """
     mylog.error("In send_registration")
+
     if g_registered_with_server:
         return
 
@@ -1264,6 +1283,8 @@ def send_websocket_message(message: dict):
     """
     Send message to server.
     """
+    mylog.error("In send_websocket_message.")
+
     if g_websocket is None:
         mylog.warning("send_registration: Opening WebSocket.")
         ws_open()
@@ -1282,6 +1303,7 @@ def ajax_request_tracker(direction: int = 0):
     """
     # pylint: disable=invalid-name
     global g_ajax_outstanding_requests
+    mylog.error("In ajax_request_tracker.")
 
     if direction > 0:
         g_ajax_outstanding_requests += 1
@@ -1296,7 +1318,7 @@ def on_complete_games(req: ajax.Ajax):
     :param req: Request object from callback.
     :type req: [type]
     """
-    mylog.error("Entering on_complete_games.")
+    mylog.error("In on_complete_games.")
 
     ajax_request_tracker(-1)
     temp = on_complete_common(req)
@@ -1321,7 +1343,7 @@ def on_complete_rounds(req: ajax.Ajax):
     """
     # pylint: disable=invalid-name
     global g_round_id, g_team_list
-    mylog.error("Entering on_complete_rounds.")
+    mylog.error("In on_complete_rounds.")
 
     ajax_request_tracker(-1)
     g_team_list.clear()
@@ -1346,7 +1368,7 @@ def on_complete_teams(req: ajax.Ajax):
     """
     # pylint: disable=invalid-name
     global g_team_list
-    mylog.error("Entering on_complete_teams.")
+    mylog.error("In on_complete_teams.")
 
     ajax_request_tracker(-1)
     temp = on_complete_common(req)
@@ -1373,7 +1395,7 @@ def on_complete_team_names(req: ajax.Ajax):
     """
     # pylint: disable=invalid-name
     global g_team_dict
-    mylog.error("Entering on_complete_team_names.")
+    mylog.error("In on_complete_team_names.")
 
     ajax_request_tracker(-1)
     temp = on_complete_common(req)
@@ -1400,7 +1422,7 @@ def on_complete_players(req: ajax.Ajax):
     :param req: Request object from callback.
     :type req: [type]
     """
-    mylog.error("Entering on_complete_players.")
+    mylog.error("In on_complete_players.")
 
     ajax_request_tracker(-1)
     temp = on_complete_common(req)
@@ -1420,7 +1442,7 @@ def on_complete_set_gamecookie(req: ajax.Ajax):
     :param req: Request object from callback.
     :type req: [type]
     """
-    mylog.error("Entering on_complete_set_gamecookie.")
+    mylog.error("In on_complete_set_gamecookie.")
 
     ajax_request_tracker(-1)
     if req.status in [200, 0]:
@@ -1434,7 +1456,7 @@ def on_complete_set_playercookie(req: ajax.Ajax):
     :param req: Request object from callback.
     :type req: [type]
     """
-    mylog.error("Entering on_complete_set_playercookie.")
+    mylog.error("In on_complete_set_playercookie.")
 
     ajax_request_tracker(-1)
     if req.status in [200, 0]:
@@ -1451,7 +1473,7 @@ def on_complete_getcookie(req: ajax.Ajax):
     # pylint: disable=invalid-name
     global g_game_mode, g_game_id, g_player_id, g_kitty_size, g_team_id, g_kitty_deck
     global g_hand_size, g_meld_deck
-    mylog.error("Entering on_complete_getcookie.")
+    mylog.error("In on_complete_getcookie.")
 
     ajax_request_tracker(-1)
     if req.status != 200:
@@ -1503,7 +1525,7 @@ def on_complete_kitty(req: ajax.Ajax):
     """
     # pylint: disable=invalid-name
     global g_kitty_deck
-    mylog.error("Entering on_complete_kitty.")
+    mylog.error("In on_complete_kitty.")
 
     ajax_request_tracker(-1)
     mylog.warning("on_complete_kitty: req.text=%r", req.text)
@@ -1532,7 +1554,7 @@ def on_complete_player_cards(req: ajax.Ajax):
     """
     # pylint: disable=invalid-name
     global g_players_hand, g_players_meld_deck
-    mylog.error("Entering on_complete_player_cards.")
+    mylog.error("In on_complete_player_cards.")
 
     ajax_request_tracker(-1)
     temp = on_complete_common(req)
@@ -1556,7 +1578,7 @@ def on_complete_get_meld_score(req: ajax.Ajax):
     :param req: Request object from callback.
     :type req: [type]
     """
-    mylog.error("Entering on_complete_get_meld_score.")
+    mylog.error("In on_complete_get_meld_score.")
 
     ajax_request_tracker(-1)
     temp = on_complete_common(req)
@@ -1564,7 +1586,6 @@ def on_complete_get_meld_score(req: ajax.Ajax):
         return
 
     if req.status in [200, 0]:
-        mylog.error("on_complete_get_meld_score: req.text: %s", req.text)
         mylog.warning("on_complete_get_meld_score: req.text: %s", req.text)
         temp = json.loads(req.text)
         InfoDialog(
@@ -1590,7 +1611,7 @@ def on_complete_common(req: ajax.Ajax) -> Optional[str]:
     :return: Object returned in the request as decoded by JSON.
     :rtype: [type]
     """
-    mylog.error("Entering on_complete_common.")
+    mylog.error("In on_complete_common.")
 
     ajax_request_tracker(-1)
     if req.status in [200, 0]:
@@ -1608,6 +1629,8 @@ def order_player_index_list_for_trick() -> List[int]:
     :return: Re-ordered list of player indices.
     :rtype: List[str]
     """
+    mylog.error("In order_player_index_list_for_trick.")
+
     player_list_len = len(g_player_list)
     # Locate the index of the winner in the player list
     starting_index = g_player_list.index(g_round_bid_trick_winner)
@@ -1624,6 +1647,8 @@ def order_player_id_list_for_trick() -> List[PlayerID]:
     :return: Re-ordered list of player ids.
     :rtype: List[str]
     """
+    mylog.error("In order_player_id_list_for_trick.")
+
     return [g_player_list[idx] for idx in order_player_index_list_for_trick()]
 
 
@@ -1635,6 +1660,8 @@ def order_player_name_list_for_trick() -> List[str]:
     :return: Re-ordered list of player names.
     :rtype: List[str]
     """
+    mylog.error("In order_player_name_list_for_trick.")
+
     return [
         g_player_dict[p_id]["name"].capitalize()
         for p_id in order_player_id_list_for_trick()
@@ -1650,9 +1677,8 @@ def advance_mode_callback(req: ajax.Ajax):
     """
     # pylint: disable=invalid-name
     global g_game_mode
-    mylog.error(
-        "Entering advance_mode_callback (current mode=%s)", GAME_MODES[g_game_mode]
-    )
+    mylog.error("In advance_mode_callback.")
+    mylog.warning("advance_mode_callback: (current mode=%s)", GAME_MODES[g_game_mode])
 
     ajax_request_tracker(-1)
     if req.status not in [200, 0]:
@@ -1689,8 +1715,10 @@ def game_mode_query_callback(req: ajax.Ajax):
     """
     # pylint: disable=invalid-name
     global g_game_mode
+    mylog.error("In game_mode_query_callback.")
+
     if g_game_mode is not None:
-        mylog.error(
+        mylog.warning(
             "Entering game_mode_query_callback (current mode=%s)",
             GAME_MODES[g_game_mode],
         )
@@ -1728,6 +1756,8 @@ def get(url: str, callback=None, async_call=True):
     :param callback: Function to be called when the AJAX request is complete.
     :type callback: function, optional
     """
+    mylog.error("In get.")
+
     req = ajax.Ajax()
     if callback is not None:
         ajax_request_tracker(1)
@@ -1750,6 +1780,8 @@ def put(url: str, callback=None, async_call=True):
     :param callback: Function to be called when the AJAX request is complete.
     :type callback: function, optional
     """
+    mylog.error("In put.")
+
     req = ajax.Ajax()
     if callback is not None:
         ajax_request_tracker(1)
@@ -1774,6 +1806,8 @@ def post(url: str, callback=None, async_call=True):
     :param callback: Function to be called when the AJAX request is complete.
     :type callback: function, optional
     """
+    mylog.error("In post.")
+
     req = ajax.Ajax()
     if callback is not None:
         ajax_request_tracker(1)
@@ -1795,6 +1829,8 @@ def delete(url: str, callback=None, async_call=True):
     :param callback: Function to be called when the AJAX request is complete.
     :type callback: function, optional
     """
+    mylog.error("In delete.")
+
     req = ajax.Ajax()
     if callback is not None:
         ajax_request_tracker(1)
@@ -1809,7 +1845,8 @@ def locate_cards_below_hand() -> List[str]:
     """
     Identify cards that have been moved below the player's hand.
     """
-    mylog.error("Entering locate_cards_below_hand.")
+    mylog.error("In locate_cards_below_hand.")
+
     return_list = []
     potential_cards = []
     min_y_coord = float(g_canvas.attrs["height"]) + 20
@@ -1835,7 +1872,7 @@ def clear_globals_for_round_change():
     """
     # pylint: disable=invalid-name
     global discard_deck, g_round_id, g_round_bid_trick_winner, g_meld_deck
-    mylog.error("Entering clear_globals_for_round_change.")
+    mylog.error("In clear_globals_for_round_change.")
 
     g_round_id = RoundID()
     g_players_hand.clear()
@@ -1851,7 +1888,7 @@ def clear_globals_for_trick_change():
     """
     # pylint: disable=invalid-name
     global discard_deck
-    mylog.error("Entering clear_globals_for_trick_change.")
+    mylog.error("In clear_globals_for_trick_change.")
 
     discard_deck = ["card-base" for _ in range(len(g_player_list))]
     display_game_options()
@@ -1868,10 +1905,10 @@ def populate_canvas(deck, target_canvas: SVG.CanvasObject, deck_type="player"):
     :param deck_type: The "type" of deck populating the UI.
     :type deck_type: str
     """
-    mylog.error("Entering populate_canvas.")
+    mylog.error("In populate_canvas.")
 
     if GAME_MODES[g_game_mode] in ["game"]:
-        mylog.error("Exiting populate_canvas. Still in 'game' mode.")
+        mylog.warning("Exiting populate_canvas. Still in 'game' mode.")
         return
 
     mylog.warning(
@@ -1940,6 +1977,8 @@ def generate_place_static_box(canvas: SVG.CanvasObject):
     This should prevent excessive resizing of the display as the player's hand depletes
     during trick play.
     """
+    mylog.error("In generate_place_static_box.")
+
     start_y = 2.25 * CARD_HEIGHT
     xincr = CARD_WIDTH / 2
     start_x = -xincr * (g_hand_size / 2 + 0.5)
@@ -1967,7 +2006,8 @@ def place_cards(deck, target_canvas, location="top", deck_type="player"):
     :param deck_type: The type of (sub)-deck this is.
     :type deck_type: str, optional # TODO: Should probably be enum-like
     """
-    mylog.error("Entering place_cards(deck=%s, deck_type=%s).", deck, deck_type)
+    mylog.error("In place_cards.")
+    mylog.warning("place_cards(deck=%s, deck_type=%s).", deck, deck_type)
 
     # Determine the starting point and step size for the location and deck being placed.
     start_y = 0 if location.lower() == "top" else 1.25 * CARD_HEIGHT
@@ -2013,7 +2053,7 @@ def create_game_select_buttons(xpos, ypos) -> None:
     :param ypos:    Starting Y position
     :type ypos:     float
     """
-    mylog.error("Entering create_game_select_buttons")
+    mylog.error("In create_game_select_buttons")
     mylog.warning("create_game_select_buttons: game_dict=%s", g_game_dict)
 
     if g_game_dict == {}:
@@ -2064,6 +2104,8 @@ def create_player_select_buttons(xpos, ypos) -> None:
     :param ypos:    Starting Y position
     :type ypos:     float
     """
+    mylog.error("In create_player_select_buttons.")
+
     g_canvas.deleteAll()
 
     for item in g_player_dict:
@@ -2091,7 +2133,8 @@ def remove_dialogs():
     """
     Remove dialog boxes.
     """
-    mylog.error("Entering remove_dialogs.")
+    mylog.error("In remove_dialogs.")
+
     dialogs = document.getElementsByClassName("brython-dialog-main")
     for item in dialogs:
         mylog.warning("Removing dialog item=%r", item)
@@ -2108,6 +2151,7 @@ def advance_mode(event=None):  # pylint: disable=unused-argument
     :type event: [type], optional
     """
     mylog.error("advance_mode: Calling API (current mode=%s)", GAME_MODES[g_game_mode])
+
     if g_game_id != GameID() and g_player_id != PlayerID():
         put(f"/game/{g_game_id.value}?state=true", advance_mode_callback, False)
     else:
@@ -2121,6 +2165,8 @@ def sort_player_cards(event=None):  # pylint: disable=unused-argument
     :param event: The event object passed in during callback, defaults to None
     :type event: Event(?), optional
     """
+    mylog.error("In sort_player_cards.")
+
     # pylint: disable=unnecessary-lambda
     g_players_hand.sort(key=lambda x: DECK_SORTED.index(x))
     g_players_meld_deck.sort(key=lambda x: DECK_SORTED.index(x))
@@ -2134,9 +2180,11 @@ def send_meld(event=None):  # pylint: disable=unused-argument
     :param event: The event object passed in during callback, defaults to None
     :type event: Event(?), optional
     """
+    mylog.error("In send_meld.")
+
     card_string = ",".join(x for x in g_meld_deck if x != "card-base")
 
-    mylog.error(
+    mylog.warning(
         "send_meld: /round/%s/score_meld?player_id=%s&cards=%s",
         g_round_id.value,
         g_player_id.value,
@@ -2156,6 +2204,8 @@ def clear_game(event=None):  # pylint: disable=unused-argument
     :param event: The event object passed in during callback, defaults to None
     :type event: Event(?), optional
     """
+    mylog.error("In clear_game.")
+
     get("/setcookie/game_id/clear", on_complete_set_gamecookie)
     get("/setcookie/player_id/clear", on_complete_set_playercookie)
 
@@ -2167,6 +2217,8 @@ def clear_player(event=None):  # pylint: disable=unused-argument
     :param event: The event object passed in during callback, defaults to None
     :type event: Event(?), optional
     """
+    mylog.error("In clear_player.")
+
     get("/setcookie/player_id/clear", on_complete_set_playercookie)
 
 
@@ -2177,6 +2229,8 @@ def choose_game(event=None):
     :param event: The event object passed in during callback, defaults to None
     :type event: [type], optional
     """
+    mylog.error("In choose_game.")
+
     try:
         game_to_be = event.currentTarget.id
         get(f"/setcookie/game_id/{game_to_be}", on_complete_set_gamecookie)
@@ -2193,6 +2247,8 @@ def choose_player(event=None):
     :param event: The event object passed in during callback, defaults to None
     :type event: [type], optional
     """
+    mylog.error("In choose_player.")
+
     try:
         player_to_be = event.currentTarget.id
         get(f"/setcookie/player_id/{player_to_be}", on_complete_set_playercookie)
@@ -2210,7 +2266,7 @@ def display_game_options():
     """
     # pylint: disable=invalid-name
     global g_game_mode, g_team_id, g_meld_score, g_round_bid, g_round_bid_trick_winner, g_trump
-    mylog.error("Entering display_game_options.")
+    mylog.error("In display_game_options.")
 
     xpos = 10
     ypos = 0
@@ -2274,7 +2330,7 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
     """
     # pylint: disable=invalid-name
     global g_game_mode, button_advance_mode, g_canvas
-    mylog.error("Entering rebuild_display")
+    mylog.error("In rebuild_display")
 
     if g_game_mode is None and not g_game_dict:
         g_game_mode = 0
@@ -2411,7 +2467,8 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
     """
     # pylint: disable=invalid-name
     global g_game_mode
-    mylog.error("In update_display. (mode=%s)", GAME_MODES[g_game_mode])
+    mylog.error("In update_display.")
+    mylog.warning("update_display. (mode=%s)", GAME_MODES[g_game_mode])
 
     # Place the desired decks on the display.
     if not g_canvas.objectDict:
@@ -2470,7 +2527,8 @@ def resize_canvas(event=None):  # pylint: disable=unused-argument
     Resize the canvas to make use of available screen space.
     :param event: The event object passed in during callback, defaults to None
     """
-    mylog.error("Entering resize_canvas")
+    mylog.error("In resize_canvas")
+
     _height: float = 0.95 * window.innerHeight - document["game_header"].height
     g_canvas.style.height = f"{_height}px"
     g_canvas.fitContents()
