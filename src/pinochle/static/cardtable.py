@@ -2411,49 +2411,54 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
     """
     # pylint: disable=invalid-name
     global g_game_mode
-    mode = GAME_MODES[g_game_mode]
-    mylog.error("Entering update_display. (mode=%s)", mode)
+    mylog.error("In update_display. (mode=%s)", GAME_MODES[g_game_mode])
 
     # Place the desired decks on the display.
     if not g_canvas.objectDict:
-        if mode in ["game"] and g_game_id == GameID():  # Choose game, player
+        if (
+            GAME_MODES[g_game_mode] in ["game"] and g_game_id == GameID()
+        ):  # Choose game, player
             display_game_options()
-        if mode not in ["game"]:
+        if GAME_MODES[g_game_mode] not in ["game"]:
             generate_place_static_box(g_canvas)
-        if mode in ["bid", "bidfinal"]:  # Bid
+        if GAME_MODES[g_game_mode] in ["bid", "bidfinal"]:  # Bid
             # Use empty deck to prevent peeking at the kitty.
             populate_canvas(g_kitty_deck, g_canvas, "kitty")
             populate_canvas(g_players_hand, g_canvas, "player")
-        if mode in ["bidfinal"]:  # Bid submitted
+        if GAME_MODES[g_game_mode] in ["bidfinal"]:  # Bid submitted
             # The kitty doesn't need to remain 'secret' now that the bidding is done.
             # Ask the server for the cards in the kitty.
             if g_round_id != RoundID():
                 get(f"/round/{g_round_id.value}/kitty", on_complete_kitty)
-        elif mode in ["reveal"]:  # Reveal
+        elif GAME_MODES[g_game_mode] in ["reveal"]:  # Reveal
             populate_canvas(g_kitty_deck, g_canvas, "kitty")
             populate_canvas(g_players_hand, g_canvas, "player")
-        elif mode in ["meld"]:  # Meld
-            populate_canvas(g_meld_deck, g_canvas, mode)
+        elif GAME_MODES[g_game_mode] in ["meld"]:  # Meld
+            populate_canvas(g_meld_deck, g_canvas, GAME_MODES[g_game_mode])
             populate_canvas(g_players_meld_deck, g_canvas, "player")
-        elif mode in ["trick"]:  # Trick
-            populate_canvas(discard_deck, g_canvas, mode)
+        elif GAME_MODES[g_game_mode] in ["trick"]:  # Trick
+            populate_canvas(discard_deck, g_canvas, GAME_MODES[g_game_mode])
             populate_canvas(g_players_hand, g_canvas, "player")
 
     # Last-drawn are on top (z-index wise)
     # TODO: Retrieve events from API to show kitty cards when they are flipped over.
-    if mode in ["bid", "bidfinal", "reveal"]:  # Bid & Reveal
+    if GAME_MODES[g_game_mode] in ["bid", "bidfinal", "reveal"]:  # Bid & Reveal
         place_cards(g_kitty_deck, g_canvas, location="top", deck_type="kitty")
         place_cards(g_players_hand, g_canvas, location="bottom", deck_type="player")
-    elif mode in ["meld"]:  # Meld
+    elif GAME_MODES[g_game_mode] in ["meld"]:  # Meld
         # TODO: Expand display to show all four players.
-        place_cards(g_meld_deck, g_canvas, location="top", deck_type=mode)
+        place_cards(
+            g_meld_deck, g_canvas, location="top", deck_type=GAME_MODES[g_game_mode]
+        )
         place_cards(
             g_players_meld_deck, g_canvas, location="bottom", deck_type="player"
         )
-    elif mode in ["trick"]:  # Trick
+    elif GAME_MODES[g_game_mode] in ["trick"]:  # Trick
         # Remove any dialogs from the meld phase.
         remove_dialogs()
-        place_cards(discard_deck, g_canvas, location="top", deck_type=mode)
+        place_cards(
+            discard_deck, g_canvas, location="top", deck_type=GAME_MODES[g_game_mode]
+        )
         place_cards(g_players_hand, g_canvas, location="bottom", deck_type="player")
 
     # pylint: disable=attribute-defined-outside-init, invalid-name
