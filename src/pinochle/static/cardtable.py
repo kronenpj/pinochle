@@ -285,7 +285,7 @@ class PlayingCard(SVG.UseObject):
                     "card": self.face_value,
                 }
             )
-        if GAME_MODES[g_game_mode] in ["reveal", "meld"]:
+        if GAME_MODES[g_game_mode] in ["reveal", "meld", "trick"]:
             self.play_handler(event_type="click")
 
 
