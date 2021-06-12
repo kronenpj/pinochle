@@ -1210,6 +1210,12 @@ def update_player_names(player_data: str):
                 Class="other_players",
             )
         )
+        if len(my_player_list) < len(g_player_dict):
+            document.getElementById(
+                "please_wait"
+            ).text = "Waiting for all players to join the game."
+        else:
+            document.getElementById("please_wait").remove()
 
 
 def update_status_line():
@@ -2487,7 +2493,7 @@ resize_canvas()
 # Declare temporary decks
 discard_deck = ["card-base" for _ in range(g_players)]
 
-document.getElementById("please_wait").remove()
+document.getElementById("please_wait").text = ""
 
 # Pre-populate some data. Each of these calls display_game_options.
 get("/game", on_complete_games)
