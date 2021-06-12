@@ -217,12 +217,27 @@ class PlayingCard(SVG.UseObject):
         # first remaining instance of 'card-base'
         if add_only and "card-base" not in receiving_deck:
             receiving_deck.append("card-base")
-        if GAME_MODES[g_game_mode] not in ["trick"]:
-            # TODO: Transition to game_state 3 (), this causes an exception: ValueError: 'card-base' is not in list.
-            placement = receiving_deck.index("card-base")
-        else:
+
+        # The only time this is used is during 'meld' and 'trick' mode.
+        self.handle_discard_placement(
+            sending_deck, receiving_deck, card_tag, parent_canvas
+        )
+
+        self.face_update_dom()
+        rebuild_display()
+
+    def handle_discard_placement(
+        self, sending_deck, receiving_deck, card_tag, parent_canvas
+    ):
+        # Cards are placed in a specific order when in trick mode. Otherwise,
+        # the first available empty (card-base) slot is used.
+        if GAME_MODES[g_game_mode] in ["trick"]:
             p_list: List[PlayerID] = order_player_id_list_for_trick()
             placement: int = p_list.index(g_player_id)
+        elif GAME_MODES[g_game_mode] in ["meld"]:
+            placement = receiving_deck.index("card-base")
+        else:
+            return
         mylog.warning(
             "PlayingCard.play_handler: Locating %s%s\nPlayingCard.play_handler: %s: %s",
             card_tag,
@@ -230,6 +245,7 @@ class PlayingCard(SVG.UseObject):
             parent_canvas.mode,
             [objid for (objid, _) in parent_canvas.objectDict.items()],
         )
+
         # Locate the ID of the target card in the DOM.
         discard_object = parent_canvas.objectDict[f"{card_tag}{placement}"]
 
@@ -254,9 +270,6 @@ class PlayingCard(SVG.UseObject):
             put(
                 f"/play/{g_round_id.value}/play_card?player_id={g_player_id.value}&card={self.face_value}"
             )
-
-        self.face_update_dom()
-        rebuild_display()
 
     def card_click_handler(self):
         """
@@ -1851,6 +1864,10 @@ def populate_canvas(deck, target_canvas: SVG.CanvasObject, deck_type="player"):
     """
     mylog.error("Entering populate_canvas.")
 
+    if GAME_MODES[g_game_mode] in ["game"]:
+        mylog.error("Exiting populate_canvas. Still in 'game' mode.")
+        return
+
     mylog.warning(
         "populate_canvas(deck=%s target_canvas=%s deck_type=%s).",
         deck,
@@ -1863,28 +1880,27 @@ def populate_canvas(deck, target_canvas: SVG.CanvasObject, deck_type="player"):
         flippable = False
         movable = True
         show_face = True
-        if g_game_mode > 0:
-            flippable = DECK_CONFIG[deck_type][g_game_mode]["flippable"]
-            movable = DECK_CONFIG[deck_type][g_game_mode]["movable"]
-            show_face = DECK_CONFIG[deck_type][g_game_mode]["show_face"]
-            if "reveal" in GAME_MODES[g_game_mode]:
-                if "kitty" in deck_type:
-                    flippable = g_player_id == g_round_bid_trick_winner
-                    # show_face = True
-                if "player" in deck_type:
-                    movable = g_player_id == g_round_bid_trick_winner
-            if "trick" in GAME_MODES[g_game_mode] and "player" in deck_type:
-                # This makes the player's deck movable based on whether their card place
-                # in the discard deck is 'blank' or occupied.
-                player_index_in_discard_deck = order_player_id_list_for_trick().index(
-                    g_player_id
-                )
-                movable = discard_deck[player_index_in_discard_deck] == "card-base"
-                mylog.warning(
-                    "populate_canvas: player_idx_in_discard: %d",
-                    player_index_in_discard_deck,
-                )
-                mylog.warning("populate_canvas: movable: %r", movable)
+        flippable = DECK_CONFIG[deck_type][g_game_mode]["flippable"]
+        movable = DECK_CONFIG[deck_type][g_game_mode]["movable"]
+        show_face = DECK_CONFIG[deck_type][g_game_mode]["show_face"]
+        if "reveal" in GAME_MODES[g_game_mode]:
+            if "kitty" in deck_type:
+                flippable = g_player_id == g_round_bid_trick_winner
+                # show_face = True
+            if "player" in deck_type:
+                movable = g_player_id == g_round_bid_trick_winner
+        if "trick" in GAME_MODES[g_game_mode] and "player" in deck_type:
+            # This makes the player's deck movable based on whether their card place
+            # in the discard deck is 'blank' or occupied.
+            player_index_in_discard_deck = order_player_id_list_for_trick().index(
+                g_player_id
+            )
+            movable = discard_deck[player_index_in_discard_deck] == "card-base"
+            mylog.warning(
+                "populate_canvas: player_idx_in_discard: %d",
+                player_index_in_discard_deck,
+            )
+            mylog.warning("populate_canvas: movable: %r", movable)
 
         # Add the card to the canvas.
         piece = PlayingCard(
@@ -1903,7 +1919,7 @@ def populate_canvas(deck, target_canvas: SVG.CanvasObject, deck_type="player"):
             text = browser.svg.text(
                 f"{player_name}",
                 x=CARD_WIDTH * 0.75 * (counter - 1.5),
-                y=CARD_HEIGHT * .85,
+                y=CARD_HEIGHT * 0.85,
                 text_anchor="middle",
                 font_size=24,
                 style={"stroke": "white", "fill": "white"},
