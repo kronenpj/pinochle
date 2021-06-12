@@ -8,8 +8,10 @@ import os
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+import browser
+
 import brySVG.dragcanvas as SVG  # pylint: disable=import-error
-from browser import ajax, document, html, websocket, window
+from browser import ajax, document, html, svg, websocket, window
 from browser.widgets.dialog import Dialog, InfoDialog
 
 # Disable some pylint complaints because this code is more like javascript than python.
@@ -1836,7 +1838,7 @@ def clear_globals_for_trick_change():
     display_game_options()
 
 
-def populate_canvas(deck, target_canvas, deck_type="player"):
+def populate_canvas(deck, target_canvas: SVG.CanvasObject, deck_type="player"):
     """
     Populate given canvas with the deck of cards but without specific placement.
 
@@ -1893,12 +1895,22 @@ def populate_canvas(deck, target_canvas, deck_type="player"):
             # movable=movable,
         )
         target_canvas.addObject(piece, fixed=not movable)
-        if False and "trick" in deck_type:
-            # This is an attempt to place player names under the trick deck in the order
+        if "trick" in deck_type:
+            # Place player names under the trick deck in the order
             # they will be playing cards during the trick.
-            mylog.warning("%s %s", counter, order_player_name_list_for_trick()["name"])
-            for player_name in order_player_name_list_for_trick()[counter]:
-                text = SVG.TextObject(
+            mylog.warning("%s %s", counter, order_player_name_list_for_trick()[counter])
+            player_name = order_player_name_list_for_trick()[counter]
+            text = browser.svg.text(
+                f"{player_name}",
+                x=CARD_WIDTH * 0.75 * (counter - 1.5),
+                y=CARD_HEIGHT * .85,
+                text_anchor="middle",
+                font_size=24,
+                style={"stroke": "white", "fill": "white"},
+                id=f"name_{deck_type}{counter}",
+            )
+            target_canvas <= text
+
 
 def generate_place_static_box(canvas: SVG.CanvasObject):
     """
@@ -1918,7 +1930,7 @@ def generate_place_static_box(canvas: SVG.CanvasObject):
         ],
         fillcolour="#076324",
         linecolour="#076324",
-                )
+    )
 
 
 def place_cards(deck, target_canvas, location="top", deck_type="player"):
@@ -2384,6 +2396,8 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
     if not g_canvas.objectDict:
         if mode in ["game"] and g_game_id == GameID():  # Choose game, player
             display_game_options()
+        if mode not in ["game"]:
+            generate_place_static_box(g_canvas)
         if mode in ["bid", "bidfinal"]:  # Bid
             # Use empty deck to prevent peeking at the kitty.
             populate_canvas(g_kitty_deck, g_canvas, "kitty")
