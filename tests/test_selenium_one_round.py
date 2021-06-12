@@ -523,7 +523,7 @@ class TestSingleRound:
                     try:
                         element.click()
                     except WebDriverException as e:
-                        print(f"Ignoring exception: {e}")
+                        print(f"Ignoring webdriver exception: {e}")
                         pass
         except NoSuchElementException:
             # This is expected when the dialog box disappears.
