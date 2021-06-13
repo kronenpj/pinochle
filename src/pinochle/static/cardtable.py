@@ -8,10 +8,8 @@ import os
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-import browser
-
 import brySVG.dragcanvas as SVG  # pylint: disable=import-error
-from browser import ajax, document, html, svg, websocket, window
+from browser import ajax, document, html, websocket, window
 from browser.widgets.dialog import Dialog, InfoDialog
 
 # Disable some pylint complaints because this code is more like javascript than python.
@@ -1974,8 +1972,8 @@ def populate_canvas(deck, target_canvas: SVG.CanvasObject, deck_type="player"):
             text = SVG.TextObject(
                 string=f"{player_name}",
                 anchorpoint=(
-                    CARD_WIDTH * 0.75 * (counter - 1.5),
-                    CARD_HEIGHT * 0.75,
+                    CARD_SMALLER_WIDTH * (counter - 1.5),
+                    CARD_SMALLER_HEIGHT,
                 ),
                 anchorposition=2,
                 fontsize=24,
