@@ -1971,14 +1971,16 @@ def populate_canvas(deck, target_canvas: SVG.CanvasObject, deck_type="player"):
             # they will be playing cards during the trick.
             mylog.warning("%s %s", counter, order_player_name_list_for_trick()[counter])
             player_name = order_player_name_list_for_trick()[counter]
-            text = browser.svg.text(
-                f"{player_name}",
-                x=CARD_WIDTH * 0.75 * (counter - 1.5),
-                y=CARD_HEIGHT * 0.85,
-                text_anchor="middle",
-                font_size=24,
-                style={"stroke": "white", "fill": "white"},
-                id=f"name_{deck_type}{counter}",
+            text = SVG.TextObject(
+                string=f"{player_name}",
+                anchorpoint=(
+                    CARD_WIDTH * 0.75 * (counter - 1.5),
+                    CARD_HEIGHT * 0.75,
+                ),
+                anchorposition=2,
+                fontsize=24,
+                textcolour="white",
+                objid=f"name_{deck_type}{counter}",
             )
             target_canvas <= text
 
