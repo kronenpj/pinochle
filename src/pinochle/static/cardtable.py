@@ -830,39 +830,26 @@ def on_ws_event(event=None):
 
     if "action" not in t_data:
         return
-    if "game_start" in t_data["action"]:
-        # g_game_mode = t_data["state"]
-        # mylog.warning("on_ws_event: game_start: g_player_list=%r", g_player_list)
-        # clear_globals_for_round_change()
-        start_game_and_clear_round_globals(t_data)
-    elif "notification_player_list" in t_data["action"]:
-        update_player_names(t_data)
-    elif "game_state" in t_data["action"]:
-        # g_game_mode = t_data["state"]
-        # display_game_options()
-        set_game_state_from_server(t_data)
-    elif "bid_prompt" in t_data["action"]:
-        BidDialog().display_bid_dialog(t_data)
-    elif "bid_winner" in t_data["action"]:
-        display_bid_winner(t_data)
-    elif "reveal_kitty" in t_data["action"]:
-        reveal_kitty_card(t_data)
-    elif "trump_selected" in t_data["action"]:
-        record_trump_selection(t_data)
-    elif "trump_buried" in t_data["action"]:
-        notify_trump_buried(t_data)
-    elif "meld_update" in t_data["action"]:
-        display_player_meld(t_data)
-    elif "team_score" in t_data["action"]:
-        update_team_scores(t_data)
-    elif "trick_card" in t_data["action"]:
-        update_trick_card(t_data)
-    elif "trick_won" in t_data["action"]:
-        update_trick_winner(t_data)
-    elif "trick_next" in t_data["action"]:
-        clear_globals_for_trick_change(t_data)
-    elif "score_round" in t_data["action"]:
-        update_round_final_score(t_data)
+
+    actions = {
+        "game_start": start_game_and_clear_round_globals,
+        "notification_player_list": update_player_names,
+        "game_state": set_game_state_from_server,
+        "bid_prompt": BidDialog().display_bid_dialog,
+        "bid_winner": display_bid_winner,
+        "reveal_kitty": reveal_kitty_card,
+        "trump_selected": record_trump_selection,
+        "trump_buried": notify_trump_buried,
+        "meld_update": display_player_meld,
+        "team_score": update_team_scores,
+        "trick_card": update_trick_card,
+        "trick_won": update_trick_winner,
+        "trick_next": clear_globals_for_trick_change,
+        "score_round": update_round_final_score,
+    }
+
+    # Dispatch action
+    actions[t_data["action"]](t_data)
 
 
 def update_round_final_score(data: Dict):
