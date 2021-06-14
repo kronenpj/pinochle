@@ -85,7 +85,7 @@ ZEROS_UUID = "00000000-0000-0000-0000-000000000000"
 
 
 @dataclass(frozen=True)
-class GuId:
+class BaseID:
     """
     Parent container for string-ified GUIDs / UUIDs used as identifers by the card
     service.
@@ -100,25 +100,25 @@ class GuId:
         return str(self.value)
 
 
-class GameID(GuId):  # pylint: disable=too-few-public-methods
+class GameID(BaseID):  # pylint: disable=too-few-public-methods
     """
     Game ID data
     """
 
 
-class RoundID(GuId):  # pylint: disable=too-few-public-methods
+class RoundID(BaseID):  # pylint: disable=too-few-public-methods
     """
     Round ID data
     """
 
 
-class TeamID(GuId):  # pylint: disable=too-few-public-methods
+class TeamID(BaseID):  # pylint: disable=too-few-public-methods
     """
     Team ID data
     """
 
 
-class PlayerID(GuId):  # pylint: disable=too-few-public-methods
+class PlayerID(BaseID):  # pylint: disable=too-few-public-methods
     """
     Player ID data
     """
