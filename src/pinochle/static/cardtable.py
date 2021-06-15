@@ -372,7 +372,47 @@ class GameState:
         :return: ID of the "other" team
         :rtype: TeamID
         """
-        return [x for x in GameState.team_dict if x != GameState.team_id][0]
+        return [x for x in cls.team_dict if x != cls.team_id][0]
+
+    @classmethod
+    def my_team_name(cls) -> str:
+        """
+        Return my team's name.
+
+        :return: String representing the name of my team.
+        :rtype: str
+        """
+        return cls.team_dict[cls.team_id]["team_name"].capitalize()
+
+    @classmethod
+    def other_team_name(cls) -> str:
+        """
+        Return my team's name.
+
+        :return: String representing the name of my team.
+        :rtype: str
+        """
+        return cls.team_dict[cls.other_team_id()]["team_name"].capitalize()
+
+    @classmethod
+    def my_name(cls) -> str:
+        """
+        Return my name.
+
+        :return: String representing my name.
+        :rtype: str
+        """
+        return cls.player_dict[cls.player_id]["name"].capitalize()
+
+    @classmethod
+    def other_players_name(cls, player_id: PlayerID) -> str:
+        """
+        Return my name.
+
+        :return: String representing my name.
+        :rtype: str
+        """
+        return cls.player_dict[player_id]["name"].capitalize()
 
 
 # Various state globals
@@ -467,14 +507,14 @@ class BidDialog:
         :type bid_data: str
         """
         mylog.error("Entering display_bid_dialog.")
-        player_id: PlayerID = PlayerID(data["player_id"])
+        t_player_id: PlayerID = PlayerID(data["player_id"])
         self.last_bid = int(data["bid"])
-        player_name = GameState.player_dict[player_id]["name"].capitalize()
+        player_name = GameState.my_name()
 
         remove_dialogs()
 
         # Don't display a dialog box if this isn't the player bidding.
-        if GameState.player_id != player_id:
+        if GameState.player_id != t_player_id:
             InfoDialog(
                 "Bid Update",
                 f"Current bid is: {self.last_bid}<br/>Next bid to: {player_name}",
@@ -604,7 +644,7 @@ class TrumpSelectDialog:
             )
             xpos += glyph_width + 5
 
-        player_name = GameState.player_dict[GameState.player_id]["name"].capitalize()
+        player_name = GameState.my_name()
         if GameState.kitty_size:
             instructions = f"{player_name}, please move {GameState.kitty_size} cards BELOW your hand, then select a suit to be trump."
         else:
@@ -647,7 +687,7 @@ class MeldFinalDialog:
         self.meld_final_dialog = Dialog(
             "Is your meld submission final?", ok_cancel=["Yes", "No"]
         )
-        player_name = GameState.player_dict[GameState.player_id]["name"].capitalize()
+        player_name = GameState.my_name()
         # pylint: disable=expression-not-assigned
         self.meld_final_dialog.panel <= html.DIV(f"{player_name}, Is your meld final?")
 
@@ -706,7 +746,7 @@ class TrickWonDialog:
         )
         # pylint: disable=expression-not-assigned
         self.trick_won_dialog.panel <= html.DIV(
-            f"{GameState.player_dict[GameState.player_id]['name']}, you won the trick!"
+            f"{GameState.my_name()}, you won the trick!"
         )
 
         self.trick_won_dialog.ok_button.bind("click", self.on_click_trick_won_dialog)
@@ -737,7 +777,7 @@ class TrickWonDialog:
         )
         # pylint: disable=expression-not-assigned
         self.trick_won_dialog.panel <= html.DIV(
-            f"{GameState.player_dict[GameState.player_id]['name']}, you won the trick! "
+            f"{GameState.my_name()}, you won the trick! "
             f"Trick Scores: {my_team}: {my_scores} points / {other_team}: {other_scores} points",
         )
 
@@ -916,13 +956,9 @@ def update_round_final_score(data: Dict):
     t_other_team_id = GameState.other_team_id()
 
     mylog.warning("update_round_final_score: Setting my team name")
-    my_team = GameState.team_dict[GameState.team_id]["team_name"].capitalize()
+    my_team = GameState.my_team_name()
     mylog.warning("update_round_final_score: Setting other team's name")
-    other_team = [
-        GameState.team_dict[x]["team_name"]
-        for x in GameState.team_dict
-        if x != GameState.team_id
-    ][0].capitalize()
+    other_team = GameState.other_team_name()
     mylog.warning("update_round_final_score: Setting score variables")
     my_scores, other_scores = (
         t_team_trick_scores[GameState.team_id],
@@ -952,7 +988,7 @@ def update_round_final_score(data: Dict):
         )
         InfoDialog(
             "Last Trick Won",
-            f"{GameState.player_dict[t_player_id]['name'].capitalize()} won the final trick. "
+            f"{GameState.other_players_name(t_player_id)} won the final trick. "
             + f"Trick Scores: {my_team}: {my_scores} points / {other_team}: {other_scores} points",
             top=25,
             left=25,
@@ -988,7 +1024,7 @@ def update_trick_winner(data: Dict):
     else:
         InfoDialog(
             "Trick Won",
-            f"{GameState.player_dict[t_player_id]['name'].capitalize()} won the trick.",
+            f"{GameState.other_players_name(t_player_id)} won the trick.",
             top=25,
             left=25,
         )
@@ -1056,7 +1092,7 @@ def notify_trump_buried(data: Dict):
     if t_player_id == GameState.player_id:
         player_name = "You have"
     else:
-        player_name = "{} has".format(GameState.player_dict[t_player_id]["name"])
+        player_name = "{} has".format(GameState.other_players_name(t_player_id))
     mylog.warning("notify_trump_buried: player_name=%s", player_name)
     count = data["count"]
     mylog.warning("notify_trump_buried: count=%d", count)
@@ -1122,7 +1158,7 @@ def display_bid_winner(data: Dict):
     """
 
     t_player_id = PlayerID(data["player_id"])
-    player_name = GameState.player_dict[t_player_id]["name"]
+    player_name = GameState.other_players_name(t_player_id)
     bid = int(data["bid"])
 
     remove_dialogs()
@@ -1151,7 +1187,7 @@ def display_player_meld(data: Dict):
     mylog.error("Entering display_player_meld.")
 
     player_id = PlayerID(data["player_id"])
-    player_name = GameState.player_dict[player_id]["name"]
+    player_name = GameState.other_players_name(player_id)
     card_list = data["card_list"]
     try:
         # If a dialog already exists, delete it.
@@ -1211,10 +1247,7 @@ def update_player_names(data: Dict):
         g_registered_with_server = True
         document.getElementById("player_name").clear()
         document.getElementById("player_name").attach(
-            html.SPAN(
-                GameState.player_dict[GameState.player_id]["name"].capitalize(),
-                Class="player_name",
-            )
+            html.SPAN(GameState.my_name(), Class="player_name",)
         )
 
         # TODO: Do something more useful like a line of names with color change when
@@ -1224,12 +1257,9 @@ def update_player_names(data: Dict):
             html.SPAN(
                 ", ".join(
                     sorted(
-                        y["name"].capitalize()
-                        for y in [
-                            GameState.player_dict[x]
-                            for x in my_player_list
-                            if x != GameState.player_id
-                        ]
+                        GameState.other_players_name(x)
+                        for x in my_player_list
+                        if x != GameState.player_id
                     )
                 ),
                 Class="other_players",
@@ -1693,8 +1723,7 @@ def order_player_name_list_for_trick() -> List[str]:
     mylog.error("In order_player_name_list_for_trick.")
 
     return [
-        GameState.player_dict[p_id]["name"].capitalize()
-        for p_id in order_player_id_list_for_trick()
+        GameState.other_players_name(p_id) for p_id in order_player_id_list_for_trick()
     ]
 
 
