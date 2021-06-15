@@ -364,6 +364,16 @@ class GameState:
     # Temporary deck for filling meld deck.
     players_meld_deck: List[str] = []
 
+    @classmethod
+    def other_team_id(cls) -> TeamID:
+        """
+        Given the class's knowledge of my team, return the ID of the other team.
+
+        :return: ID of the "other" team
+        :rtype: TeamID
+        """
+        return [x for x in GameState.team_dict if x != GameState.team_id][0]
+
 
 # Various state globals
 g_ajax_outstanding_requests: int = 0
@@ -903,7 +913,7 @@ def update_round_final_score(data: Dict):
     GameState.round_bid_trick_winner = t_player_id
 
     # Obtain the other team's ID
-    t_other_team_id = [x for x in GameState.team_dict if x != GameState.team_id][0]
+    t_other_team_id = GameState.other_team_id()
 
     mylog.warning("update_round_final_score: Setting my team name")
     my_team = GameState.team_dict[GameState.team_id]["team_name"].capitalize()
