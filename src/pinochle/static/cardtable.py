@@ -81,6 +81,25 @@ DECK_CONFIG = {
 
 SUITS = ["spade", "heart", "club", "diamond"]
 
+# Programmatically create a pre-sorted deck to compare to when sorting decks of cards.
+# Importing a statically-defined list from constants doesn't work for some reason.
+# "9", "jack", "queen", "king", "10", "ace"
+# "ace", "10", "king", "queen", "jack", "9"
+DECK_SORTED: List[str] = []
+for _suit in SUITS:
+    for _card in ["ace", "10", "king", "queen", "jack", "9"]:
+        DECK_SORTED.append(f"{_suit}_{_card}")
+
+# API "Constants"
+AJAX_URL_ENCODING = "application/x-www-form-urlencoded"
+
+# Websocket holder
+g_websocket: Optional[websocket.WebSocket] = None
+# Various state globals
+g_ajax_outstanding_requests: int = 0
+# button_advance_mode = None  # pylint: disable=invalid-name
+g_registered_with_server = False  # pylint: disable=invalid-name
+
 
 @dataclass(frozen=True)
 class BaseID:
@@ -306,22 +325,6 @@ class PlayingCard(SVG.UseObject):
             self.play_handler(event_type="click")
 
 
-# Websocket holder
-g_websocket: Optional[websocket.WebSocket] = None
-
-# Programmatically create a pre-sorted deck to compare to when sorting decks of cards.
-# Importing a statically-defined list from constants doesn't work for some reason.
-# "9", "jack", "queen", "king", "10", "ace"
-# "ace", "10", "king", "queen", "jack", "9"
-DECK_SORTED: List[str] = []
-for _suit in SUITS:
-    for _card in ["ace", "10", "king", "queen", "jack", "9"]:
-        DECK_SORTED.append(f"{_suit}_{_card}")
-
-# API "Constants"
-AJAX_URL_ENCODING = "application/x-www-form-urlencoded"
-
-
 class GameState:
     """
     Class to maintain state of the game from this player's point of view.
@@ -415,12 +418,6 @@ class GameState:
         :rtype: str
         """
         return cls.player_dict[player_id]["name"].capitalize()
-
-
-# Various state globals
-g_ajax_outstanding_requests: int = 0
-# button_advance_mode = None  # pylint: disable=invalid-name
-g_registered_with_server = False  # pylint: disable=invalid-name
 
 
 class CardTable(SVG.CanvasObject):  # pylint: disable=too-few-public-methods
