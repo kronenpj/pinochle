@@ -81,8 +81,6 @@ DECK_CONFIG = {
 
 SUITS = ["spade", "heart", "club", "diamond"]
 
-ZEROS_UUID = "00000000-0000-0000-0000-000000000000"
-
 
 @dataclass(frozen=True)
 class BaseID:
@@ -91,13 +89,17 @@ class BaseID:
     service.
     """
 
+    zeros_uuid = "00000000-0000-0000-0000-000000000000"
     value: str
 
-    def __init__(self, value: str = ZEROS_UUID) -> None:
+    def __init__(self, value: str = zeros_uuid) -> None:
         object.__setattr__(self, "value", str(value))
 
     def __str__(self) -> str:
         return str(self.value)
+
+    def __eq__(self, other) -> bool:
+        return self.value == other.value
 
 
 class GameID(BaseID):  # pylint: disable=too-few-public-methods
