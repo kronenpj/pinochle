@@ -90,9 +90,6 @@ for _suit in SUITS:
     for _card in ["ace", "10", "king", "queen", "jack", "9"]:
         DECK_SORTED.append(f"{_suit}_{_card}")
 
-# API "Constants"
-AJAX_URL_ENCODING = "application/x-www-form-urlencoded"
-
 # Various state globals
 # button_advance_mode = None  # pylint: disable=invalid-name
 
@@ -848,8 +845,10 @@ class AjaxRequests:
     Container for outgoing AJAX requests
     """
 
-    @staticmethod
-    def get(url: str, callback=None, async_call=True):
+    AJAX_URL_ENCODING = "application/x-www-form-urlencoded"
+
+    @classmethod
+    def get(cls, url: str, callback=None, async_call=True):
         """
         Wrapper for the AJAX GET call.
 
@@ -866,12 +865,12 @@ class AjaxRequests:
             req.bind("complete", callback)
         mylog.warning("Calling GET /api%s", url)
         req.open("GET", "/api" + url, async_call)
-        req.set_header("content-type", "application/x-www-form-urlencoded")
+        req.set_header("content-type", cls.AJAX_URL_ENCODING)
 
         req.send()
 
-    @staticmethod
-    def put(url: str, callback=None, async_call=True):
+    @classmethod
+    def put(cls, url: str, callback=None, async_call=True):
         """
         Wrapper for the AJAX PUT call.
 
@@ -891,13 +890,13 @@ class AjaxRequests:
         # mylog.warning("Calling PUT /api%s with data: %r", url, data)
         mylog.warning("Calling PUT /api%s", url)
         req.open("PUT", "/api" + url, async_call)
-        req.set_header("content-type", AJAX_URL_ENCODING)
+        req.set_header("content-type", cls.AJAX_URL_ENCODING)
         # req.send({"a": a, "b":b})
         # req.send(data)
         req.send({})
 
-    @staticmethod
-    def post(url: str, callback=None, async_call=True):
+    @classmethod
+    def post(cls, url: str, callback=None, async_call=True):
         """
         Wrapper for the AJAX POST call.
 
@@ -917,12 +916,12 @@ class AjaxRequests:
         # mylog.warning("Calling POST /api%s with data: %r", url, data)
         mylog.warning("Calling POST /api%s", url)
         req.open("POST", "/api" + url, async_call)
-        req.set_header("content-type", AJAX_URL_ENCODING)
+        req.set_header("content-type", cls.AJAX_URL_ENCODING)
         # req.send(data)
         req.send({})
 
-    @staticmethod
-    def delete(url: str, callback=None, async_call=True):
+    @classmethod
+    def delete(cls, url: str, callback=None, async_call=True):
         """
         Wrapper for the AJAX Data call.
 
@@ -939,7 +938,7 @@ class AjaxRequests:
             req.bind("complete", callback)
         # pass the arguments in the query string
         req.open("DELETE", "/api" + url, async_call)
-        req.set_header("content-type", AJAX_URL_ENCODING)
+        req.set_header("content-type", cls.AJAX_URL_ENCODING)
         req.send()
 
 
