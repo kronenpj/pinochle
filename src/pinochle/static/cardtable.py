@@ -94,7 +94,6 @@ for _suit in SUITS:
 AJAX_URL_ENCODING = "application/x-www-form-urlencoded"
 
 # Various state globals
-g_ajax_outstanding_requests: int = 0
 # button_advance_mode = None  # pylint: disable=invalid-name
 
 
@@ -289,7 +288,7 @@ class PlayingCard(SVG.UseObject):
         if GAME_MODES[GameState.game_mode] in ["trick"]:
             mylog.warning("Throwing card: %s", self.face_value)
             # Convey the played card to the server.
-            put(
+            AjaxRequests.put(
                 f"/play/{GameState.round_id.value}/play_card?player_id={GameState.player_id.value}&card={self.face_value}"
             )
 
@@ -416,6 +415,24 @@ class GameState:
         """
         return cls.player_dict[player_id]["name"].capitalize()
 
+    @classmethod
+    def set_game_parameters(cls):
+        """
+        Set various game parameters now that the player has chosen a game.
+        """
+        try:
+            cls.kitty_size = int(cls.game_dict[cls.game_id]["kitty_size"])
+            mylog.warning("on_complete_getcookie: KITTY_SIZE=%s", cls.kitty_size)
+            if cls.kitty_size > 0:
+                cls.kitty_deck = ["card-base" for _ in range(cls.kitty_size)]
+            else:
+                cls.kitty_deck.clear()
+        except KeyError:
+            pass
+        # TODO: Figure out how better to calculate GameState.hand_size.
+        cls.hand_size = int((48 - cls.kitty_size) / cls.players)
+        cls.meld_deck = ["card-base" for _ in range(cls.hand_size)]
+
 
 class CardTable(SVG.CanvasObject):  # pylint: disable=too-few-public-methods
     """
@@ -491,7 +508,7 @@ class BidDialog:
             return
         self.last_bid = bid
         self.bid_dialog.close()
-        put(
+        AjaxRequests.put(
             f"/play/{GameState.round_id.value}/submit_bid?player_id={GameState.player_id.value}&bid={bid}"
         )
 
@@ -565,16 +582,16 @@ class TrumpSelectDialog:
             return
         self.trump_dialog.close()
         # Notify the server of trump.
-        put(
+        AjaxRequests.put(
             f"/play/{GameState.round_id.value}/set_trump?player_id={GameState.player_id.value}&trump={trump}"
         )
         # Transfer cards into the team's collection and out of the player's hand.
         buried_trump = 0
         for card in cards_buried:
-            put(
+            AjaxRequests.put(
                 f"/round/{GameState.round_id.value}/{GameState.team_id.value}?card={card}"
             )
-            delete(f"/player/{GameState.player_id.value}/hand/{card}")
+            AjaxRequests.delete(f"/player/{GameState.player_id.value}/hand/{card}")
             GameState.players_hand.remove(card)
             GameState.players_meld_deck.remove(card)
             if trump in card:
@@ -669,7 +686,7 @@ class MeldFinalDialog:
         mylog.error("In MeldFinalDialog.on_click_meld_dialog")
 
         # Notify the server of my meld is final.
-        put(
+        AjaxRequests.put(
             f"/play/{GameState.round_id.value}/finalize_meld?player_id={GameState.player_id.value}"
         )
         self.meld_final_dialog.close()
@@ -710,7 +727,7 @@ class TrickWonDialog:
             return
 
         # Convey to the server that play is continuing.
-        put(
+        AjaxRequests.put(
             f"/play/{GameState.round_id.value}/next_trick?player_id={GameState.player_id.value}"
         )
         self.trick_won_dialog.close()
@@ -728,7 +745,11 @@ class TrickWonDialog:
             return
 
         # Convey to the server that to start the next round.
-        put(f"/game/{GameState.game_id.value}?state=true", advance_mode_callback, False)
+        AjaxRequests.put(
+            f"/game/{GameState.game_id.value}?state=true",
+            AjaxCallbacks().advance_mode_callback,
+            False,
+        )
         self.trick_won_dialog.close()
 
     def display_trick_won_dialog(self):
@@ -784,6 +805,513 @@ class TrickWonDialog:
         self.trick_won_dialog.cancel_button.bind(
             "click", self.on_click_final_trick_won_dialog
         )
+
+
+class AjaxRequestTracker:
+    """
+    Parent(?) class to keep track outstanding requests made to the server.
+    """
+
+    _outstanding_requests: int = 0
+
+    @classmethod
+    def __init__(cls):
+        mylog.error("In AjaxParent.__init__")
+        cls._outstanding_requests = 0
+
+    @classmethod
+    def outstanding_requests(cls) -> int:
+        return cls._outstanding_requests
+
+    @classmethod
+    def update(cls, direction: int = 0):
+        """
+        Keep a tally of the currently outstanding AJAX requests.
+
+        :param direction: Whether to increase or decrease the counter,
+        defaults to 0 which does not affect the counter.
+        :type direction: int, optional
+        """
+        mylog.error("In ajax_request_tracker.")
+
+        if direction > 0:
+            cls._outstanding_requests += 1
+        elif direction < 0:
+            cls._outstanding_requests -= 1
+
+
+class AjaxRequests:
+    """
+    Container for outgoing AJAX requests
+    """
+
+    @staticmethod
+    def get(url: str, callback=None, async_call=True):
+        """
+        Wrapper for the AJAX GET call.
+
+        :param url: The part of the URL that is being requested.
+        :type url: str
+        :param callback: Function to be called when the AJAX request is complete.
+        :type callback: function, optional
+        """
+        mylog.error("In get.")
+
+        req = ajax.Ajax()
+        if callback is not None:
+            AjaxRequestTracker.update(1)
+            req.bind("complete", callback)
+        mylog.warning("Calling GET /api%s", url)
+        req.open("GET", "/api" + url, async_call)
+        req.set_header("content-type", "application/x-www-form-urlencoded")
+
+        req.send()
+
+    @staticmethod
+    def put(url: str, callback=None, async_call=True):
+        """
+        Wrapper for the AJAX PUT call.
+
+        :param data: The data to be submitted.
+        :param data: dict
+        :param url: The part of the URL that is being requested.
+        :type url: str
+        :param callback: Function to be called when the AJAX request is complete.
+        :type callback: function, optional
+        """
+        mylog.error("In put.")
+
+        req = ajax.Ajax()
+        if callback is not None:
+            AjaxRequestTracker.update(1)
+            req.bind("complete", callback)
+        # mylog.warning("Calling PUT /api%s with data: %r", url, data)
+        mylog.warning("Calling PUT /api%s", url)
+        req.open("PUT", "/api" + url, async_call)
+        req.set_header("content-type", AJAX_URL_ENCODING)
+        # req.send({"a": a, "b":b})
+        # req.send(data)
+        req.send({})
+
+    @staticmethod
+    def post(url: str, callback=None, async_call=True):
+        """
+        Wrapper for the AJAX POST call.
+
+        :param data: The data to be submitted.
+        :param data: Any
+        :param url: The part of the URL that is being requested.
+        :type url: str
+        :param callback: Function to be called when the AJAX request is complete.
+        :type callback: function, optional
+        """
+        mylog.error("In post.")
+
+        req = ajax.Ajax()
+        if callback is not None:
+            AjaxRequestTracker.update(1)
+            req.bind("complete", callback)
+        # mylog.warning("Calling POST /api%s with data: %r", url, data)
+        mylog.warning("Calling POST /api%s", url)
+        req.open("POST", "/api" + url, async_call)
+        req.set_header("content-type", AJAX_URL_ENCODING)
+        # req.send(data)
+        req.send({})
+
+    @staticmethod
+    def delete(url: str, callback=None, async_call=True):
+        """
+        Wrapper for the AJAX Data call.
+
+        :param url: The part of the URL that is being requested.
+        :type url: str
+        :param callback: Function to be called when the AJAX request is complete.
+        :type callback: function, optional
+        """
+        mylog.error("In delete.")
+
+        req = ajax.Ajax()
+        if callback is not None:
+            AjaxRequestTracker.update(1)
+            req.bind("complete", callback)
+        # pass the arguments in the query string
+        req.open("DELETE", "/api" + url, async_call)
+        req.set_header("content-type", AJAX_URL_ENCODING)
+        req.send()
+
+
+class AjaxCallbacks:
+    """
+    Container for incoming AJAX responses
+    """
+
+    def on_complete_games(self, req: ajax.Ajax):
+        """
+        Callback for AJAX request for the list of games.
+
+        :param req: Request object from callback.
+        :type req: [type]
+        """
+        mylog.error("In on_complete_games.")
+
+        AjaxRequestTracker.update(-1)
+        temp = self._on_complete_common(req)
+        if temp is None:
+            return
+
+        # Set the global game list.
+        GameState.game_dict.clear()
+        for item in temp:
+            mylog.warning("on_complete_games: item=%s", item)
+            GameState.game_dict[GameID(item["game_id"])] = item
+
+        display_game_options()
+
+    def on_complete_rounds(self, req: ajax.Ajax):
+        """
+        Callback for AJAX request for the list of rounds.
+
+        :param req: Request object from callback.
+        :type req: [type]
+        """
+        mylog.error("In on_complete_rounds.")
+
+        AjaxRequestTracker.update(-1)
+        GameState.team_list.clear()
+
+        temp = self._on_complete_common(req)
+        if temp is None:
+            return
+
+        # Set the round ID.
+        GameState.round_id = RoundID(temp["round_id"])
+        mylog.warning("on_complete_rounds: round_id=%s", GameState.round_id)
+
+        display_game_options()
+
+    def on_complete_teams(self, req: ajax.Ajax):
+        """
+        Callback for AJAX request for the information on the teams associated with the round.
+
+        :param req: Request object from callback.
+        :type req: [type]
+        """
+        mylog.error("In on_complete_teams.")
+
+        AjaxRequestTracker.update(-1)
+        temp = self._on_complete_common(req)
+        if temp is None:
+            return
+
+        # Set the global list of teams for this round.
+        GameState.team_list.clear()
+        GameState.team_list = [TeamID(x) for x in temp["team_ids"]]
+        mylog.warning("on_complete_teams: team_list=%r", GameState.team_list)
+
+        # Clear the team dict here because of the multiple callbacks.
+        GameState.team_dict.clear()
+        for item in GameState.team_list:
+            AjaxRequests.get(f"/team/{item}", self.on_complete_team_names)
+
+    def on_complete_team_names(self, req: ajax.Ajax):
+        """
+        Callback for AJAX request for team information.
+
+        :param req: Request object from callback.
+        :type req: [type]
+        """
+        mylog.error("In on_complete_team_names.")
+
+        AjaxRequestTracker.update(-1)
+        temp = self._on_complete_common(req)
+        if temp is None:
+            return
+
+        # Set the global dict of team names for this round.
+        mylog.warning(
+            "on_complete_team_names: Setting team_dict[%s]=%r", temp["team_id"], temp
+        )
+        GameState.team_dict[TeamID(temp["team_id"])] = temp
+        mylog.warning("on_complete_team_names: team_dict=%s", GameState.team_dict)
+
+        # Only call API once per team, per player.
+        for item in GameState.team_dict[TeamID(temp["team_id"])]["player_ids"]:
+            mylog.warning("on_complete_team_names: calling get/player/%s", item)
+            AjaxRequests.get(f"/player/{item}", self.on_complete_players)
+
+    def on_complete_players(self, req: ajax.Ajax):
+        """
+        Callback for AJAX request for player information.
+
+        :param req: Request object from callback.
+        :type req: [type]
+        """
+        mylog.error("In on_complete_players.")
+
+        AjaxRequestTracker.update(-1)
+        temp = self._on_complete_common(req)
+        if temp is None:
+            return
+
+        # Set the global dict of players for reference later.
+        GameState.player_dict[PlayerID(temp["player_id"])] = temp
+        mylog.warning("In on_complete_players: player_dict=%s", GameState.player_dict)
+        display_game_options()
+
+    def on_complete_set_gamecookie(self, req: ajax.Ajax):
+        """
+        Callback for AJAX request for setcookie information.
+
+        :param req: Request object from callback.
+        :type req: [type]
+        """
+        mylog.error("In on_complete_set_gamecookie.")
+
+        AjaxRequestTracker.update(-1)
+        if req.status in [200, 0]:
+            AjaxRequests.get("/getcookie/game_id", self.on_complete_getcookie)
+
+    def on_complete_set_playercookie(self, req: ajax.Ajax):
+        """
+        Callback for AJAX request for setcookie information.
+
+        :param req: Request object from callback.
+        :type req: [type]
+        """
+        mylog.error("In on_complete_set_playercookie.")
+
+        AjaxRequestTracker.update(-1)
+        if req.status in [200, 0]:
+            AjaxRequests.get("/getcookie/player_id", self.on_complete_getcookie)
+
+    def on_complete_getcookie(self, req: ajax.Ajax):
+        """
+        Callback for AJAX request for setcookie information.
+
+        :param req: Request object from callback.
+        :type req: [type]
+        """
+        mylog.error("In on_complete_getcookie.")
+
+        AjaxRequestTracker.update(-1)
+        if req.status != 200:
+            return
+        if req.text is None or req.text == "":
+            mylog.warning("on_complete_getcookie: cookie response is None.")
+            return
+        mylog.warning("on_complete_getcookie: req.text=%s", req.text)
+        response_data = json.loads(req.text)
+
+        # Set the global deck of cards for the player's hand.
+        mylog.warning("on_complete_getcookie: response_data=%s", response_data)
+        if "game_id" in response_data["kind"]:
+            GameState.game_id = GameID(response_data["ident"])
+            mylog.warning(
+                "on_complete_getcookie: Setting GAME_ID=%s", response_data["ident"]
+            )
+            # put({}, f"/game/{GameState.game_id}?state=false", advance_mode_initial_callback, False)
+
+            GameState.set_game_parameters()
+            # try:
+            #     GameState.kitty_size = int(GameState.game_dict[GameState.game_id]["kitty_size"])
+            #     mylog.warning("on_complete_getcookie: KITTY_SIZE=%s", GameState.kitty_size)
+            #     if GameState.kitty_size > 0:
+            #         GameState.kitty_deck = ["card-base" for _ in range(GameState.kitty_size)]
+            #     else:
+            #         GameState.kitty_deck.clear()
+            # except KeyError:
+            #     pass
+            # # TODO: Figure out how better to calculate GameState.hand_size.
+            # GameState.hand_size = int((48 - GameState.kitty_size) / GameState.players)
+            # GameState.meld_deck = ["card-base" for _ in range(GameState.hand_size)]
+
+        elif "player_id" in response_data["kind"]:
+            GameState.player_id = PlayerID(response_data["ident"])
+            mylog.warning(
+                "on_complete_getcookie: Setting PLAYER_ID=%s", response_data["ident"]
+            )
+            AjaxRequests.get(
+                f"/player/{GameState.player_id.value}/hand",
+                self.on_complete_player_cards,
+            )
+
+        display_game_options()
+
+    def on_complete_kitty(self, req: ajax.Ajax):
+        """
+        Callback for AJAX request for the round's kitty cards, if any.
+
+        :param req: Request object from callback.
+        :type req: [type]
+        """
+        mylog.error("In on_complete_kitty.")
+
+        AjaxRequestTracker.update(-1)
+        mylog.warning("on_complete_kitty: req.text=%r", req.text)
+        temp = self._on_complete_common(req)
+        if temp is None:
+            return
+
+        # Set the global deck of cards for the kitty.
+        GameState.kitty_deck.clear()
+        GameState.kitty_deck = temp["cards"]
+        mylog.warning("on_complete_kitty: kitty_deck=%s", GameState.kitty_deck)
+        if GameState.player_id == GameState.round_bid_trick_winner:
+            # Add the kitty cards to the bid winner's deck
+            for card in GameState.kitty_deck:
+                GameState.players_hand.append(card)
+                GameState.players_meld_deck.append(card)
+            advance_mode()
+
+    def on_complete_player_cards(self, req: ajax.Ajax):
+        """
+        Callback for AJAX request for the player's cards.
+
+        :param req: Request object from callback.
+        :type req: [type]
+        """
+        mylog.error("In on_complete_player_cards.")
+
+        AjaxRequestTracker.update(-1)
+        temp = self._on_complete_common(req)
+        if temp is None:
+            return
+
+        # Set the global deck of cards for the player's hand.
+        GameState.players_hand.clear()
+        GameState.players_meld_deck.clear()
+        GameState.players_hand = [x["card"] for x in temp]
+        mylog.warning(
+            "on_complete_player_cards: players_hand=%s", GameState.players_hand
+        )
+        GameState.players_meld_deck = copy.deepcopy(GameState.players_hand)  # Deep copy
+
+        display_game_options()
+
+    def on_complete_get_meld_score(self, req: ajax.Ajax):
+        """
+        Callback for AJAX request for the player's meld.
+
+        :param req: Request object from callback.
+        :type req: [type]
+        """
+        mylog.error("In on_complete_get_meld_score.")
+
+        AjaxRequestTracker.update(-1)
+        temp = self._on_complete_common(req)
+        if temp is None:
+            return
+
+        if req.status in [200, 0]:
+            mylog.warning("on_complete_get_meld_score: req.text: %s", req.text)
+            temp = json.loads(req.text)
+            InfoDialog(
+                "Meld Score",
+                f"Your meld score is {temp['score']}",
+                remove_after=5,
+                top=25,
+                left=25,
+            )
+            mfd = MeldFinalDialog()
+            mfd.display_meld_final_dialog()
+            return
+
+        mylog.warning("on_complete_get_meld_score: score: %r", req)
+
+    def advance_mode_callback(self, req: ajax.Ajax):
+        """
+        Routine to capture the response of the server when advancing the game mode.
+
+        :param req:   The request response passed in during callback
+        :type req:    Request
+        """
+        mylog.error("In advance_mode_callback.")
+        mylog.warning(
+            "advance_mode_callback: (current mode=%s)", GAME_MODES[GameState.game_mode]
+        )
+
+        AjaxRequestTracker.update(-1)
+        if req.status not in [200, 0]:
+            return
+
+        if "Round" in req.text and "started" in req.text:
+            mylog.warning("advance_mode_callback: Starting new round.")
+            GameState.game_mode = 0
+            clear_globals_for_round_change()
+
+            # display_game_options()
+            return
+
+        mylog.warning("advance_mode_callback: req.text=%s", req.text)
+        data = json.loads(req.text)
+        mylog.warning("advance_mode_callback: data=%r", data)
+        GameState.game_mode = data["state"]
+
+        mylog.warning(
+            "Leaving advance_mode_callback (current mode=%s)",
+            GAME_MODES[GameState.game_mode],
+        )
+
+        remove_dialogs()
+
+        display_game_options()
+
+    def game_mode_query_callback(self, req: ajax.Ajax):
+        """
+        Routine to capture the response of the server when advancing the game mode.
+
+        :param req:   The request response passed in during callback
+        :type req:    Request
+        """
+        mylog.error("In game_mode_query_callback.")
+
+        if GameState.game_mode is not None:
+            mylog.warning(
+                "Entering game_mode_query_callback (current mode=%s)",
+                GAME_MODES[GameState.game_mode],
+            )
+
+        AjaxRequestTracker.update(-1)
+        # TODO: Handle a semi-corner case where in the middle of a round, a player loses /
+        # destroys a cookie and reloads the page.
+        if req.status not in [200, 0]:
+            mylog.warning(
+                "game_mode_query_callback: Not setting game_mode - possibly because GameState.player_id is empty (%s).",
+                GameState.player_id,
+            )
+            return
+
+        mylog.warning("game_mode_query_callback: req.text=%s", req.text)
+        data = json.loads(req.text)
+        mylog.warning("game_mode_query_callback: data=%r", data)
+        GameState.game_mode = data["state"]
+
+        mylog.warning(
+            "Leaving game_mode_query_callback (current mode=%s)",
+            GAME_MODES[GameState.game_mode],
+        )
+        if GameState.game_mode == 0:
+            clear_globals_for_round_change()
+
+        display_game_options()
+
+    def _on_complete_common(self, req: ajax.Ajax) -> Optional[str]:
+        """
+        Common function for AJAX callbacks.
+
+        :param req: Request object from callback.
+        :type req: [type]
+        :return: Object returned in the request as decoded by JSON.
+        :rtype: [type]
+        """
+        mylog.error("In on_complete_common.")
+
+        AjaxRequestTracker.update(-1)
+        if req.status in [200, 0]:
+            return json.loads(req.text)
+
+        mylog.warning("on_complete_common: req=%s", req)
+        return None
 
 
 def dump_globals() -> None:
@@ -922,12 +1450,6 @@ class WSocketContainer:
 
         # Dispatch action
         actions[t_data["action"]](t_data)
-
-    def send(self, data):
-        """
-        Provide the same functionality as a raw websocket.
-        """
-        self.websock.send(data)
 
     def update_round_final_score(self, data: Dict):
         """
@@ -1360,325 +1882,6 @@ def update_status_line():
         )
 
 
-def ajax_request_tracker(direction: int = 0):
-    """
-    Keep a tally of the currently outstanding AJAX requests.
-
-    :param direction: Whether to increase or decrease the counter,
-    defaults to 0 which does not affect the counter.
-    :type direction: int, optional
-    """
-    # pylint: disable=invalid-name
-    global g_ajax_outstanding_requests
-    mylog.error("In ajax_request_tracker.")
-
-    if direction > 0:
-        g_ajax_outstanding_requests += 1
-    elif direction < 0:
-        g_ajax_outstanding_requests -= 1
-
-
-def on_complete_games(req: ajax.Ajax):
-    """
-    Callback for AJAX request for the list of games.
-
-    :param req: Request object from callback.
-    :type req: [type]
-    """
-    mylog.error("In on_complete_games.")
-
-    ajax_request_tracker(-1)
-    temp = on_complete_common(req)
-    if temp is None:
-        return
-
-    # Set the global game list.
-    GameState.game_dict.clear()
-    for item in temp:
-        mylog.warning("on_complete_games: item=%s", item)
-        GameState.game_dict[GameID(item["game_id"])] = item
-
-    display_game_options()
-
-
-def on_complete_rounds(req: ajax.Ajax):
-    """
-    Callback for AJAX request for the list of rounds.
-
-    :param req: Request object from callback.
-    :type req: [type]
-    """
-    mylog.error("In on_complete_rounds.")
-
-    ajax_request_tracker(-1)
-    GameState.team_list.clear()
-
-    temp = on_complete_common(req)
-    if temp is None:
-        return
-
-    # Set the round ID.
-    GameState.round_id = RoundID(temp["round_id"])
-    mylog.warning("on_complete_rounds: round_id=%s", GameState.round_id)
-
-    display_game_options()
-
-
-def on_complete_teams(req: ajax.Ajax):
-    """
-    Callback for AJAX request for the information on the teams associated with the round.
-
-    :param req: Request object from callback.
-    :type req: [type]
-    """
-    mylog.error("In on_complete_teams.")
-
-    ajax_request_tracker(-1)
-    temp = on_complete_common(req)
-    if temp is None:
-        return
-
-    # Set the global list of teams for this round.
-    GameState.team_list.clear()
-    GameState.team_list = [TeamID(x) for x in temp["team_ids"]]
-    mylog.warning("on_complete_teams: team_list=%r", GameState.team_list)
-
-    # Clear the team dict here because of the multiple callbacks.
-    GameState.team_dict.clear()
-    for item in GameState.team_list:
-        get(f"/team/{item}", on_complete_team_names)
-
-
-def on_complete_team_names(req: ajax.Ajax):
-    """
-    Callback for AJAX request for team information.
-
-    :param req: Request object from callback.
-    :type req: [type]
-    """
-    mylog.error("In on_complete_team_names.")
-
-    ajax_request_tracker(-1)
-    temp = on_complete_common(req)
-    if temp is None:
-        return
-
-    # Set the global dict of team names for this round.
-    mylog.warning(
-        "on_complete_team_names: Setting team_dict[%s]=%r", temp["team_id"], temp
-    )
-    GameState.team_dict[TeamID(temp["team_id"])] = temp
-    mylog.warning("on_complete_team_names: team_dict=%s", GameState.team_dict)
-
-    # Only call API once per team, per player.
-    for item in GameState.team_dict[TeamID(temp["team_id"])]["player_ids"]:
-        mylog.warning("on_complete_team_names: calling get/player/%s", item)
-        get(f"/player/{item}", on_complete_players)
-
-
-def on_complete_players(req: ajax.Ajax):
-    """
-    Callback for AJAX request for player information.
-
-    :param req: Request object from callback.
-    :type req: [type]
-    """
-    mylog.error("In on_complete_players.")
-
-    ajax_request_tracker(-1)
-    temp = on_complete_common(req)
-    if temp is None:
-        return
-
-    # Set the global dict of players for reference later.
-    GameState.player_dict[PlayerID(temp["player_id"])] = temp
-    mylog.warning("In on_complete_players: player_dict=%s", GameState.player_dict)
-    display_game_options()
-
-
-def on_complete_set_gamecookie(req: ajax.Ajax):
-    """
-    Callback for AJAX request for setcookie information.
-
-    :param req: Request object from callback.
-    :type req: [type]
-    """
-    mylog.error("In on_complete_set_gamecookie.")
-
-    ajax_request_tracker(-1)
-    if req.status in [200, 0]:
-        get("/getcookie/game_id", on_complete_getcookie)
-
-
-def on_complete_set_playercookie(req: ajax.Ajax):
-    """
-    Callback for AJAX request for setcookie information.
-
-    :param req: Request object from callback.
-    :type req: [type]
-    """
-    mylog.error("In on_complete_set_playercookie.")
-
-    ajax_request_tracker(-1)
-    if req.status in [200, 0]:
-        get("/getcookie/player_id", on_complete_getcookie)
-
-
-def on_complete_getcookie(req: ajax.Ajax):
-    """
-    Callback for AJAX request for setcookie information.
-
-    :param req: Request object from callback.
-    :type req: [type]
-    """
-    mylog.error("In on_complete_getcookie.")
-
-    ajax_request_tracker(-1)
-    if req.status != 200:
-        return
-    if req.text is None or req.text == "":
-        mylog.warning("on_complete_getcookie: cookie response is None.")
-        return
-    mylog.warning("on_complete_getcookie: req.text=%s", req.text)
-    response_data = json.loads(req.text)
-
-    # Set the global deck of cards for the player's hand.
-    mylog.warning("on_complete_getcookie: response_data=%s", response_data)
-    if "game_id" in response_data["kind"]:
-        GameState.game_id = GameID(response_data["ident"])
-        mylog.warning(
-            "on_complete_getcookie: Setting GAME_ID=%s", response_data["ident"]
-        )
-        # put({}, f"/game/{GameState.game_id}?state=false", advance_mode_initial_callback, False)
-
-        try:
-            GameState.kitty_size = int(
-                GameState.game_dict[GameState.game_id]["kitty_size"]
-            )
-            mylog.warning("on_complete_getcookie: KITTY_SIZE=%s", GameState.kitty_size)
-            if GameState.kitty_size > 0:
-                GameState.kitty_deck = [
-                    "card-base" for _ in range(GameState.kitty_size)
-                ]
-            else:
-                GameState.kitty_deck.clear()
-        except KeyError:
-            pass
-        # TODO: Figure out how better to calculate GameState.hand_size.
-        GameState.hand_size = int((48 - GameState.kitty_size) / GameState.players)
-        GameState.meld_deck = ["card-base" for _ in range(GameState.hand_size)]
-
-    elif "player_id" in response_data["kind"]:
-        GameState.player_id = PlayerID(response_data["ident"])
-        mylog.warning(
-            "on_complete_getcookie: Setting PLAYER_ID=%s", response_data["ident"]
-        )
-        get(f"/player/{GameState.player_id.value}/hand", on_complete_player_cards)
-
-    display_game_options()
-
-
-def on_complete_kitty(req: ajax.Ajax):
-    """
-    Callback for AJAX request for the round's kitty cards, if any.
-
-    :param req: Request object from callback.
-    :type req: [type]
-    """
-    mylog.error("In on_complete_kitty.")
-
-    ajax_request_tracker(-1)
-    mylog.warning("on_complete_kitty: req.text=%r", req.text)
-    temp = on_complete_common(req)
-    if temp is None:
-        return
-
-    # Set the global deck of cards for the kitty.
-    GameState.kitty_deck.clear()
-    GameState.kitty_deck = temp["cards"]
-    mylog.warning("on_complete_kitty: kitty_deck=%s", GameState.kitty_deck)
-    if GameState.player_id == GameState.round_bid_trick_winner:
-        # Add the kitty cards to the bid winner's deck
-        for card in GameState.kitty_deck:
-            GameState.players_hand.append(card)
-            GameState.players_meld_deck.append(card)
-        advance_mode()
-
-
-def on_complete_player_cards(req: ajax.Ajax):
-    """
-    Callback for AJAX request for the player's cards.
-
-    :param req: Request object from callback.
-    :type req: [type]
-    """
-    mylog.error("In on_complete_player_cards.")
-
-    ajax_request_tracker(-1)
-    temp = on_complete_common(req)
-    if temp is None:
-        return
-
-    # Set the global deck of cards for the player's hand.
-    GameState.players_hand.clear()
-    GameState.players_meld_deck.clear()
-    GameState.players_hand = [x["card"] for x in temp]
-    mylog.warning("on_complete_player_cards: players_hand=%s", GameState.players_hand)
-    GameState.players_meld_deck = copy.deepcopy(GameState.players_hand)  # Deep copy
-
-    display_game_options()
-
-
-def on_complete_get_meld_score(req: ajax.Ajax):
-    """
-    Callback for AJAX request for the player's meld.
-
-    :param req: Request object from callback.
-    :type req: [type]
-    """
-    mylog.error("In on_complete_get_meld_score.")
-
-    ajax_request_tracker(-1)
-    temp = on_complete_common(req)
-    if temp is None:
-        return
-
-    if req.status in [200, 0]:
-        mylog.warning("on_complete_get_meld_score: req.text: %s", req.text)
-        temp = json.loads(req.text)
-        InfoDialog(
-            "Meld Score",
-            f"Your meld score is {temp['score']}",
-            remove_after=5,
-            top=25,
-            left=25,
-        )
-        mfd = MeldFinalDialog()
-        mfd.display_meld_final_dialog()
-        return
-
-    mylog.warning("on_complete_get_meld_score: score: %r", req)
-
-
-def on_complete_common(req: ajax.Ajax) -> Optional[str]:
-    """
-    Common function for AJAX callbacks.
-
-    :param req: Request object from callback.
-    :type req: [type]
-    :return: Object returned in the request as decoded by JSON.
-    :rtype: [type]
-    """
-    mylog.error("In on_complete_common.")
-
-    ajax_request_tracker(-1)
-    if req.status in [200, 0]:
-        return json.loads(req.text)
-
-    mylog.warning("on_complete_common: req=%s", req)
-    return None
-
-
 def order_player_index_list_for_trick() -> List[int]:
     """
     Generate a list of indices in GameState.player_list starting with the current
@@ -1723,179 +1926,6 @@ def order_player_name_list_for_trick() -> List[str]:
     return [
         GameState.other_players_name(p_id) for p_id in order_player_id_list_for_trick()
     ]
-
-
-def advance_mode_callback(req: ajax.Ajax):
-    """
-    Routine to capture the response of the server when advancing the game mode.
-
-    :param req:   The request response passed in during callback
-    :type req:    Request
-    """
-    mylog.error("In advance_mode_callback.")
-    mylog.warning(
-        "advance_mode_callback: (current mode=%s)", GAME_MODES[GameState.game_mode]
-    )
-
-    ajax_request_tracker(-1)
-    if req.status not in [200, 0]:
-        return
-
-    if "Round" in req.text and "started" in req.text:
-        mylog.warning("advance_mode_callback: Starting new round.")
-        GameState.game_mode = 0
-        clear_globals_for_round_change()
-
-        # display_game_options()
-        return
-
-    mylog.warning("advance_mode_callback: req.text=%s", req.text)
-    data = json.loads(req.text)
-    mylog.warning("advance_mode_callback: data=%r", data)
-    GameState.game_mode = data["state"]
-
-    mylog.warning(
-        "Leaving advance_mode_callback (current mode=%s)",
-        GAME_MODES[GameState.game_mode],
-    )
-
-    remove_dialogs()
-
-    display_game_options()
-
-
-def game_mode_query_callback(req: ajax.Ajax):
-    """
-    Routine to capture the response of the server when advancing the game mode.
-
-    :param req:   The request response passed in during callback
-    :type req:    Request
-    """
-    mylog.error("In game_mode_query_callback.")
-
-    if GameState.game_mode is not None:
-        mylog.warning(
-            "Entering game_mode_query_callback (current mode=%s)",
-            GAME_MODES[GameState.game_mode],
-        )
-
-    ajax_request_tracker(-1)
-    # TODO: Handle a semi-corner case where in the middle of a round, a player loses /
-    # destroys a cookie and reloads the page.
-    if req.status not in [200, 0]:
-        mylog.warning(
-            "game_mode_query_callback: Not setting game_mode - possibly because GameState.player_id is empty (%s).",
-            GameState.player_id,
-        )
-        return
-
-    mylog.warning("game_mode_query_callback: req.text=%s", req.text)
-    data = json.loads(req.text)
-    mylog.warning("game_mode_query_callback: data=%r", data)
-    GameState.game_mode = data["state"]
-
-    mylog.warning(
-        "Leaving game_mode_query_callback (current mode=%s)",
-        GAME_MODES[GameState.game_mode],
-    )
-    if GameState.game_mode == 0:
-        clear_globals_for_round_change()
-
-    display_game_options()
-
-
-def get(url: str, callback=None, async_call=True):
-    """
-    Wrapper for the AJAX GET call.
-
-    :param url: The part of the URL that is being requested.
-    :type url: str
-    :param callback: Function to be called when the AJAX request is complete.
-    :type callback: function, optional
-    """
-    mylog.error("In get.")
-
-    req = ajax.Ajax()
-    if callback is not None:
-        ajax_request_tracker(1)
-        req.bind("complete", callback)
-    mylog.warning("Calling GET /api%s", url)
-    req.open("GET", "/api" + url, async_call)
-    req.set_header("content-type", "application/x-www-form-urlencoded")
-
-    req.send()
-
-
-def put(url: str, callback=None, async_call=True):
-    """
-    Wrapper for the AJAX PUT call.
-
-    :param data: The data to be submitted.
-    :param data: dict
-    :param url: The part of the URL that is being requested.
-    :type url: str
-    :param callback: Function to be called when the AJAX request is complete.
-    :type callback: function, optional
-    """
-    mylog.error("In put.")
-
-    req = ajax.Ajax()
-    if callback is not None:
-        ajax_request_tracker(1)
-        req.bind("complete", callback)
-    # mylog.warning("Calling PUT /api%s with data: %r", url, data)
-    mylog.warning("Calling PUT /api%s", url)
-    req.open("PUT", "/api" + url, async_call)
-    req.set_header("content-type", AJAX_URL_ENCODING)
-    # req.send({"a": a, "b":b})
-    # req.send(data)
-    req.send({})
-
-
-def post(url: str, callback=None, async_call=True):
-    """
-    Wrapper for the AJAX POST call.
-
-    :param data: The data to be submitted.
-    :param data: Any
-    :param url: The part of the URL that is being requested.
-    :type url: str
-    :param callback: Function to be called when the AJAX request is complete.
-    :type callback: function, optional
-    """
-    mylog.error("In post.")
-
-    req = ajax.Ajax()
-    if callback is not None:
-        ajax_request_tracker(1)
-        req.bind("complete", callback)
-    # mylog.warning("Calling POST /api%s with data: %r", url, data)
-    mylog.warning("Calling POST /api%s", url)
-    req.open("POST", "/api" + url, async_call)
-    req.set_header("content-type", AJAX_URL_ENCODING)
-    # req.send(data)
-    req.send({})
-
-
-def delete(url: str, callback=None, async_call=True):
-    """
-    Wrapper for the AJAX Data call.
-
-    :param url: The part of the URL that is being requested.
-    :type url: str
-    :param callback: Function to be called when the AJAX request is complete.
-    :type callback: function, optional
-    """
-    mylog.error("In delete.")
-
-    req = ajax.Ajax()
-    if callback is not None:
-        ajax_request_tracker(1)
-        req.bind("complete", callback)
-    # pass the arguments in the query string
-    req.open("DELETE", "/api" + url, async_call)
-    req.set_header("content-type", AJAX_URL_ENCODING)
-    req.send()
 
 
 def locate_cards_below_hand() -> List[str]:
@@ -2121,7 +2151,9 @@ def create_game_select_buttons(xpos, ypos) -> None:
             position=(xpos, ypos),
             size=(450, 35),
             text="No games found, create one and press here.",
-            onclick=lambda x: get("/game", on_complete_games),
+            onclick=lambda x: AjaxRequests.get(
+                "/game", AjaxCallbacks().on_complete_games
+            ),
             fontsize=18,
             objid="nogame",
         )
@@ -2133,7 +2165,10 @@ def create_game_select_buttons(xpos, ypos) -> None:
     # If there's only one game, choose that one.
     if len(GameState.game_dict) == 1:
         one_game_id = list(GameState.game_dict.keys())[0]
-        get(f"/setcookie/game_id/{one_game_id.value}", on_complete_set_gamecookie)
+        AjaxRequests.get(
+            f"/setcookie/game_id/{one_game_id.value}",
+            AjaxCallbacks().on_complete_set_gamecookie,
+        )
         return
 
     mylog.warning("cgsb: Enumerating games for buttons (%d).", len(GameState.game_dict))
@@ -2214,7 +2249,11 @@ def advance_mode(event=None):  # pylint: disable=unused-argument
     )
 
     if GameState.game_id != GameID() and GameState.player_id != PlayerID():
-        put(f"/game/{GameState.game_id.value}?state=true", advance_mode_callback, False)
+        AjaxRequests.put(
+            f"/game/{GameState.game_id.value}?state=true",
+            AjaxCallbacks().advance_mode_callback,
+            False,
+        )
     else:
         display_game_options()
 
@@ -2252,9 +2291,10 @@ def send_meld(event=None):  # pylint: disable=unused-argument
         card_string,
     )
 
-    get(
+    # TODO: Probably should be a PUT
+    AjaxRequests.get(
         f"/round/{GameState.round_id.value}/score_meld?player_id={GameState.player_id.value}&cards={card_string}",
-        on_complete_get_meld_score,
+        AjaxCallbacks().on_complete_get_meld_score,
     )
 
 
@@ -2267,8 +2307,12 @@ def clear_game(event=None):  # pylint: disable=unused-argument
     """
     mylog.error("In clear_game.")
 
-    get("/setcookie/game_id/clear", on_complete_set_gamecookie)
-    get("/setcookie/player_id/clear", on_complete_set_playercookie)
+    AjaxRequests.get(
+        "/setcookie/game_id/clear", AjaxCallbacks().on_complete_set_gamecookie
+    )
+    AjaxRequests.get(
+        "/setcookie/player_id/clear", AjaxCallbacks().on_complete_set_playercookie
+    )
 
 
 def clear_player(event=None):  # pylint: disable=unused-argument
@@ -2280,7 +2324,9 @@ def clear_player(event=None):  # pylint: disable=unused-argument
     """
     mylog.error("In clear_player.")
 
-    get("/setcookie/player_id/clear", on_complete_set_playercookie)
+    AjaxRequests.get(
+        "/setcookie/player_id/clear", AjaxCallbacks().on_complete_set_playercookie
+    )
 
 
 def choose_game(event=None):
@@ -2294,7 +2340,10 @@ def choose_game(event=None):
 
     try:
         game_to_be = event.currentTarget.id
-        get(f"/setcookie/game_id/{game_to_be}", on_complete_set_gamecookie)
+        AjaxRequests.get(
+            f"/setcookie/game_id/{game_to_be}",
+            AjaxCallbacks().on_complete_set_gamecookie,
+        )
         mylog.warning("choose_game: GAME_ID will be %s", game_to_be)
     except AttributeError:
         mylog.warning("choose_game: Caught AttributeError.")
@@ -2312,8 +2361,13 @@ def choose_player(event=None):
 
     try:
         player_to_be = event.currentTarget.id
-        get(f"/setcookie/player_id/{player_to_be}", on_complete_set_playercookie)
-        get(f"/player/{player_to_be}/hand", on_complete_player_cards)
+        AjaxRequests.get(
+            f"/setcookie/player_id/{player_to_be}",
+            AjaxCallbacks().on_complete_set_playercookie,
+        )
+        AjaxRequests.get(
+            f"/player/{player_to_be}/hand", AjaxCallbacks().on_complete_player_cards
+        )
         mylog.warning("choose_player: PLAYER_ID will be %s", player_to_be)
     except AttributeError:
         mylog.warning("choose_player: Caught AttributeError.")
@@ -2337,23 +2391,34 @@ def display_game_options():
         create_game_select_buttons(xpos, ypos)
     elif GameState.game_mode is None:
         mylog.warning("dgo: In GameState.game_mode is None")
-        get(f"/game/{GameState.game_id.value}?state=false", game_mode_query_callback)
+        AjaxRequests.get(
+            f"/game/{GameState.game_id.value}?state=false",
+            AjaxCallbacks().game_mode_query_callback,
+        )
     elif GameState.round_id == RoundID():
         mylog.warning("dgo: In GameState.round_id=''")
         # Open the websocket if needed.
         if g_websocket is None:
             g_websocket = WSocketContainer()
 
-        get(f"/game/{GameState.game_id.value}/round", on_complete_rounds)
+        AjaxRequests.get(
+            f"/game/{GameState.game_id.value}/round", AjaxCallbacks().on_complete_rounds
+        )
     elif GameState.team_list == []:
         mylog.warning("dgo: In GameState.team_list=[]")
-        get(f"/round/{GameState.round_id.value}/teams", on_complete_teams)
+        AjaxRequests.get(
+            f"/round/{GameState.round_id.value}/teams",
+            AjaxCallbacks().on_complete_teams,
+        )
     elif GameState.player_id == PlayerID():
         mylog.warning("dgo: In GameState.player_id=''")
         create_player_select_buttons(xpos, ypos)
     elif GameState.players_hand == []:
         mylog.warning("dgo: In GameState.players_hand=[]")
-        get(f"/player/{GameState.player_id.value}/hand", on_complete_player_cards)
+        AjaxRequests.get(
+            f"/player/{GameState.player_id.value}/hand",
+            AjaxCallbacks().on_complete_player_cards,
+        )
     else:
         mylog.warning("dgo: In else clause")
         # Send the registration message.
@@ -2400,10 +2465,10 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
     if GameState.game_mode is None and not GameState.game_dict:
         GameState.game_mode = 0
 
-    if g_ajax_outstanding_requests > 0:
+    if AjaxRequestTracker.outstanding_requests() > 0:
         mylog.warning(
             "There are %d outstanding requests. Skipping clear.",
-            g_ajax_outstanding_requests,
+            AjaxRequestTracker.outstanding_requests(),
         )
         return
 
@@ -2550,7 +2615,10 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
             # The kitty doesn't need to remain 'secret' now that the bidding is done.
             # Ask the server for the cards in the kitty.
             if GameState.round_id != RoundID():
-                get(f"/round/{GameState.round_id.value}/kitty", on_complete_kitty)
+                AjaxRequests.get(
+                    f"/round/{GameState.round_id.value}/kitty",
+                    AjaxCallbacks().on_complete_kitty,
+                )
         elif GAME_MODES[GameState.game_mode] in ["reveal"]:  # Reveal
             populate_canvas(GameState.kitty_deck, g_canvas, "kitty")
             populate_canvas(GameState.players_hand, g_canvas, "player")
@@ -2636,6 +2704,6 @@ g_discard_deck = ["card-base" for _ in range(GameState.players)]
 document.getElementById("please_wait").text = ""
 
 # Pre-populate some data. Each of these calls display_game_options.
-get("/game", on_complete_games)
-get("/getcookie/game_id", on_complete_getcookie)
-get("/getcookie/player_id", on_complete_getcookie)
+AjaxRequests.get("/game", AjaxCallbacks().on_complete_games)
+AjaxRequests.get("/getcookie/game_id", AjaxCallbacks().on_complete_getcookie)
+AjaxRequests.get("/getcookie/player_id", AjaxCallbacks().on_complete_getcookie)
