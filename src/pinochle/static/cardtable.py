@@ -93,12 +93,9 @@ for _suit in SUITS:
 # API "Constants"
 AJAX_URL_ENCODING = "application/x-www-form-urlencoded"
 
-# Websocket holder
-g_websocket: Optional[websocket.WebSocket] = None
 # Various state globals
 g_ajax_outstanding_requests: int = 0
 # button_advance_mode = None  # pylint: disable=invalid-name
-g_registered_with_server = False  # pylint: disable=invalid-name
 
 
 @dataclass(frozen=True)
@@ -313,7 +310,7 @@ class PlayingCard(SVG.UseObject):
             # self.face_update_dom()
             # TODO: Call API to notify the other players this particular card was
             # flipped over and add it to the player's hand.
-            send_websocket_message(
+            g_websocket.send_websocket_message(
                 {
                     "action": "reveal_kitty",
                     "game_id": GameState.game_id.value,
@@ -583,7 +580,7 @@ class TrumpSelectDialog:
             if trump in card:
                 buried_trump += 1
         if buried_trump > 0:
-            send_websocket_message(
+            g_websocket.send_websocket_message(
                 {
                     "action": "trump_buried",
                     "game_id": GameState.game_id.value,
@@ -813,492 +810,526 @@ def dump_globals() -> None:
             print(f"dgo: {var_name} is None")
 
 
-def find_protocol_server():
+class WSocketContainer:
     """
-    Gather information from the environment about the protocol and server name
-    from where we're being served.
-
-    :return: Tuple with strings representing protocol and server with port.
-    :rtype: (str, str)
-    """
-    mylog.error("In find_protocol_server.")
-
-    start = os.environ["HOME"].find("//") + 2
-    end = os.environ["HOME"].find("/", start) + 1
-    proto = os.environ["HOME"][: start - 3]
-    if end <= start:
-        hostname = os.environ["HOME"][start:]
-    else:
-        hostname = os.environ["HOME"][start:end]
-
-    return (proto, hostname)
-
-
-def ws_open():
-    """
-    Open a websocket connection back to the originating server.
-    """
-    # pylint: disable=invalid-name
-    global g_websocket
-    mylog.error("In ws_open.")
-
-    if not websocket.supported:
-        InfoDialog("websocket", "WebSocket is not supported by your browser")
-        return
-
-    # open a web socket
-    proto = PROTOCOL.replace("http", "ws")
-    g_websocket = websocket.WebSocket(f"{proto}://{SERVER}/stream")
-    # bind functions to web socket events
-    g_websocket.bind("open", on_ws_open)
-    g_websocket.bind("message", on_ws_event)
-    g_websocket.bind("close", on_ws_close)
-
-
-def on_ws_open(event=None):  # pylint: disable=unused-argument
-    """
-    Callback for Websocket open event.
-    """
-    mylog.error("on_ws_open: Connection is open")
-
-
-def on_ws_close(event=None):  # pylint: disable=unused-argument
-    """
-    Callback for Websocket close event.
-    """
-    global g_websocket, g_registered_with_server  # pylint: disable=invalid-name
-    mylog.error("on_ws_close: Connection has closed")
-
-    g_websocket = None
-    g_registered_with_server = False
-    # set_timeout(ws_open, 1000)
-
-
-def on_ws_error(event=None):
-    """
-    Callback for Websocket error event.
-    """
-    mylog.error("on_ws_error: Connection has experienced an error")
-    mylog.warning("on_ws_error: event=%r", event)
-
-
-def on_ws_event(event=None):
-    """
-    Callback for Websocket event from server. This method handles much of the state
-    change in the user interface.
-
-    :param event: Event object from ws event.
-    :type event: [type]
-    """
-    mylog.error("In on_ws_event.")
-
-    t_data = json.loads(event.data)
-    mylog.warning("on_ws_event: %s", event.data)
-
-    if "action" not in t_data:
-        return
-
-    actions = {
-        "game_start": start_game_and_clear_round_globals,
-        "notification_player_list": update_player_names,
-        "game_state": set_game_state_from_server,
-        "bid_prompt": BidDialog().display_bid_dialog,
-        "bid_winner": display_bid_winner,
-        "reveal_kitty": reveal_kitty_card,
-        "trump_selected": record_trump_selection,
-        "trump_buried": notify_trump_buried,
-        "meld_update": display_player_meld,
-        "team_score": update_team_scores,
-        "trick_card": update_trick_card,
-        "trick_won": update_trick_winner,
-        "trick_next": clear_globals_for_trick_change,
-        "score_round": update_round_final_score,
-    }
-
-    # Dispatch action
-    actions[t_data["action"]](t_data)
-
-
-def update_round_final_score(data: Dict):
-    """
-    Notify players that the final trick has been won.
-
-    :param event: [description], defaults to None
-    :type event: [type], optional
-    """
-    mylog.error("In update_round_final_score.")
-
-    mylog.warning("update_round_final_score: data=%s", data)
-    assert isinstance(data, dict)
-    t_player_id = PlayerID(data["player_id"])
-    assert isinstance(data["team_trick_scores"], dict)
-    mylog.warning(
-        "update_round_final_score: data['team_trick_scores']: %r",
-        data["team_trick_scores"],
-    )
-    t_team_trick_scores = {TeamID(x): y for (x, y) in data["team_trick_scores"].items()}
-    assert isinstance(data["team_scores"], dict)
-    mylog.warning(
-        "update_round_final_score: data['team_scores']: %r", data["team_scores"],
-    )
-    t_team_scores = {TeamID(x): y for (x, y) in data["team_scores"].items()}
-    mylog.warning("update_round_final_score: t_player_id=%s", t_player_id)
-    mylog.warning(
-        "update_round_final_score: t_team_trick_scores=%r", t_team_trick_scores
-    )
-    mylog.warning("update_round_final_score: t_team_scores=%r", t_team_scores)
-
-    # Record that information.
-    GameState.round_bid_trick_winner = t_player_id
-
-    # Obtain the other team's ID
-    t_other_team_id = GameState.other_team_id()
-
-    mylog.warning("update_round_final_score: Setting my team name")
-    my_team = GameState.my_team_name()
-    mylog.warning("update_round_final_score: Setting other team's name")
-    other_team = GameState.other_team_name()
-    mylog.warning("update_round_final_score: Setting score variables")
-    my_scores, other_scores = (
-        t_team_trick_scores[GameState.team_id],
-        t_team_trick_scores[t_other_team_id],
-    )
-
-    # TODO: Handle case where bid winner's team doesn't make the bid.
-    mylog.warning("update_round_final_score: Setting global team scores.")
-    GameState.my_team_score, GameState.other_team_score = (
-        t_team_scores[GameState.team_id],
-        t_team_scores[t_other_team_id],
-    )
-
-    mylog.warning(
-        "GameState.player_id=%s / t_player_id=%s", GameState.player_id, t_player_id
-    )
-    if GameState.player_id == t_player_id:
-        mylog.warning(
-            "update_round_final_score: Displaying final trick dialog for this player."
-        )
-        TrickWonDialog().display_final_trick_dialog(
-            my_team, my_scores, other_team, other_scores
-        )
-    else:
-        mylog.warning(
-            "update_round_final_score: Displaying generic final trick dialog for this player."
-        )
-        InfoDialog(
-            "Last Trick Won",
-            f"{GameState.other_players_name(t_player_id)} won the final trick. "
-            + f"Trick Scores: {my_team}: {my_scores} points / {other_team}: {other_scores} points",
-            top=25,
-            left=25,
-        )
-
-
-def update_trick_winner(data: Dict):
-    """
-    Notify players that the trick has been won.
-
-    :param event: [description], defaults to None
-    :type event: [type], optional
-    """
-    mylog.error("In update_trick_winner.")
-    mylog.warning("update_trick_winner: data=%s", data)
-
-    assert isinstance(data, dict)
-    t_player_id = PlayerID(data["player_id"])
-    t_card = data["winning_card"]
-    mylog.warning("update_trick_winner: t_player_id=%s", t_player_id)
-    mylog.warning("update_trick_winner: t_card=%s", t_card)
-
-    # Find the first instance of the winning card in the list.
-    card_index = g_discard_deck.index(t_card)
-    # Correlate that to the player_id who threw it.
-    t_player_id = order_player_id_list_for_trick()[card_index]
-    mylog.warning("update_trick_winner: t_player_id=%s", t_player_id)
-    # Record that information.
-    GameState.round_bid_trick_winner = t_player_id
-
-    if GameState.player_id == t_player_id:
-        TrickWonDialog().display_trick_won_dialog()
-    else:
-        InfoDialog(
-            "Trick Won",
-            f"{GameState.other_players_name(t_player_id)} won the trick.",
-            top=25,
-            left=25,
-        )
-
-
-def update_trick_card(data: Dict):
-    """
-    Place the thrown card in the player's slot for this trick.
-
-    :param event: [description], defaults to None
-    :type event: [type], optional
-    """
-    mylog.error("Entering update_trick_card.")
-    mylog.warning("update_trick_card: data=%s", data)
-
-    assert isinstance(data, dict)
-    t_player_id: PlayerID = PlayerID(data["player_id"])
-    t_card = data["card"]
-    mylog.warning("update_trick_card: t_player_id=%s", t_player_id)
-    mylog.warning("update_trick_card: t_card=%s", t_card)
-    g_discard_deck[order_player_id_list_for_trick().index(t_player_id)] = t_card
-
-    # Set the player's hand to unmovable until the trick is over.
-    rebuild_display()
-
-
-def update_team_scores(data: Dict):
-    """
-    Notify players that trump has been buried.
-
-    :param event: [description], defaults to None
-    :type event: [type], optional
-    """
-    # pylint: disable=invalid-name
-
-    mylog.warning("update_team_scores: data=%r", data)
-    assert isinstance(data, dict)
-    if GameState.team_id == TeamID(data["team_id"]):
-        GameState.my_team_score = data["score"]
-        GameState.meld_score = data["meld_score"]
-    else:  # Other team
-        GameState.other_team_score = data["score"]
-
-    update_status_line()
-
-
-def notify_trump_buried(data: Dict):
-    """
-    Notify players that trump has been buried.
-
-    :param event: [description], defaults to None
-    :type event: [type], optional
-    """
-    mylog.error("Entering notify_trump_buried.")
-    mylog.warning("notify_trump_buried: data=%r", data)
-
-    assert isinstance(data, dict)
-    if "player_id" in data:
-        mylog.warning("notify_trump_buried: About to retrieve player_id from data")
-        t_player_id: PlayerID = PlayerID(data["player_id"])
-    else:
-        t_player_id = PlayerID()
-    mylog.warning("notify_trump_buried: t_player_id=%r", t_player_id)
-    player_name = ""
-    if t_player_id == GameState.player_id:
-        player_name = "You have"
-    else:
-        player_name = "{} has".format(GameState.other_players_name(t_player_id))
-    mylog.warning("notify_trump_buried: player_name=%s", player_name)
-    count = data["count"]
-    mylog.warning("notify_trump_buried: count=%d", count)
-
-    InfoDialog(
-        "Trump Buried",
-        html.P(f"{player_name} buried {count} trump cards."),
-        left=25,
-        top=25,
-        ok=True,
-        remove_after=15,
-    )
-
-
-def record_trump_selection(data: Dict):
-    """
-    Convey the chosen trump to the user, as provided by the server.
+    Container for websocket communications.
     """
 
-    GameState.trump = str(data["trump"])
+    websock: websocket.WebSocket = None
+    PROTOCOL: str
+    SERVER: str
+    registered_with_server = False
 
-    remove_dialogs()
-    InfoDialog(
-        "Trump Selected",
-        f"Trump for this round is: {GameState.trump.capitalize()}s",
-        remove_after=15,
-        ok=True,
-        left=25,
-        top=25,
-    )
+    def __init__(self):
+        # pylint: disable=no-member
+        if not websocket.supported:
+            InfoDialog("websocket", "WebSocket is not supported by your browser")
+            return
+        if self.websock:
+            return
 
+        self.find_protocol_server()
+        self.ws_open()
 
-def reveal_kitty_card(data: Dict):
-    """
-    Reveal the provided card in the kitty.
-    """
-    mylog.error("Entering reveal_kitty_card.")
+    def find_protocol_server(self):
+        """
+        Gather information from the environment about the protocol and server name
+        from where we're being served.
 
-    revealed_card = str(data["card"])
+        :return: Tuple with strings representing protocol and server with port.
+        :rtype: (str, str)
+        """
+        mylog.error("In find_protocol_server.")
 
-    if revealed_card not in GameState.kitty_deck:
-        mylog.warning("%s is not in %r", revealed_card, GameState.kitty_deck)
-        return
-
-    for (objid, node) in g_canvas.objectDict.items():
-        if (
-            isinstance(node, SVG.UseObject)
-            and "kitty" in objid
-            and node.attrs["href"] == revealed_card
-            and not node.attrs["show_face"]
-        ):
-            node.show_face = True
-            node.flippable = False
-            node.face_update_dom()
-
-
-def display_bid_winner(data: Dict):
-    """
-    Display the round's bid winner.
-
-    :param event: [description], defaults to None
-    :type event: [type], optional
-    """
-
-    t_player_id = PlayerID(data["player_id"])
-    player_name = GameState.other_players_name(t_player_id)
-    bid = int(data["bid"])
-
-    remove_dialogs()
-
-    InfoDialog(
-        "Bid Winner",
-        html.P(f"{player_name} has won the bid for {bid} points!"),
-        left=25,
-        top=25,
-        ok=True,
-        remove_after=15,
-    )
-
-    # You may have won...
-    GameState.round_bid_trick_winner = t_player_id
-    GameState.round_bid = bid
-
-
-def display_player_meld(data: Dict):
-    """
-    Display the meld hand submitted by a player in a pop-up.
-
-    :param meld_data: Data from the event as a JSON string.
-    :type meld_data: str
-    """
-    mylog.error("Entering display_player_meld.")
-
-    player_id = PlayerID(data["player_id"])
-    player_name = GameState.other_players_name(player_id)
-    card_list = data["card_list"]
-    try:
-        # If a dialog already exists, delete it.
-        if existing_dialog := document.getElementById(f"dialog_{player_id.value}"):
-            existing_dialog.parentNode.removeChild(existing_dialog)
-    except Exception as e:  # pylint: disable=invalid-name,broad-except
-        mylog.warning("display_player_meld: Caught exception: %r", e)
-    try:
-        # Construct the new dialog to display the meld cards.
-        xpos = 0.0
-        d_canvas = SVG.CanvasObject("40vw", "20vh", "none", objid="dialog_canvas")
-        for card in card_list:
-            # pylint: disable=expression-not-assigned
-            d_canvas <= SVG.UseObject(href=f"#{card}", origin=(xpos, 0))
-            xpos += CARD_WIDTH / 2.0
-    except Exception as e:  # pylint: disable=invalid-name,broad-except
-        mylog.warning("display_player_meld: Caught exception: %r", e)
-        return
-    InfoDialog(
-        "Meld Cards",
-        html.P(f"{player_name}'s meld cards are:") + d_canvas,
-        left=25,
-        top=25,
-        ok=True,
-    )
-    mylog.warning(
-        "display_player_meld: Items: %r",
-        document.getElementsByClassName("brython-dialog-main"),
-    )
-    # Add an ID attribute so we can find it later if needed.
-    for item in document.getElementsByClassName("brython-dialog-main"):
-        mylog.warning("display_player_meld: Item: %r", item)
-        if not item.id:
-            # Assume this is the one we just created.
-            item.id = f"dialog_{player_id.value}"
-
-    d_canvas.fitContents()
-
-
-def update_player_names(data: Dict):
-    """
-    Update the player names in the UI.
-
-    :param player_data: JSON-formatted message from the server.
-    :type player_data: str
-    """
-    # pylint: disable=invalid-name
-    global g_registered_with_server
-    mylog.error("In update_player_names.")
-
-    GameState.player_list = [PlayerID(x) for x in data["player_order"]]
-    my_player_list = [PlayerID(x) for x in data["player_ids"]]
-    # Display the player's name in the UI
-    if my_player_list != [] and GameState.player_id in my_player_list:
-        mylog.warning("Players: %r", my_player_list)
-
-        g_registered_with_server = True
-        document.getElementById("player_name").clear()
-        document.getElementById("player_name").attach(
-            html.SPAN(GameState.my_name(), Class="player_name",)
-        )
-
-        # TODO: Do something more useful like a line of names with color change when
-        # the player's client registers.
-        document.getElementById("other_players").clear()
-        document.getElementById("other_players").attach(
-            html.SPAN(
-                ", ".join(
-                    sorted(
-                        GameState.other_players_name(x)
-                        for x in my_player_list
-                        if x != GameState.player_id
-                    )
-                ),
-                Class="other_players",
-            )
-        )
-        if len(my_player_list) < len(GameState.player_dict):
-            document.getElementById(
-                "please_wait"
-            ).text = "Waiting for all players to join the game."
+        start = os.environ["HOME"].find("//") + 2
+        end = os.environ["HOME"].find("/", start) + 1
+        self.PROTOCOL = os.environ["HOME"][: start - 3]
+        if end <= start:
+            self.SERVER = os.environ["HOME"][start:]
         else:
-            document.getElementById("please_wait").remove()
+            self.SERVER = os.environ["HOME"][start:end]
 
+    def ws_open(self):
+        """
+        Open a websocket connection back to the originating server.
+        """
+        # pylint: disable=invalid-name
+        mylog.error("In ws_open.")
 
-def set_game_state_from_server(data: Dict):
-    """
-    Set game state from webservice message.
+        # open a web socket
+        proto = self.PROTOCOL.replace("http", "ws")
+        self.websock = websocket.WebSocket(f"{proto}://{self.SERVER}/stream")
+        # bind functions to web socket events
+        self.websock.bind("open", self.on_ws_open)
+        self.websock.bind("message", self.on_ws_event)
+        self.websock.bind("close", self.on_ws_close)
 
-    :param data: Data from the webservice message.
-    :type data: Dict
-    """
-    mylog.error("In set_game_state_from_server.")
+    def on_ws_open(self, event=None):  # pylint: disable=unused-argument
+        """
+        Callback for Websocket open event.
+        """
+        mylog.error("on_ws_open: Connection is open")
 
-    GameState.game_mode = data["state"]
-    display_game_options()
+    def on_ws_close(self, event=None):  # pylint: disable=unused-argument
+        """
+        Callback for Websocket close event.
+        """
+        mylog.error("on_ws_close: Connection has closed")
 
+        self.websock = None
+        self.registered_with_server = False
+        # set_timeout(ws_open, 1000)
 
-def start_game_and_clear_round_globals(data: Dict):
-    """
-    Start game and clear round globals.
+    def on_ws_error(self, event=None):
+        """
+        Callback for Websocket error event.
+        """
+        mylog.error("on_ws_error: Connection has experienced an error")
+        mylog.warning("on_ws_error: event=%r", event)
 
-    :param data: Data from the webservice message.
-    :type data: Dict
-    """
-    mylog.error("In start_game_and_clear_round_globals.")
+    def on_ws_event(self, event=None):
+        """
+        Callback for Websocket event from server. This method handles much of the state
+        change in the user interface.
 
-    GameState.game_mode = data["state"]
-    mylog.warning(
-        "on_ws_event: game_start: GameState.player_list=%r", GameState.player_list
-    )
-    clear_globals_for_round_change()
+        :param event: Event object from ws event.
+        :type event: [type]
+        """
+        mylog.error("In on_ws_event.")
+
+        t_data = json.loads(event.data)
+        mylog.warning("on_ws_event: %s", event.data)
+
+        if "action" not in t_data:
+            return
+
+        actions = {
+            "game_start": self.start_game_and_clear_round_globals,
+            "notification_player_list": self.update_player_names,
+            "game_state": self.set_game_state_from_server,
+            "bid_prompt": BidDialog().display_bid_dialog,
+            "bid_winner": self.display_bid_winner,
+            "reveal_kitty": self.reveal_kitty_card,
+            "trump_selected": self.record_trump_selection,
+            "trump_buried": self.notify_trump_buried,
+            "meld_update": self.display_player_meld,
+            "team_score": self.update_team_scores,
+            "trick_card": self.update_trick_card,
+            "trick_won": self.update_trick_winner,
+            "trick_next": clear_globals_for_trick_change,
+            "score_round": self.update_round_final_score,
+        }
+
+        # Dispatch action
+        actions[t_data["action"]](t_data)
+
+    def send(self, data):
+        """
+        Provide the same functionality as a raw websocket.
+        """
+        self.websock.send(data)
+
+    def update_round_final_score(self, data: Dict):
+        """
+        Notify players that the final trick has been won.
+
+        :param event: [description], defaults to None
+        :type event: [type], optional
+        """
+        mylog.error("In update_round_final_score.")
+
+        mylog.warning("update_round_final_score: data=%s", data)
+        assert isinstance(data, dict)
+        t_player_id = PlayerID(data["player_id"])
+        assert isinstance(data["team_trick_scores"], dict)
+        mylog.warning(
+            "update_round_final_score: data['team_trick_scores']: %r",
+            data["team_trick_scores"],
+        )
+        t_team_trick_scores = {
+            TeamID(x): y for (x, y) in data["team_trick_scores"].items()
+        }
+        assert isinstance(data["team_scores"], dict)
+        mylog.warning(
+            "update_round_final_score: data['team_scores']: %r", data["team_scores"],
+        )
+        t_team_scores = {TeamID(x): y for (x, y) in data["team_scores"].items()}
+        mylog.warning("update_round_final_score: t_player_id=%s", t_player_id)
+        mylog.warning(
+            "update_round_final_score: t_team_trick_scores=%r", t_team_trick_scores
+        )
+        mylog.warning("update_round_final_score: t_team_scores=%r", t_team_scores)
+
+        # Record that information.
+        GameState.round_bid_trick_winner = t_player_id
+
+        # Obtain the other team's ID
+        t_other_team_id = GameState.other_team_id()
+
+        mylog.warning("update_round_final_score: Setting my team name")
+        my_team = GameState.my_team_name()
+        mylog.warning("update_round_final_score: Setting other team's name")
+        other_team = GameState.other_team_name()
+        mylog.warning("update_round_final_score: Setting score variables")
+        my_scores, other_scores = (
+            t_team_trick_scores[GameState.team_id],
+            t_team_trick_scores[t_other_team_id],
+        )
+
+        # TODO: Handle case where bid winner's team doesn't make the bid.
+        mylog.warning("update_round_final_score: Setting global team scores.")
+        GameState.my_team_score, GameState.other_team_score = (
+            t_team_scores[GameState.team_id],
+            t_team_scores[t_other_team_id],
+        )
+
+        mylog.warning(
+            "GameState.player_id=%s / t_player_id=%s", GameState.player_id, t_player_id
+        )
+        if GameState.player_id == t_player_id:
+            mylog.warning(
+                "update_round_final_score: Displaying final trick dialog for this player."
+            )
+            TrickWonDialog().display_final_trick_dialog(
+                my_team, my_scores, other_team, other_scores
+            )
+        else:
+            mylog.warning(
+                "update_round_final_score: Displaying generic final trick dialog for this player."
+            )
+            InfoDialog(
+                "Last Trick Won",
+                f"{GameState.other_players_name(t_player_id)} won the final trick. "
+                + f"Trick Scores: {my_team}: {my_scores} points / {other_team}: {other_scores} points",
+                top=25,
+                left=25,
+            )
+
+    def update_trick_winner(self, data: Dict):
+        """
+        Notify players that the trick has been won.
+
+        :param event: [description], defaults to None
+        :type event: [type], optional
+        """
+        mylog.error("In update_trick_winner.")
+        mylog.warning("update_trick_winner: data=%s", data)
+
+        assert isinstance(data, dict)
+        t_player_id = PlayerID(data["player_id"])
+        t_card = data["winning_card"]
+        mylog.warning("update_trick_winner: t_player_id=%s", t_player_id)
+        mylog.warning("update_trick_winner: t_card=%s", t_card)
+
+        # Find the first instance of the winning card in the list.
+        card_index = g_discard_deck.index(t_card)
+        # Correlate that to the player_id who threw it.
+        t_player_id = order_player_id_list_for_trick()[card_index]
+        mylog.warning("update_trick_winner: t_player_id=%s", t_player_id)
+        # Record that information.
+        GameState.round_bid_trick_winner = t_player_id
+
+        if GameState.player_id == t_player_id:
+            TrickWonDialog().display_trick_won_dialog()
+        else:
+            InfoDialog(
+                "Trick Won",
+                f"{GameState.other_players_name(t_player_id)} won the trick.",
+                top=25,
+                left=25,
+            )
+
+    def update_trick_card(self, data: Dict):
+        """
+        Place the thrown card in the player's slot for this trick.
+
+        :param event: [description], defaults to None
+        :type event: [type], optional
+        """
+        mylog.error("Entering update_trick_card.")
+        mylog.warning("update_trick_card: data=%s", data)
+
+        assert isinstance(data, dict)
+        t_player_id: PlayerID = PlayerID(data["player_id"])
+        t_card = data["card"]
+        mylog.warning("update_trick_card: t_player_id=%s", t_player_id)
+        mylog.warning("update_trick_card: t_card=%s", t_card)
+        g_discard_deck[order_player_id_list_for_trick().index(t_player_id)] = t_card
+
+        # Set the player's hand to unmovable until the trick is over.
+        rebuild_display()
+
+    def update_team_scores(self, data: Dict):
+        """
+        Notify players that trump has been buried.
+
+        :param event: [description], defaults to None
+        :type event: [type], optional
+        """
+        # pylint: disable=invalid-name
+
+        mylog.warning("update_team_scores: data=%r", data)
+        assert isinstance(data, dict)
+        if GameState.team_id == TeamID(data["team_id"]):
+            GameState.my_team_score = data["score"]
+            GameState.meld_score = data["meld_score"]
+        else:  # Other team
+            GameState.other_team_score = data["score"]
+
+        update_status_line()
+
+    def notify_trump_buried(self, data: Dict):
+        """
+        Notify players that trump has been buried.
+
+        :param event: [description], defaults to None
+        :type event: [type], optional
+        """
+        mylog.error("Entering notify_trump_buried.")
+        mylog.warning("notify_trump_buried: data=%r", data)
+
+        assert isinstance(data, dict)
+        if "player_id" in data:
+            mylog.warning("notify_trump_buried: About to retrieve player_id from data")
+            t_player_id: PlayerID = PlayerID(data["player_id"])
+        else:
+            t_player_id = PlayerID()
+        mylog.warning("notify_trump_buried: t_player_id=%r", t_player_id)
+        player_name = ""
+        if t_player_id == GameState.player_id:
+            player_name = "You have"
+        else:
+            player_name = "{} has".format(GameState.other_players_name(t_player_id))
+        mylog.warning("notify_trump_buried: player_name=%s", player_name)
+        count = data["count"]
+        mylog.warning("notify_trump_buried: count=%d", count)
+
+        InfoDialog(
+            "Trump Buried",
+            html.P(f"{player_name} buried {count} trump cards."),
+            left=25,
+            top=25,
+            ok=True,
+            remove_after=15,
+        )
+
+    def display_player_meld(self, data: Dict):
+        """
+        Display the meld hand submitted by a player in a pop-up.
+
+        :param meld_data: Data from the event as a JSON string.
+        :type meld_data: str
+        """
+        mylog.error("Entering display_player_meld.")
+
+        player_id = PlayerID(data["player_id"])
+        player_name = GameState.other_players_name(player_id)
+        card_list = data["card_list"]
+        try:
+            # If a dialog already exists, delete it.
+            if existing_dialog := document.getElementById(f"dialog_{player_id.value}"):
+                existing_dialog.parentNode.removeChild(existing_dialog)
+        except Exception as e:  # pylint: disable=invalid-name,broad-except
+            mylog.warning("display_player_meld: Caught exception: %r", e)
+        try:
+            # Construct the new dialog to display the meld cards.
+            xpos = 0.0
+            d_canvas = SVG.CanvasObject("40vw", "20vh", "none", objid="dialog_canvas")
+            for card in card_list:
+                # pylint: disable=expression-not-assigned
+                d_canvas <= SVG.UseObject(href=f"#{card}", origin=(xpos, 0))
+                xpos += CARD_WIDTH / 2.0
+        except Exception as e:  # pylint: disable=invalid-name,broad-except
+            mylog.warning("display_player_meld: Caught exception: %r", e)
+            return
+        InfoDialog(
+            "Meld Cards",
+            html.P(f"{player_name}'s meld cards are:") + d_canvas,
+            left=25,
+            top=25,
+            ok=True,
+        )
+        mylog.warning(
+            "display_player_meld: Items: %r",
+            document.getElementsByClassName("brython-dialog-main"),
+        )
+        # Add an ID attribute so we can find it later if needed.
+        for item in document.getElementsByClassName("brython-dialog-main"):
+            mylog.warning("display_player_meld: Item: %r", item)
+            if not item.id:
+                # Assume this is the one we just created.
+                item.id = f"dialog_{player_id.value}"
+
+        d_canvas.fitContents()
+
+    def record_trump_selection(self, data: Dict):
+        """
+        Convey the chosen trump to the user, as provided by the server.
+        """
+
+        GameState.trump = str(data["trump"])
+
+        remove_dialogs()
+        InfoDialog(
+            "Trump Selected",
+            f"Trump for this round is: {GameState.trump.capitalize()}s",
+            remove_after=15,
+            ok=True,
+            left=25,
+            top=25,
+        )
+
+    def reveal_kitty_card(self, data: Dict):
+        """
+        Reveal the provided card in the kitty.
+        """
+        mylog.error("Entering reveal_kitty_card.")
+
+        revealed_card = str(data["card"])
+
+        if revealed_card not in GameState.kitty_deck:
+            mylog.warning("%s is not in %r", revealed_card, GameState.kitty_deck)
+            return
+
+        for (objid, node) in g_canvas.objectDict.items():
+            if (
+                isinstance(node, SVG.UseObject)
+                and "kitty" in objid
+                and node.attrs["href"] == revealed_card
+                and not node.attrs["show_face"]
+            ):
+                node.show_face = True
+                node.flippable = False
+                node.face_update_dom()
+
+    def display_bid_winner(self, data: Dict):
+        """
+        Display the round's bid winner.
+
+        :param event: [description], defaults to None
+        :type event: [type], optional
+        """
+
+        t_player_id = PlayerID(data["player_id"])
+        player_name = GameState.other_players_name(t_player_id)
+        bid = int(data["bid"])
+
+        remove_dialogs()
+
+        InfoDialog(
+            "Bid Winner",
+            html.P(f"{player_name} has won the bid for {bid} points!"),
+            left=25,
+            top=25,
+            ok=True,
+            remove_after=15,
+        )
+
+        # You may have won...
+        GameState.round_bid_trick_winner = t_player_id
+        GameState.round_bid = bid
+
+    def update_player_names(self, data: Dict):
+        """
+        Update the player names in the UI.
+
+        :param player_data: JSON-formatted message from the server.
+        :type player_data: str
+        """
+        mylog.error("In update_player_names.")
+
+        GameState.player_list = [PlayerID(x) for x in data["player_order"]]
+        my_player_list = [PlayerID(x) for x in data["player_ids"]]
+        # Display the player's name in the UI
+        if my_player_list != [] and GameState.player_id in my_player_list:
+            mylog.warning("Players: %r", my_player_list)
+
+            self.registered_with_server = True
+            document.getElementById("player_name").clear()
+            document.getElementById("player_name").attach(
+                html.SPAN(GameState.my_name(), Class="player_name",)
+            )
+
+            # TODO: Do something more useful like a line of names with color change when
+            # the player's client registers.
+            document.getElementById("other_players").clear()
+            document.getElementById("other_players").attach(
+                html.SPAN(
+                    ", ".join(
+                        sorted(
+                            GameState.other_players_name(x)
+                            for x in my_player_list
+                            if x != GameState.player_id
+                        )
+                    ),
+                    Class="other_players",
+                )
+            )
+            if len(my_player_list) < len(GameState.player_dict):
+                document.getElementById(
+                    "please_wait"
+                ).text = "Waiting for all players to join the game."
+            else:
+                document.getElementById("please_wait").remove()
+
+    def set_game_state_from_server(self, data: Dict):
+        """
+        Set game state from webservice message.
+
+        :param data: Data from the webservice message.
+        :type data: Dict
+        """
+        mylog.error("In set_game_state_from_server.")
+
+        GameState.game_mode = data["state"]
+        display_game_options()
+
+    def start_game_and_clear_round_globals(self, data: Dict):
+        """
+        Start game and clear round globals.
+
+        :param data: Data from the webservice message.
+        :type data: Dict
+        """
+        mylog.error("In start_game_and_clear_round_globals.")
+
+        GameState.game_mode = data["state"]
+        mylog.warning(
+            "start_game_and_clear_round_globals: game_start: GameState.player_list=%r",
+            GameState.player_list,
+        )
+        clear_globals_for_round_change()
+
+    def send_websocket_message(self, message: dict):
+        """
+        Send message to server.
+        """
+        global g_websocket
+        mylog.error("In send_websocket_message.")
+
+        if self.websock is None:
+            mylog.warning("send_websocket_message: Opening WebSocket.")
+            g_websocket = WSocketContainer()
+
+        mylog.warning("send_websocket_message: Sending message.")
+        self.websock.send(json.dumps(message))
+
+    def send_registration(self):
+        """
+        Send registration structure to server.
+        """
+        mylog.error("In send_registration")
+
+        if self.registered_with_server:
+            return
+
+        self.send_websocket_message(
+            {
+                "action": "register_client",
+                "game_id": GameState.game_id.value,
+                "player_id": GameState.player_id.value,
+            }
+        )
 
 
 def update_status_line():
@@ -1327,38 +1358,6 @@ def update_status_line():
         document.getElementById("game_status").attach(
             html.SPAN(f"Meld score: {GameState.meld_score} ", Class="game_status")
         )
-
-
-def send_registration():
-    """
-    Send registration structure to server.
-    """
-    mylog.error("In send_registration")
-
-    if g_registered_with_server:
-        return
-
-    send_websocket_message(
-        {
-            "action": "register_client",
-            "game_id": GameState.game_id.value,
-            "player_id": GameState.player_id.value,
-        }
-    )
-
-
-def send_websocket_message(message: dict):
-    """
-    Send message to server.
-    """
-    mylog.error("In send_websocket_message.")
-
-    if g_websocket is None:
-        mylog.warning("send_registration: Opening WebSocket.")
-        ws_open()
-
-    mylog.warning("send_registration: Sending message.")
-    g_websocket.send(json.dumps(message))
 
 
 def ajax_request_tracker(direction: int = 0):
@@ -2326,6 +2325,7 @@ def display_game_options():
     Conditional ladder for early game data selection. This needs to be done better and
     have new game/team/player capability.
     """
+    global g_websocket
     mylog.error("In display_game_options.")
 
     xpos = 10
@@ -2342,7 +2342,7 @@ def display_game_options():
         mylog.warning("dgo: In GameState.round_id=''")
         # Open the websocket if needed.
         if g_websocket is None:
-            ws_open()
+            g_websocket = WSocketContainer()
 
         get(f"/game/{GameState.game_id.value}/round", on_complete_rounds)
     elif GameState.team_list == []:
@@ -2357,7 +2357,7 @@ def display_game_options():
     else:
         mylog.warning("dgo: In else clause")
         # Send the registration message.
-        send_registration()
+        g_websocket.send_registration()
 
         if GameState.game_mode == 1:
             GameState.meld_score = 0
@@ -2612,9 +2612,6 @@ def resize_canvas(event=None):  # pylint: disable=unused-argument
 
 ## END Function definitions.
 
-# Gather information about where we're coming from.
-(PROTOCOL, SERVER) = find_protocol_server()
-
 # Make the clear_display function easily available to plain javascript code.
 window.bind("resize", resize_canvas)  # pylint: disable=no-member
 
@@ -2623,6 +2620,10 @@ document["player_name"].height = document["player_name"].offsetHeight
 
 # Attach the card graphics file
 document["card_definitions"].attach(SVG.Definitions(filename=CARD_URL))
+
+# Websocket holder
+# g_websocket: Optional[websocket.WebSocket] = None
+g_websocket: WSocketContainer = WSocketContainer()
 
 # Create the base SVG object for the card table.
 g_canvas = CardTable()
