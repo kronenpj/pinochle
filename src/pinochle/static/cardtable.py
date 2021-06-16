@@ -228,7 +228,7 @@ class PlayingCard(SVG.UseObject):
                 receiving_deck = GameState.players_meld_deck  # Deep copy
         elif GAME_MODES[GameState.game_mode] in ["trick"]:  # Trick
             sending_deck = GameState.players_hand  # Reference
-            receiving_deck = g_discard_deck  # Reference
+            receiving_deck = GameState.discard_deck  # Reference
 
         # TODO: Finish implementation option for player to move card from meld deck back into their hand. The list manipulation should be ok, but the DOM is missing a card in the player's deck for the code below to work as written.
 
@@ -364,6 +364,8 @@ class GameState:
     meld_deck: List[str] = []
     # Temporary deck for filling meld deck.
     players_meld_deck: List[str] = []
+    # Temporary deck to hold discards during trick phase.
+    discard_deck: List[str] = []
 
     @classmethod
     def other_team_id(cls) -> TeamID:
@@ -432,6 +434,7 @@ class GameState:
         # TODO: Figure out how better to calculate GameState.hand_size.
         cls.hand_size = int((48 - cls.kitty_size) / cls.players)
         cls.meld_deck = ["card-base" for _ in range(cls.hand_size)]
+        cls.discard_deck = ["card-base" for _ in range(cls.players)]
 
 
 class CardTable(SVG.CanvasObject):  # pylint: disable=too-few-public-methods
@@ -1544,7 +1547,7 @@ class WSocketContainer:
         mylog.warning("update_trick_winner: t_card=%s", t_card)
 
         # Find the first instance of the winning card in the list.
-        card_index = g_discard_deck.index(t_card)
+        card_index = GameState.discard_deck.index(t_card)
         # Correlate that to the player_id who threw it.
         t_player_id = order_player_id_list_for_trick()[card_index]
         mylog.warning("update_trick_winner: t_player_id=%s", t_player_id)
@@ -1576,7 +1579,9 @@ class WSocketContainer:
         t_card = data["card"]
         mylog.warning("update_trick_card: t_player_id=%s", t_player_id)
         mylog.warning("update_trick_card: t_card=%s", t_card)
-        g_discard_deck[order_player_id_list_for_trick().index(t_player_id)] = t_card
+        GameState.discard_deck[
+            order_player_id_list_for_trick().index(t_player_id)
+        ] = t_card
 
         # Set the player's hand to unmovable until the trick is over.
         rebuild_display()
@@ -1957,15 +1962,13 @@ def clear_globals_for_round_change():
     """
     Clear some global variables in preparation for a new round.
     """
-    # pylint: disable=invalid-name
-    global g_discard_deck
     mylog.error("In clear_globals_for_round_change.")
 
     GameState.round_id = RoundID()
     GameState.players_hand.clear()
     GameState.players_meld_deck.clear()
     GameState.meld_deck = ["card-base" for _ in range(GameState.hand_size)]
-    g_discard_deck = ["card-base" for _ in range(len(GameState.player_list))]
+    GameState.discard_deck = ["card-base" for _ in range(len(GameState.player_list))]
     display_game_options()
 
 
@@ -1973,11 +1976,9 @@ def clear_globals_for_trick_change(__: Any):
     """
     Clear some global variables in preparation for a new round.
     """
-    # pylint: disable=invalid-name
-    global g_discard_deck
     mylog.error("In clear_globals_for_trick_change.")
 
-    g_discard_deck = ["card-base" for _ in range(len(GameState.player_list))]
+    GameState.discard_deck = ["card-base" for _ in range(len(GameState.player_list))]
     display_game_options()
 
 
@@ -2025,7 +2026,9 @@ def populate_canvas(deck, target_canvas: SVG.CanvasObject, deck_type="player"):
             player_index_in_discard_deck = order_player_id_list_for_trick().index(
                 GameState.player_id
             )
-            movable = g_discard_deck[player_index_in_discard_deck] == "card-base"
+            movable = (
+                GameState.discard_deck[player_index_in_discard_deck] == "card-base"
+            )
             mylog.warning(
                 "populate_canvas: player_idx_in_discard: %d",
                 player_index_in_discard_deck,
@@ -2628,7 +2631,9 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
             )
             populate_canvas(GameState.players_meld_deck, g_canvas, "player")
         elif GAME_MODES[GameState.game_mode] in ["trick"]:  # Trick
-            populate_canvas(g_discard_deck, g_canvas, GAME_MODES[GameState.game_mode])
+            populate_canvas(
+                GameState.discard_deck, g_canvas, GAME_MODES[GameState.game_mode]
+            )
             populate_canvas(GameState.players_hand, g_canvas, "player")
 
     # Last-drawn are on top (z-index wise)
@@ -2653,7 +2658,7 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
         # Remove any dialogs from the meld phase.
         remove_dialogs()
         place_cards(
-            g_discard_deck,
+            GameState.discard_deck,
             g_canvas,
             location="top",
             deck_type=GAME_MODES[GameState.game_mode],
@@ -2697,9 +2702,6 @@ g_websocket: WSocketContainer = WSocketContainer()
 g_canvas = CardTable()
 document["card_table"] <= g_canvas
 resize_canvas()
-
-# Declare temporary decks
-g_discard_deck = ["card-base" for _ in range(GameState.players)]
 
 document.getElementById("please_wait").text = ""
 
