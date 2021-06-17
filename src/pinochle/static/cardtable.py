@@ -12,10 +12,9 @@ import brySVG.dragcanvas as SVG  # pylint: disable=import-error
 from browser import ajax, document, html, websocket, window
 from browser.widgets.dialog import Dialog, InfoDialog
 
-# Disable some pylint complaints because this code is more like javascript than python.
-# pylint: disable=global-statement
+# Disable some pylint complaints because brython does some interesting things.
 # pylint: disable=pointless-statement
-# Similarly, disable some pyright complaints
+# Disable some pyright complaints because _mockbrython is incomplete.
 # pyright: reportGeneralTypeIssues=false
 
 mylog = logging.getLogger("cardtable")
@@ -93,6 +92,8 @@ for _suit in SUITS:
 # Various state globals
 # button_advance_mode = None  # pylint: disable=invalid-name
 
+## BEGIN Class definitions.
+
 
 @dataclass(frozen=True)
 class BaseID:
@@ -105,6 +106,13 @@ class BaseID:
     value: str
 
     def __init__(self, value: str = zeros_uuid) -> None:
+        """
+        BaseID initializer
+
+        :param value: String representation of the UUID/GUID to store, defaults to zeros_uuid
+        :type value: str, optional
+        """
+        mylog.error("In BaseID.__init__")
         object.__setattr__(self, "value", str(value))
 
     def __str__(self) -> str:
@@ -150,6 +158,20 @@ class PlayingCard(SVG.UseObject):
     def __init__(
         self, href=None, objid=None, face_value="back", show_face=True, flippable=False,
     ):
+        """
+        PlayingCard initializer.
+
+        :param href: SVG href of the card, defaults to None
+        :type href: str, optional
+        :param objid: Browser DOM id attribute to set, defaults to None
+        :type objid: str, optional
+        :param face_value: SVG name for the card, defaults to "back"
+        :type face_value: str, optional
+        :param show_face: Whether or not to show the face or the back, defaults to True
+        :type show_face: bool, optional
+        :param flippable: Whether to allow the card to be 'flipped over', defaults to False
+        :type flippable: bool, optional
+        """
         mylog.error("In PlayingCard.__init__.")
 
         # Set the initial face to be shown.
@@ -185,7 +207,7 @@ class PlayingCard(SVG.UseObject):
         :param event_type: Whether the event is a click or a drag
         :type event: string
         """
-        mylog.error("In PlayingCard: play_handler.")
+        mylog.error("In PlayingCard.play_handler.")
 
         (__, new_y) = self.origin
 
@@ -243,9 +265,26 @@ class PlayingCard(SVG.UseObject):
         rebuild_display()
 
     def handle_discard_placement(
-        self, sending_deck, receiving_deck, card_tag, parent_canvas
+        self,
+        sending_deck: List[str],
+        receiving_deck: List[str],
+        card_tag: str,
+        parent_canvas: SVG.CanvasObject,
     ):
-        mylog.error("In PlayingCard: handle_discard_placement.")
+        """
+        Place 'discarded' cards sequentially or in player trick order depending on
+        game_state.
+
+        :param sending_deck: Source card deck
+        :type sending_deck: List[str]
+        :param receiving_deck: Destination card deck
+        :type receiving_deck: List[str]
+        :param card_tag: String reflecting what deck type is receiving the card.
+        :type card_tag: str
+        :param parent_canvas: Canvas that holds the card decks.
+        :type parent_canvas: SVG.CanvasObject
+        """
+        mylog.error("In PlayingCard.handle_discard_placement.")
 
         # Cards are placed in a specific order when in trick mode. Otherwise,
         # the first available empty (card-base) slot is used.
@@ -295,7 +334,7 @@ class PlayingCard(SVG.UseObject):
         Since the only time this is done is during the meld process, also call the API to
         notify it that a kitty card has been flipped over and which card that is.
         """
-        mylog.error("In PlayingCard.card_click_handler()")
+        mylog.error("In PlayingCard.card_click_handler.")
 
         if GAME_MODES[GameState.game_mode] in ["reveal"] and self.flippable:
             mylog.warning(
@@ -365,6 +404,30 @@ class GameState:
     discard_deck: List[str] = []
 
     @classmethod
+    def _dump_globals(cls) -> None:
+        """
+        Debugging assistant to output the value of selected globals.
+        """
+        variables = {
+            # "g_canvas": g_canvas,
+            # "cls.game_id":      cls.game_id,
+            # "cls.game_mode":    cls.game_mode,
+            # "cls.round_id":     cls.round_id,
+            # "cls.team_list":    cls.team_list,
+            # "cls.player_id":    cls.player_id,
+            # "cls.player_list":  cls.player_list,
+            # "cls.players_hand": cls.players_hand,
+            # "cls.game_dict":    cls.game_dict,
+            "cls.kitty_size": cls.kitty_size,
+            "cls.kitty_deck": cls.kitty_deck,
+        }
+        for var_name, value in variables.items():
+            if value:
+                print(f"dgo: {var_name}={value} ({type(value)})")
+            else:
+                print(f"dgo: {var_name} is None")
+
+    @classmethod
     def other_team_id(cls) -> TeamID:
         """
         Given the class's knowledge of my team, return the ID of the other team.
@@ -387,9 +450,9 @@ class GameState:
     @classmethod
     def other_team_name(cls) -> str:
         """
-        Return my team's name.
+        Return the other team's name.
 
-        :return: String representing the name of my team.
+        :return: String representing the name of the other team.
         :rtype: str
         """
         return cls.team_dict[cls.other_team_id()]["team_name"].capitalize()
@@ -407,9 +470,9 @@ class GameState:
     @classmethod
     def other_players_name(cls, player_id: PlayerID) -> str:
         """
-        Return my name.
+        Return player name for supplied PlayerID.
 
-        :return: String representing my name.
+        :return: String representing the player's name.
         :rtype: str
         """
         return cls.player_dict[player_id]["name"].capitalize()
@@ -519,7 +582,7 @@ class BidDialog:
         :param bid_data: Data from the event as a JSON string.
         :type bid_data: str
         """
-        mylog.error("Entering display_bid_dialog.")
+        mylog.error("In display_bid_dialog.")
         t_player_id: PlayerID = PlayerID(data["player_id"])
         self.last_bid = int(data["bid"])
         player_name = GameState.my_name()
@@ -568,7 +631,10 @@ class TrumpSelectDialog:
 
         trump = event.target.id
         cards_buried = locate_cards_below_hand()
-        mylog.warning("on_click_trump_dialog: You buried these cards: %r", cards_buried)
+        mylog.warning(
+            "TrumpSelectDialog.on_click_trump_dialog: You buried these cards: %r",
+            cards_buried,
+        )
         if not trump:
             return
         if len(cards_buried) != GameState.kitty_size:
@@ -632,7 +698,9 @@ class TrumpSelectDialog:
                 )
                 # Add an ID attribute so we can find it later if needed.
                 for item in document.getElementsByClassName("brython-dialog-main"):
-                    mylog.warning("display_trump_dialog: Item: %r", item)
+                    mylog.warning(
+                        "TrumpSelectDialog.display_trump_dialog: Item: %r", item
+                    )
                     if not item.id and "Waiting" in item.text:
                         # Assume this is the one we just created.
                         item.id = "dialog_trump"
@@ -815,12 +883,13 @@ class AjaxRequestTracker:
     _outstanding_requests: int = 0
 
     @classmethod
-    def __init__(cls):
-        mylog.error("In AjaxParent.__init__")
-        cls._outstanding_requests = 0
-
-    @classmethod
     def outstanding_requests(cls) -> int:
+        """
+        Return the number of outstanding AJAX requests.
+
+        :return: The number of outstanding AJAX requests.
+        :rtype: int
+        """
         return cls._outstanding_requests
 
     @classmethod
@@ -832,7 +901,7 @@ class AjaxRequestTracker:
         defaults to 0 which does not affect the counter.
         :type direction: int, optional
         """
-        mylog.error("In ajax_request_tracker.")
+        mylog.error("In AjaxRequestTracker.update.")
 
         if direction > 0:
             cls._outstanding_requests += 1
@@ -856,8 +925,10 @@ class AjaxRequests:
         :type url: str
         :param callback: Function to be called when the AJAX request is complete.
         :type callback: function, optional
+        :param async_call: Whether to make this call asynchronously, defaults to True
+        :type async_call: bool, optional
         """
-        mylog.error("In get.")
+        mylog.error("In AjaxRequests.get.")
 
         req = ajax.Ajax()
         if callback is not None:
@@ -874,14 +945,14 @@ class AjaxRequests:
         """
         Wrapper for the AJAX PUT call.
 
-        :param data: The data to be submitted.
-        :param data: dict
         :param url: The part of the URL that is being requested.
         :type url: str
         :param callback: Function to be called when the AJAX request is complete.
         :type callback: function, optional
+        :param async_call: Whether to make this call asynchronously, defaults to True
+        :type async_call: bool, optional
         """
-        mylog.error("In put.")
+        mylog.error("In AjaxRequests.put.")
 
         req = ajax.Ajax()
         if callback is not None:
@@ -900,14 +971,14 @@ class AjaxRequests:
         """
         Wrapper for the AJAX POST call.
 
-        :param data: The data to be submitted.
-        :param data: Any
         :param url: The part of the URL that is being requested.
         :type url: str
         :param callback: Function to be called when the AJAX request is complete.
         :type callback: function, optional
+        :param async_call: Whether to make this call asynchronously, defaults to True
+        :type async_call: bool, optional
         """
-        mylog.error("In post.")
+        mylog.error("In AjaxRequests.post.")
 
         req = ajax.Ajax()
         if callback is not None:
@@ -929,8 +1000,10 @@ class AjaxRequests:
         :type url: str
         :param callback: Function to be called when the AJAX request is complete.
         :type callback: function, optional
+        :param async_call: Whether to make this call asynchronously, defaults to True
+        :type async_call: bool, optional
         """
-        mylog.error("In delete.")
+        mylog.error("In AjaxRequests.delete.")
 
         req = ajax.Ajax()
         if callback is not None:
@@ -952,9 +1025,9 @@ class AjaxCallbacks:
         Callback for AJAX request for the list of games.
 
         :param req: Request object from callback.
-        :type req: [type]
+        :type req: ajax.Ajax
         """
-        mylog.error("In on_complete_games.")
+        mylog.error("In AjaxCallbacks.on_complete_games.")
 
         AjaxRequestTracker.update(-1)
         temp = self._on_complete_common(req)
@@ -964,7 +1037,7 @@ class AjaxCallbacks:
         # Set the global game list.
         GameState.game_dict.clear()
         for item in temp:
-            mylog.warning("on_complete_games: item=%s", item)
+            mylog.warning("AjaxCallbacks.on_complete_games: item=%s", item)
             GameState.game_dict[GameID(item["game_id"])] = item
 
         display_game_options()
@@ -974,9 +1047,9 @@ class AjaxCallbacks:
         Callback for AJAX request for the list of rounds.
 
         :param req: Request object from callback.
-        :type req: [type]
+        :type req: ajax.Ajax
         """
-        mylog.error("In on_complete_rounds.")
+        mylog.error("In AjaxCallbacks.on_complete_rounds.")
 
         AjaxRequestTracker.update(-1)
         GameState.team_list.clear()
@@ -987,7 +1060,9 @@ class AjaxCallbacks:
 
         # Set the round ID.
         GameState.round_id = RoundID(temp["round_id"])
-        mylog.warning("on_complete_rounds: round_id=%s", GameState.round_id)
+        mylog.warning(
+            "AjaxCallbacks.on_complete_rounds: round_id=%s", GameState.round_id
+        )
 
         display_game_options()
 
@@ -996,9 +1071,9 @@ class AjaxCallbacks:
         Callback for AJAX request for the information on the teams associated with the round.
 
         :param req: Request object from callback.
-        :type req: [type]
+        :type req: ajax.Ajax
         """
-        mylog.error("In on_complete_teams.")
+        mylog.error("In AjaxCallbacks.on_complete_teams.")
 
         AjaxRequestTracker.update(-1)
         temp = self._on_complete_common(req)
@@ -1008,7 +1083,9 @@ class AjaxCallbacks:
         # Set the global list of teams for this round.
         GameState.team_list.clear()
         GameState.team_list = [TeamID(x) for x in temp["team_ids"]]
-        mylog.warning("on_complete_teams: team_list=%r", GameState.team_list)
+        mylog.warning(
+            "AjaxCallbacks.on_complete_teams: team_list=%r", GameState.team_list
+        )
 
         # Clear the team dict here because of the multiple callbacks.
         GameState.team_dict.clear()
@@ -1020,9 +1097,9 @@ class AjaxCallbacks:
         Callback for AJAX request for team information.
 
         :param req: Request object from callback.
-        :type req: [type]
+        :type req: ajax.Ajax
         """
-        mylog.error("In on_complete_team_names.")
+        mylog.error("In AjaxCallbacks.on_complete_team_names.")
 
         AjaxRequestTracker.update(-1)
         temp = self._on_complete_common(req)
@@ -1031,14 +1108,20 @@ class AjaxCallbacks:
 
         # Set the global dict of team names for this round.
         mylog.warning(
-            "on_complete_team_names: Setting team_dict[%s]=%r", temp["team_id"], temp
+            "AjaxCallbacks.on_complete_team_names: Setting team_dict[%s]=%r",
+            temp["team_id"],
+            temp,
         )
         GameState.team_dict[TeamID(temp["team_id"])] = temp
-        mylog.warning("on_complete_team_names: team_dict=%s", GameState.team_dict)
+        mylog.warning(
+            "AjaxCallbacks.on_complete_team_names: team_dict=%s", GameState.team_dict
+        )
 
         # Only call API once per team, per player.
         for item in GameState.team_dict[TeamID(temp["team_id"])]["player_ids"]:
-            mylog.warning("on_complete_team_names: calling get/player/%s", item)
+            mylog.warning(
+                "AjaxCallbacks.on_complete_team_names: calling get/player/%s", item
+            )
             AjaxRequests.get(f"/player/{item}", self.on_complete_players)
 
     def on_complete_players(self, req: ajax.Ajax):
@@ -1046,9 +1129,9 @@ class AjaxCallbacks:
         Callback for AJAX request for player information.
 
         :param req: Request object from callback.
-        :type req: [type]
+        :type req: ajax.Ajax
         """
-        mylog.error("In on_complete_players.")
+        mylog.error("In AjaxCallbacks.on_complete_players.")
 
         AjaxRequestTracker.update(-1)
         temp = self._on_complete_common(req)
@@ -1057,7 +1140,9 @@ class AjaxCallbacks:
 
         # Set the global dict of players for reference later.
         GameState.player_dict[PlayerID(temp["player_id"])] = temp
-        mylog.warning("In on_complete_players: player_dict=%s", GameState.player_dict)
+        mylog.warning(
+            "AjaxCallbacks.on_complete_players: player_dict=%s", GameState.player_dict
+        )
         display_game_options()
 
     def on_complete_set_gamecookie(self, req: ajax.Ajax):
@@ -1065,9 +1150,9 @@ class AjaxCallbacks:
         Callback for AJAX request for setcookie information.
 
         :param req: Request object from callback.
-        :type req: [type]
+        :type req: ajax.Ajax
         """
-        mylog.error("In on_complete_set_gamecookie.")
+        mylog.error("In AjaxCallbacks.on_complete_set_gamecookie.")
 
         AjaxRequestTracker.update(-1)
         if req.status in [200, 0]:
@@ -1078,9 +1163,9 @@ class AjaxCallbacks:
         Callback for AJAX request for setcookie information.
 
         :param req: Request object from callback.
-        :type req: [type]
+        :type req: ajax.Ajax
         """
-        mylog.error("In on_complete_set_playercookie.")
+        mylog.error("In AjaxCallbacks.on_complete_set_playercookie.")
 
         AjaxRequestTracker.update(-1)
         if req.status in [200, 0]:
@@ -1091,46 +1176,40 @@ class AjaxCallbacks:
         Callback for AJAX request for setcookie information.
 
         :param req: Request object from callback.
-        :type req: [type]
+        :type req: ajax.Ajax
         """
-        mylog.error("In on_complete_getcookie.")
+        mylog.error("In AjaxCallbacks.on_complete_getcookie.")
 
         AjaxRequestTracker.update(-1)
         if req.status != 200:
             return
         if req.text is None or req.text == "":
-            mylog.warning("on_complete_getcookie: cookie response is None.")
+            mylog.warning(
+                "AjaxCallbacks.on_complete_getcookie: cookie response is None."
+            )
             return
-        mylog.warning("on_complete_getcookie: req.text=%s", req.text)
+        mylog.warning("AjaxCallbacks.on_complete_getcookie: req.text=%s", req.text)
         response_data = json.loads(req.text)
 
         # Set the global deck of cards for the player's hand.
-        mylog.warning("on_complete_getcookie: response_data=%s", response_data)
+        mylog.warning(
+            "AjaxCallbacks.on_complete_getcookie: response_data=%s", response_data
+        )
         if "game_id" in response_data["kind"]:
             GameState.game_id = GameID(response_data["ident"])
             mylog.warning(
-                "on_complete_getcookie: Setting GAME_ID=%s", response_data["ident"]
+                "AjaxCallbacks.on_complete_getcookie: Setting GAME_ID=%s",
+                response_data["ident"],
             )
             # put({}, f"/game/{GameState.game_id}?state=false", advance_mode_initial_callback, False)
 
             GameState.set_game_parameters()
-            # try:
-            #     GameState.kitty_size = int(GameState.game_dict[GameState.game_id]["kitty_size"])
-            #     mylog.warning("on_complete_getcookie: KITTY_SIZE=%s", GameState.kitty_size)
-            #     if GameState.kitty_size > 0:
-            #         GameState.kitty_deck = ["card-base" for _ in range(GameState.kitty_size)]
-            #     else:
-            #         GameState.kitty_deck.clear()
-            # except KeyError:
-            #     pass
-            # # TODO: Figure out how better to calculate GameState.hand_size.
-            # GameState.hand_size = int((48 - GameState.kitty_size) / GameState.players)
-            # GameState.meld_deck = ["card-base" for _ in range(GameState.hand_size)]
 
         elif "player_id" in response_data["kind"]:
             GameState.player_id = PlayerID(response_data["ident"])
             mylog.warning(
-                "on_complete_getcookie: Setting PLAYER_ID=%s", response_data["ident"]
+                "AjaxCallbacks.on_complete_getcookie: Setting PLAYER_ID=%s",
+                response_data["ident"],
             )
             AjaxRequests.get(
                 f"/player/{GameState.player_id.value}/hand",
@@ -1144,12 +1223,12 @@ class AjaxCallbacks:
         Callback for AJAX request for the round's kitty cards, if any.
 
         :param req: Request object from callback.
-        :type req: [type]
+        :type req: ajax.Ajax
         """
-        mylog.error("In on_complete_kitty.")
+        mylog.error("In AjaxCallbacks.on_complete_kitty.")
 
         AjaxRequestTracker.update(-1)
-        mylog.warning("on_complete_kitty: req.text=%r", req.text)
+        mylog.warning("AjaxCallbacks.on_complete_kitty: req.text=%r", req.text)
         temp = self._on_complete_common(req)
         if temp is None:
             return
@@ -1157,7 +1236,9 @@ class AjaxCallbacks:
         # Set the global deck of cards for the kitty.
         GameState.kitty_deck.clear()
         GameState.kitty_deck = temp["cards"]
-        mylog.warning("on_complete_kitty: kitty_deck=%s", GameState.kitty_deck)
+        mylog.warning(
+            "AjaxCallbacks.on_complete_kitty: kitty_deck=%s", GameState.kitty_deck
+        )
         if GameState.player_id == GameState.round_bid_trick_winner:
             # Add the kitty cards to the bid winner's deck
             for card in GameState.kitty_deck:
@@ -1170,9 +1251,9 @@ class AjaxCallbacks:
         Callback for AJAX request for the player's cards.
 
         :param req: Request object from callback.
-        :type req: [type]
+        :type req: ajax.Ajax
         """
-        mylog.error("In on_complete_player_cards.")
+        mylog.error("In AjaxCallbacks.on_complete_player_cards.")
 
         AjaxRequestTracker.update(-1)
         temp = self._on_complete_common(req)
@@ -1184,7 +1265,8 @@ class AjaxCallbacks:
         GameState.players_meld_deck.clear()
         GameState.players_hand = [x["card"] for x in temp]
         mylog.warning(
-            "on_complete_player_cards: players_hand=%s", GameState.players_hand
+            "AjaxCallbacks.on_complete_player_cards: players_hand=%s",
+            GameState.players_hand,
         )
         GameState.players_meld_deck = copy.deepcopy(GameState.players_hand)  # Deep copy
 
@@ -1195,9 +1277,9 @@ class AjaxCallbacks:
         Callback for AJAX request for the player's meld.
 
         :param req: Request object from callback.
-        :type req: [type]
+        :type req: ajax.Ajax
         """
-        mylog.error("In on_complete_get_meld_score.")
+        mylog.error("In AjaxCallbacks.on_complete_get_meld_score.")
 
         AjaxRequestTracker.update(-1)
         temp = self._on_complete_common(req)
@@ -1205,7 +1287,9 @@ class AjaxCallbacks:
             return
 
         if req.status in [200, 0]:
-            mylog.warning("on_complete_get_meld_score: req.text: %s", req.text)
+            mylog.warning(
+                "AjaxCallbacks.on_complete_get_meld_score: req.text: %s", req.text
+            )
             temp = json.loads(req.text)
             InfoDialog(
                 "Meld Score",
@@ -1218,18 +1302,19 @@ class AjaxCallbacks:
             mfd.display_meld_final_dialog()
             return
 
-        mylog.warning("on_complete_get_meld_score: score: %r", req)
+        mylog.warning("AjaxCallbacks.on_complete_get_meld_score: score: %r", req)
 
     def advance_mode_callback(self, req: ajax.Ajax):
         """
         Routine to capture the response of the server when advancing the game mode.
 
-        :param req:   The request response passed in during callback
-        :type req:    Request
+        :param req: Request object from callback.
+        :type req: ajax.Ajax
         """
-        mylog.error("In advance_mode_callback.")
+        mylog.error("In AjaxCallbacks.advance_mode_callback.")
         mylog.warning(
-            "advance_mode_callback: (current mode=%s)", GAME_MODES[GameState.game_mode]
+            "AjaxCallbacks.advance_mode_callback: (current mode=%s)",
+            GAME_MODES[GameState.game_mode],
         )
 
         AjaxRequestTracker.update(-1)
@@ -1237,20 +1322,20 @@ class AjaxCallbacks:
             return
 
         if "Round" in req.text and "started" in req.text:
-            mylog.warning("advance_mode_callback: Starting new round.")
+            mylog.warning("AjaxCallbacks.advance_mode_callback: Starting new round.")
             GameState.game_mode = 0
             clear_globals_for_round_change()
 
             # display_game_options()
             return
 
-        mylog.warning("advance_mode_callback: req.text=%s", req.text)
+        mylog.warning("AjaxCallbacks.advance_mode_callback: req.text=%s", req.text)
         data = json.loads(req.text)
-        mylog.warning("advance_mode_callback: data=%r", data)
+        mylog.warning("AjaxCallbacks.advance_mode_callback: data=%r", data)
         GameState.game_mode = data["state"]
 
         mylog.warning(
-            "Leaving advance_mode_callback (current mode=%s)",
+            "Leaving AjaxCallbacks.advance_mode_callback (current mode=%s)",
             GAME_MODES[GameState.game_mode],
         )
 
@@ -1262,14 +1347,14 @@ class AjaxCallbacks:
         """
         Routine to capture the response of the server when advancing the game mode.
 
-        :param req:   The request response passed in during callback
-        :type req:    Request
+        :param req: Request object from callback.
+        :type req: ajax.Ajax
         """
-        mylog.error("In game_mode_query_callback.")
+        mylog.error("In AjaxCallbacks.game_mode_query_callback.")
 
         if GameState.game_mode is not None:
             mylog.warning(
-                "Entering game_mode_query_callback (current mode=%s)",
+                "In AjaxCallbacks.game_mode_query_callback (current mode=%s)",
                 GAME_MODES[GameState.game_mode],
             )
 
@@ -1278,18 +1363,18 @@ class AjaxCallbacks:
         # destroys a cookie and reloads the page.
         if req.status not in [200, 0]:
             mylog.warning(
-                "game_mode_query_callback: Not setting game_mode - possibly because GameState.player_id is empty (%s).",
+                "AjaxCallbacks.game_mode_query_callback: Not setting game_mode - possibly because GameState.player_id is empty (%s).",
                 GameState.player_id,
             )
             return
 
-        mylog.warning("game_mode_query_callback: req.text=%s", req.text)
+        mylog.warning("AjaxCallbacks.game_mode_query_callback: req.text=%s", req.text)
         data = json.loads(req.text)
-        mylog.warning("game_mode_query_callback: data=%r", data)
+        mylog.warning("AjaxCallbacks.game_mode_query_callback: data=%r", data)
         GameState.game_mode = data["state"]
 
         mylog.warning(
-            "Leaving game_mode_query_callback (current mode=%s)",
+            "Leaving AjaxCallbacks.game_mode_query_callback (current mode=%s)",
             GAME_MODES[GameState.game_mode],
         )
         if GameState.game_mode == 0:
@@ -1297,47 +1382,23 @@ class AjaxCallbacks:
 
         display_game_options()
 
-    def _on_complete_common(self, req: ajax.Ajax) -> Optional[str]:
+    def _on_complete_common(self, req: ajax.Ajax) -> Optional[Dict]:
         """
         Common function for AJAX callbacks.
 
         :param req: Request object from callback.
-        :type req: [type]
-        :return: Object returned in the request as decoded by JSON.
-        :rtype: [type]
+        :type req: ajax.Ajax
+        :return: Dictionary returned in the request as decoded from JSON.
+        :rtype: dict
         """
-        mylog.error("In on_complete_common.")
+        mylog.error("In AjaxCallbacks._on_complete_common.")
 
         AjaxRequestTracker.update(-1)
         if req.status in [200, 0]:
             return json.loads(req.text)
 
-        mylog.warning("on_complete_common: req=%s", req)
+        mylog.warning("AjaxCallbacks._on_complete_common: req=%s", req)
         return None
-
-
-def dump_globals() -> None:
-    """
-    Debugging assistant to output the value of selected globals.
-    """
-    variables = {
-        # "g_canvas": g_canvas,
-        # "GameState.game_id":      GameState.game_id,
-        # "GameState.game_mode":    GameState.game_mode,
-        # "GameState.round_id":     GameState.round_id,
-        # "GameState.team_list":    GameState.team_list,
-        # "GameState.player_id":    GameState.player_id,
-        # "GameState.player_list":  GameState.player_list,
-        # "GameState.players_hand": GameState.players_hand,
-        # "GameState.game_dict":    GameState.game_dict,
-        "GameState.kitty_size": GameState.kitty_size,
-        "GameState.kitty_deck": GameState.kitty_deck,
-    }
-    for var_name, value in variables.items():
-        if value:
-            print(f"dgo: {var_name}={value} ({type(value)})")
-        else:
-            print(f"dgo: {var_name} is None")
 
 
 class WSocketContainer:
@@ -1350,8 +1411,10 @@ class WSocketContainer:
     SERVER: str
     registered_with_server = False
 
-    def __init__(self):
-        # pylint: disable=no-member
+    def __init__(self) -> None:
+        """
+        WSocketContainer initializer
+        """
         if not websocket.supported:
             InfoDialog("websocket", "WebSocket is not supported by your browser")
             return
@@ -1361,15 +1424,12 @@ class WSocketContainer:
         self.find_protocol_server()
         self.ws_open()
 
-    def find_protocol_server(self):
+    def find_protocol_server(self) -> None:
         """
         Gather information from the environment about the protocol and server name
         from where we're being served.
-
-        :return: Tuple with strings representing protocol and server with port.
-        :rtype: (str, str)
         """
-        mylog.error("In find_protocol_server.")
+        mylog.error("In WSocketContainer.find_protocol_server.")
 
         start = os.environ["HOME"].find("//") + 2
         end = os.environ["HOME"].find("/", start) + 1
@@ -1383,8 +1443,7 @@ class WSocketContainer:
         """
         Open a websocket connection back to the originating server.
         """
-        # pylint: disable=invalid-name
-        mylog.error("In ws_open.")
+        mylog.error("In WSocketContainer.ws_open.")
 
         # open a web socket
         proto = self.PROTOCOL.replace("http", "ws")
@@ -1397,14 +1456,17 @@ class WSocketContainer:
     def on_ws_open(self, event=None):  # pylint: disable=unused-argument
         """
         Callback for Websocket open event.
+
+        :param event: Event object from ws event.
+        :type event: dict
         """
-        mylog.error("on_ws_open: Connection is open")
+        mylog.error("In WSocketContainer.on_ws_open: Connection is open")
 
     def on_ws_close(self, event=None):  # pylint: disable=unused-argument
         """
         Callback for Websocket close event.
         """
-        mylog.error("on_ws_close: Connection has closed")
+        mylog.error("WSocketContainer.on_ws_close: Connection has closed")
 
         self.websock = None
         self.registered_with_server = False
@@ -1413,22 +1475,27 @@ class WSocketContainer:
     def on_ws_error(self, event=None):
         """
         Callback for Websocket error event.
+
+        :param event: Event object from ws event.
+        :type event: dict
         """
-        mylog.error("on_ws_error: Connection has experienced an error")
-        mylog.warning("on_ws_error: event=%r", event)
+        mylog.error(
+            "In WSocketContainer.on_ws_error: Connection has experienced an error"
+        )
+        mylog.warning("WSocketContainer.on_ws_error: event=%r", event)
 
     def on_ws_event(self, event=None):
         """
         Callback for Websocket event from server. This method handles much of the state
         change in the user interface.
 
-        :param event: Event object from ws event.
-        :type event: [type]
+        :param event: Event object from ws event as a JSON-encoded string.
+        :type event: str
         """
-        mylog.error("In on_ws_event.")
+        mylog.error("In WSocketContainer.on_ws_event.")
 
         t_data = json.loads(event.data)
-        mylog.warning("on_ws_event: %s", event.data)
+        mylog.warning("WSocketContainer.on_ws_event: %s", event.data)
 
         if "action" not in t_data:
             return
@@ -1457,17 +1524,17 @@ class WSocketContainer:
         """
         Notify players that the final trick has been won.
 
-        :param event: [description], defaults to None
-        :type event: [type], optional
+        :param data: Data from the event.
+        :type data: Dict
         """
-        mylog.error("In update_round_final_score.")
+        mylog.error("In WSocketContainer.update_round_final_score.")
 
-        mylog.warning("update_round_final_score: data=%s", data)
+        mylog.warning("WSocketContainer.update_round_final_score: data=%s", data)
         assert isinstance(data, dict)
         t_player_id = PlayerID(data["player_id"])
         assert isinstance(data["team_trick_scores"], dict)
         mylog.warning(
-            "update_round_final_score: data['team_trick_scores']: %r",
+            "WSocketContainer.update_round_final_score: data['team_trick_scores']: %r",
             data["team_trick_scores"],
         )
         t_team_trick_scores = {
@@ -1475,14 +1542,20 @@ class WSocketContainer:
         }
         assert isinstance(data["team_scores"], dict)
         mylog.warning(
-            "update_round_final_score: data['team_scores']: %r", data["team_scores"],
+            "WSocketContainer.update_round_final_score: data['team_scores']: %r",
+            data["team_scores"],
         )
         t_team_scores = {TeamID(x): y for (x, y) in data["team_scores"].items()}
-        mylog.warning("update_round_final_score: t_player_id=%s", t_player_id)
         mylog.warning(
-            "update_round_final_score: t_team_trick_scores=%r", t_team_trick_scores
+            "WSocketContainer.update_round_final_score: t_player_id=%s", t_player_id
         )
-        mylog.warning("update_round_final_score: t_team_scores=%r", t_team_scores)
+        mylog.warning(
+            "WSocketContainer.update_round_final_score: t_team_trick_scores=%r",
+            t_team_trick_scores,
+        )
+        mylog.warning(
+            "WSocketContainer.update_round_final_score: t_team_scores=%r", t_team_scores
+        )
 
         # Record that information.
         GameState.round_bid_trick_winner = t_player_id
@@ -1490,18 +1563,24 @@ class WSocketContainer:
         # Obtain the other team's ID
         t_other_team_id = GameState.other_team_id()
 
-        mylog.warning("update_round_final_score: Setting my team name")
+        mylog.warning("WSocketContainer.update_round_final_score: Setting my team name")
         my_team = GameState.my_team_name()
-        mylog.warning("update_round_final_score: Setting other team's name")
+        mylog.warning(
+            "WSocketContainer.update_round_final_score: Setting other team's name"
+        )
         other_team = GameState.other_team_name()
-        mylog.warning("update_round_final_score: Setting score variables")
+        mylog.warning(
+            "WSocketContainer.update_round_final_score: Setting score variables"
+        )
         my_scores, other_scores = (
             t_team_trick_scores[GameState.team_id],
             t_team_trick_scores[t_other_team_id],
         )
 
         # TODO: Handle case where bid winner's team doesn't make the bid.
-        mylog.warning("update_round_final_score: Setting global team scores.")
+        mylog.warning(
+            "WSocketContainer.update_round_final_score: Setting global team scores."
+        )
         GameState.my_team_score, GameState.other_team_score = (
             t_team_scores[GameState.team_id],
             t_team_scores[t_other_team_id],
@@ -1512,14 +1591,14 @@ class WSocketContainer:
         )
         if GameState.player_id == t_player_id:
             mylog.warning(
-                "update_round_final_score: Displaying final trick dialog for this player."
+                "WSocketContainer.update_round_final_score: Displaying final trick dialog for this player."
             )
             TrickWonDialog().display_final_trick_dialog(
                 my_team, my_scores, other_team, other_scores
             )
         else:
             mylog.warning(
-                "update_round_final_score: Displaying generic final trick dialog for this player."
+                "WSocketContainer.update_round_final_score: Displaying generic final trick dialog for this player."
             )
             InfoDialog(
                 "Last Trick Won",
@@ -1533,23 +1612,27 @@ class WSocketContainer:
         """
         Notify players that the trick has been won.
 
-        :param event: [description], defaults to None
-        :type event: [type], optional
+        :param data: Data from the event.
+        :type data: Dict
         """
-        mylog.error("In update_trick_winner.")
-        mylog.warning("update_trick_winner: data=%s", data)
+        mylog.error("In WSocketContainer.update_trick_winner.")
+        mylog.warning("WSocketContainer.update_trick_winner: data=%s", data)
 
         assert isinstance(data, dict)
         t_player_id = PlayerID(data["player_id"])
         t_card = data["winning_card"]
-        mylog.warning("update_trick_winner: t_player_id=%s", t_player_id)
-        mylog.warning("update_trick_winner: t_card=%s", t_card)
+        mylog.warning(
+            "WSocketContainer.update_trick_winner: t_player_id=%s", t_player_id
+        )
+        mylog.warning("WSocketContainer.update_trick_winner: t_card=%s", t_card)
 
         # Find the first instance of the winning card in the list.
         card_index = GameState.discard_deck.index(t_card)
         # Correlate that to the player_id who threw it.
         t_player_id = order_player_id_list_for_trick()[card_index]
-        mylog.warning("update_trick_winner: t_player_id=%s", t_player_id)
+        mylog.warning(
+            "WSocketContainer.update_trick_winner: t_player_id=%s", t_player_id
+        )
         # Record that information.
         GameState.round_bid_trick_winner = t_player_id
 
@@ -1567,17 +1650,17 @@ class WSocketContainer:
         """
         Place the thrown card in the player's slot for this trick.
 
-        :param event: [description], defaults to None
-        :type event: [type], optional
+        :param data: Data from the event.
+        :type data: Dict
         """
-        mylog.error("Entering update_trick_card.")
-        mylog.warning("update_trick_card: data=%s", data)
+        mylog.error("In WSocketContainer.update_trick_card.")
+        mylog.warning("WSocketContainer.update_trick_card: data=%s", data)
 
         assert isinstance(data, dict)
         t_player_id: PlayerID = PlayerID(data["player_id"])
         t_card = data["card"]
-        mylog.warning("update_trick_card: t_player_id=%s", t_player_id)
-        mylog.warning("update_trick_card: t_card=%s", t_card)
+        mylog.warning("WSocketContainer.update_trick_card: t_player_id=%s", t_player_id)
+        mylog.warning("WSocketContainer.update_trick_card: t_card=%s", t_card)
         GameState.discard_deck[
             order_player_id_list_for_trick().index(t_player_id)
         ] = t_card
@@ -1587,14 +1670,14 @@ class WSocketContainer:
 
     def update_team_scores(self, data: Dict):
         """
-        Notify players that trump has been buried.
+        Update the game state from the server with the team scores.
 
-        :param event: [description], defaults to None
-        :type event: [type], optional
+        :param data: Data from the event.
+        :type data: Dict
         """
-        # pylint: disable=invalid-name
+        mylog.error("In WSocketContainer.update_team_scores.")
 
-        mylog.warning("update_team_scores: data=%r", data)
+        mylog.warning("WSocketContainer.update_team_scores: data=%r", data)
         assert isinstance(data, dict)
         if GameState.team_id == TeamID(data["team_id"]):
             GameState.my_team_score = data["score"]
@@ -1608,27 +1691,33 @@ class WSocketContainer:
         """
         Notify players that trump has been buried.
 
-        :param event: [description], defaults to None
-        :type event: [type], optional
+        :param data: Data from the event.
+        :type data: Dict
         """
-        mylog.error("Entering notify_trump_buried.")
-        mylog.warning("notify_trump_buried: data=%r", data)
+        mylog.error("In WSocketContainer.notify_trump_buried.")
+        mylog.warning("WSocketContainer.notify_trump_buried: data=%r", data)
 
         assert isinstance(data, dict)
         if "player_id" in data:
-            mylog.warning("notify_trump_buried: About to retrieve player_id from data")
+            mylog.warning(
+                "WSocketContainer.notify_trump_buried: About to retrieve player_id from data"
+            )
             t_player_id: PlayerID = PlayerID(data["player_id"])
         else:
             t_player_id = PlayerID()
-        mylog.warning("notify_trump_buried: t_player_id=%r", t_player_id)
+        mylog.warning(
+            "WSocketContainer.notify_trump_buried: t_player_id=%r", t_player_id
+        )
         player_name = ""
         if t_player_id == GameState.player_id:
             player_name = "You have"
         else:
             player_name = "{} has".format(GameState.other_players_name(t_player_id))
-        mylog.warning("notify_trump_buried: player_name=%s", player_name)
+        mylog.warning(
+            "WSocketContainer.notify_trump_buried: player_name=%s", player_name
+        )
         count = data["count"]
-        mylog.warning("notify_trump_buried: count=%d", count)
+        mylog.warning("WSocketContainer.notify_trump_buried: count=%d", count)
 
         InfoDialog(
             "Trump Buried",
@@ -1643,10 +1732,10 @@ class WSocketContainer:
         """
         Display the meld hand submitted by a player in a pop-up.
 
-        :param meld_data: Data from the event as a JSON string.
-        :type meld_data: str
+        :param data: Data from the event.
+        :type data: Dict
         """
-        mylog.error("Entering display_player_meld.")
+        mylog.error("In WSocketContainer.display_player_meld.")
 
         player_id = PlayerID(data["player_id"])
         player_name = GameState.other_players_name(player_id)
@@ -1656,7 +1745,9 @@ class WSocketContainer:
             if existing_dialog := document.getElementById(f"dialog_{player_id.value}"):
                 existing_dialog.parentNode.removeChild(existing_dialog)
         except Exception as e:  # pylint: disable=invalid-name,broad-except
-            mylog.warning("display_player_meld: Caught exception: %r", e)
+            mylog.warning(
+                "WSocketContainer.display_player_meld: Caught exception: %r", e
+            )
         try:
             # Construct the new dialog to display the meld cards.
             xpos = 0.0
@@ -1666,7 +1757,9 @@ class WSocketContainer:
                 d_canvas <= SVG.UseObject(href=f"#{card}", origin=(xpos, 0))
                 xpos += CARD_WIDTH / 2.0
         except Exception as e:  # pylint: disable=invalid-name,broad-except
-            mylog.warning("display_player_meld: Caught exception: %r", e)
+            mylog.warning(
+                "WSocketContainer.display_player_meld: Caught exception: %r", e
+            )
             return
         InfoDialog(
             "Meld Cards",
@@ -1676,12 +1769,12 @@ class WSocketContainer:
             ok=True,
         )
         mylog.warning(
-            "display_player_meld: Items: %r",
+            "WSocketContainer.display_player_meld: Items: %r",
             document.getElementsByClassName("brython-dialog-main"),
         )
         # Add an ID attribute so we can find it later if needed.
         for item in document.getElementsByClassName("brython-dialog-main"):
-            mylog.warning("display_player_meld: Item: %r", item)
+            mylog.warning("WSocketContainer.display_player_meld: Item: %r", item)
             if not item.id:
                 # Assume this is the one we just created.
                 item.id = f"dialog_{player_id.value}"
@@ -1691,7 +1784,11 @@ class WSocketContainer:
     def record_trump_selection(self, data: Dict):
         """
         Convey the chosen trump to the user, as provided by the server.
+
+        :param data: Data from the event.
+        :type data: Dict
         """
+        mylog.error("In WSocketContainer.record_trump_selection.")
 
         GameState.trump = str(data["trump"])
 
@@ -1708,13 +1805,20 @@ class WSocketContainer:
     def reveal_kitty_card(self, data: Dict):
         """
         Reveal the provided card in the kitty.
+
+        :param data: Data from the event.
+        :type data: Dict
         """
-        mylog.error("Entering reveal_kitty_card.")
+        mylog.error("In WSocketContainer.reveal_kitty_card.")
 
         revealed_card = str(data["card"])
 
         if revealed_card not in GameState.kitty_deck:
-            mylog.warning("%s is not in %r", revealed_card, GameState.kitty_deck)
+            mylog.warning(
+                "WSocketContainer.reveal_kitty_card: %s is not in %r",
+                revealed_card,
+                GameState.kitty_deck,
+            )
             return
 
         for (objid, node) in g_canvas.objectDict.items():
@@ -1732,8 +1836,8 @@ class WSocketContainer:
         """
         Display the round's bid winner.
 
-        :param event: [description], defaults to None
-        :type event: [type], optional
+        :param data: Data from the event.
+        :type data: Dict
         """
 
         t_player_id = PlayerID(data["player_id"])
@@ -1759,16 +1863,18 @@ class WSocketContainer:
         """
         Update the player names in the UI.
 
-        :param player_data: JSON-formatted message from the server.
-        :type player_data: str
+        :param data: Data from the event.
+        :type data: Dict
         """
-        mylog.error("In update_player_names.")
+        mylog.error("In WSocketContainer.update_player_names.")
 
         GameState.player_list = [PlayerID(x) for x in data["player_order"]]
         my_player_list = [PlayerID(x) for x in data["player_ids"]]
         # Display the player's name in the UI
         if my_player_list != [] and GameState.player_id in my_player_list:
-            mylog.warning("Players: %r", my_player_list)
+            mylog.warning(
+                "WSocketContainer.update_player_names: Players: %r", my_player_list
+            )
 
             self.registered_with_server = True
             document.getElementById("player_name").clear()
@@ -1802,10 +1908,10 @@ class WSocketContainer:
         """
         Set game state from webservice message.
 
-        :param data: Data from the webservice message.
+        :param data: Data from the event.
         :type data: Dict
         """
-        mylog.error("In set_game_state_from_server.")
+        mylog.error("In WSocketContainer.set_game_state_from_server.")
 
         GameState.game_mode = data["state"]
         display_game_options()
@@ -1814,14 +1920,14 @@ class WSocketContainer:
         """
         Start game and clear round globals.
 
-        :param data: Data from the webservice message.
+        :param data: Data from the event.
         :type data: Dict
         """
-        mylog.error("In start_game_and_clear_round_globals.")
+        mylog.error("In WSocketContainer.start_game_and_clear_round_globals.")
 
         GameState.game_mode = data["state"]
         mylog.warning(
-            "start_game_and_clear_round_globals: game_start: GameState.player_list=%r",
+            "WSocketContainer.start_game_and_clear_round_globals: game_start: GameState.player_list=%r",
             GameState.player_list,
         )
         clear_globals_for_round_change()
@@ -1829,22 +1935,25 @@ class WSocketContainer:
     def send_websocket_message(self, message: dict):
         """
         Send message to server.
+
+        :param message: Websocket message to be sent to the server.
+        :type message: dict
         """
         global g_websocket
-        mylog.error("In send_websocket_message.")
+        mylog.error("In WSocketContainer.send_websocket_message.")
 
         if self.websock is None:
-            mylog.warning("send_websocket_message: Opening WebSocket.")
+            mylog.warning("WSocketContainer.send_websocket_message: Opening WebSocket.")
             g_websocket = WSocketContainer()
 
-        mylog.warning("send_websocket_message: Sending message.")
+        mylog.warning("WSocketContainer.send_websocket_message: Sending message.")
         self.websock.send(json.dumps(message))
 
     def send_registration(self):
         """
         Send registration structure to server.
         """
-        mylog.error("In send_registration")
+        mylog.error("In WSocketContainer.send_registration")
 
         if self.registered_with_server:
             return
@@ -1856,6 +1965,11 @@ class WSocketContainer:
                 "player_id": GameState.player_id.value,
             }
         )
+
+
+## END Class definitions.
+
+## BEGIN Function definitions.
 
 
 def update_status_line():
@@ -1910,7 +2024,7 @@ def order_player_id_list_for_trick() -> List[PlayerID]:
     GameState.round_bid_trick_winner.
 
     :return: Re-ordered list of player ids.
-    :rtype: List[str]
+    :rtype: List[PlayerID]
     """
     mylog.error("In order_player_id_list_for_trick.")
 
@@ -1935,6 +2049,9 @@ def order_player_name_list_for_trick() -> List[str]:
 def locate_cards_below_hand() -> List[str]:
     """
     Identify cards that have been moved below the player's hand.
+
+    :return: List of cards found below the player's hand.
+    :rtype: List[str]
     """
     mylog.error("In locate_cards_below_hand.")
 
@@ -1987,8 +2104,8 @@ def populate_canvas(deck, target_canvas: SVG.CanvasObject, deck_type="player"):
 
     :param deck: card names in the format that svg-cards.svg wants.
     :type deck: list
-    :param target_canvas: [description]
-    :type target_canvas: [type]
+    :param target_canvas: Canvas to populate
+    :type target_canvas: SVG.CanvasObject
     :param deck_type: The "type" of deck populating the UI.
     :type deck_type: str
     """
@@ -2067,6 +2184,9 @@ def generate_place_static_box(canvas: SVG.CanvasObject):
     Generate and place an SVG box that is the same size as a full player's hand.
     This should prevent excessive resizing of the display as the player's hand depletes
     during trick play.
+
+    :param canvas: Canvas to receive the box.
+    :type canvas: SVG.CanvasObject
     """
     mylog.error("In generate_place_static_box.")
 
@@ -2233,7 +2353,7 @@ def remove_dialogs():
 
     dialogs = document.getElementsByClassName("brython-dialog-main")
     for item in dialogs:
-        mylog.warning("Removing dialog item=%r", item)
+        mylog.warning("remove_dialogs: Removing dialog item=%r", item)
         item.remove()
 
 
@@ -2246,7 +2366,8 @@ def advance_mode(event=None):  # pylint: disable=unused-argument
     :param event: The event object passed in during callback, defaults to None
     :type event: [type], optional
     """
-    mylog.error(
+    mylog.error("In advance_mode.")
+    mylog.warning(
         "advance_mode: Calling API (current mode=%s)", GAME_MODES[GameState.game_mode]
     )
 
@@ -2462,14 +2583,14 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
     """
     # pylint: disable=invalid-name
     global g_canvas
-    mylog.error("In rebuild_display")
+    mylog.error("In rebuild_display.")
 
     if GameState.game_mode is None and not GameState.game_dict:
         GameState.game_mode = 0
 
     if AjaxRequestTracker.outstanding_requests() > 0:
         mylog.warning(
-            "There are %d outstanding requests. Skipping clear.",
+            "rebuild_display: There are %d outstanding requests. Skipping clear.",
             AjaxRequestTracker.outstanding_requests(),
         )
         return
@@ -2597,8 +2718,8 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
     :param event: The event object passed in during callback, defaults to None
     :type event: [type], optional
     """
-    mylog.error("In update_display.")
-    mylog.warning("update_display. (mode=%s)", GAME_MODES[GameState.game_mode])
+    mylog.error("In set_card_positions.")
+    mylog.warning("set_card_positions: (mode=%s)", GAME_MODES[GameState.game_mode])
 
     # Place the desired decks on the display.
     if not g_canvas.objectDict:
@@ -2673,7 +2794,9 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
 def resize_canvas(event=None):  # pylint: disable=unused-argument
     """
     Resize the canvas to make use of available screen space.
+
     :param event: The event object passed in during callback, defaults to None
+    :type event: [type], optional
     """
     mylog.error("In resize_canvas")
 
@@ -2694,7 +2817,6 @@ document["player_name"].height = document["player_name"].offsetHeight
 document["card_definitions"].attach(SVG.Definitions(filename=CARD_URL))
 
 # Websocket holder
-# g_websocket: Optional[websocket.WebSocket] = None
 g_websocket: WSocketContainer = WSocketContainer()
 
 # Create the base SVG object for the card table.
