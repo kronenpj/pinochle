@@ -78,16 +78,14 @@ DECK_CONFIG = {
     },
 }
 
-SUITS = ["spade", "heart", "club", "diamond"]
 
 # Programmatically create a pre-sorted deck to compare to when sorting decks of cards.
 # Importing a statically-defined list from constants doesn't work for some reason.
 # "9", "jack", "queen", "king", "10", "ace"
 # "ace", "10", "king", "queen", "jack", "9"
-DECK_SORTED: List[str] = []
-for _suit in SUITS:
-    for _card in ["ace", "10", "king", "queen", "jack", "9"]:
-        DECK_SORTED.append(f"{_suit}_{_card}")
+SUITS = ["spade", "heart", "club", "diamond"]
+CARDS = ["ace", "10", "king", "queen", "jack", "9"]
+DECK_SORTED = [f"{_suit}_{_card}" for _suit in SUITS for _card in CARDS]
 
 # Various state globals
 # button_advance_mode = None  # pylint: disable=invalid-name
