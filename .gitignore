@@ -1,6 +1,8 @@
 ### TEMPORARY UNTIL I CAN SEE IF I WANT THESE IN GIT
 *graeco_latin*
+CardTable.txt
 classes_Pinochle.svg
+classes_CardTable.svg
 curl_inserts.sh
 docker-compose.yml
 dragdrop-refinements-fail.patch
@@ -21,6 +23,7 @@ python-client-generated.zip
 python-flask-server-generated.zip
 rsync-to-phenom.sh
 selenium/
+show_videos_nfs.sh
 sqlite_clear_contents.sh
 start_database.sh
 temp.py
