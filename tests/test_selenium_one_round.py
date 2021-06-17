@@ -491,8 +491,9 @@ class TestSingleRound:
             x.get_attribute("id") for x in card_elements if x.get_attribute("href")
         ]
 
+        attempts = 11
         try:
-            while driver.find_element(
+            while attempts and driver.find_element(
                 By.XPATH, "/html/body/div[3]/*[contains(.,'Select Trump Suit')]",
             ):
                 assert card_ids
@@ -522,6 +523,7 @@ class TestSingleRound:
                     print(f"select_trump - attribute: {element.get_attribute('id')}")
                     try:
                         element.click()
+                        attempts -= 1
                     except WebDriverException as e:
                         print(f"Ignoring webdriver exception: {e}")
                         pass
@@ -531,6 +533,8 @@ class TestSingleRound:
         except IndexError:
             # We ran out of cards to try.
             assert False
+        if not attempts:
+            pytest.exit("Failed to select trump after allotted attempts.")
 
     def test_220_wait_for_send_meld_button(self):
         """
