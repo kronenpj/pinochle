@@ -494,6 +494,30 @@ class GameState:
         cls.meld_deck = ["card-base" for _ in range(cls.hand_size)]
         cls.discard_deck = ["card-base" for _ in range(cls.players)]
 
+    @classmethod
+    def prepare_for_round_change(cls):
+        """
+        Clear some variables in preparation for a new round.
+        """
+        mylog.error("In clear_globals_for_round_change.")
+
+        cls.round_id = RoundID()
+        cls.players_hand.clear()
+        cls.players_meld_deck.clear()
+        cls.meld_deck = ["card-base" for _ in range(cls.hand_size)]
+        # cls.discard_deck = ["card-base" for _ in range(len(cls.player_list))]
+        cls.prepare_for_trick_change()
+
+    @classmethod
+    def prepare_for_trick_change(cls):
+        """
+        Clear some variables in preparation for a new round.
+        """
+        mylog.error("In GameState.prepare_for_trick_change.")
+
+        cls.discard_deck = ["card-base" for _ in range(len(cls.player_list))]
+        cls.ordered_player_id_list = order_player_index_list_for_trick()
+
 
 class CardTable(SVG.CanvasObject):  # pylint: disable=too-few-public-methods
     """
@@ -875,7 +899,7 @@ class TrickWonDialog:
 
 class AjaxRequestTracker:
     """
-    Parent(?) class to keep track outstanding requests made to the server.
+    Class to keep track outstanding requests made to the server.
     """
 
     _outstanding_requests: int = 0
@@ -1322,9 +1346,9 @@ class AjaxCallbacks:
         if "Round" in req.text and "started" in req.text:
             mylog.warning("AjaxCallbacks.advance_mode_callback: Starting new round.")
             GameState.game_mode = 0
-            clear_globals_for_round_change()
+            GameState.prepare_for_round_change()
 
-            # display_game_options()
+            display_game_options()
             return
 
         mylog.warning("AjaxCallbacks.advance_mode_callback: req.text=%s", req.text)
@@ -1376,7 +1400,7 @@ class AjaxCallbacks:
             GAME_MODES[GameState.game_mode],
         )
         if GameState.game_mode == 0:
-            clear_globals_for_round_change()
+            GameState.prepare_for_round_change()
 
         display_game_options()
 
@@ -1874,12 +1898,14 @@ class WSocketContainer:
                 "WSocketContainer.update_player_names: Players: %r", my_player_list
             )
 
+            mylog.error("WSocketContainer.update_player_names: Section 1")
             self.registered_with_server = True
             document.getElementById("player_name").clear()
             document.getElementById("player_name").attach(
                 html.SPAN(GameState.my_name(), Class="player_name",)
             )
 
+            mylog.error("WSocketContainer.update_player_names: Section 2")
             # TODO: Do something more useful like a line of names with color change when
             # the player's client registers.
             document.getElementById("other_players").clear()
@@ -1895,12 +1921,19 @@ class WSocketContainer:
                     Class="other_players",
                 )
             )
+            mylog.error("WSocketContainer.update_player_names: Section 3")
             if len(my_player_list) < len(GameState.player_dict):
                 document.getElementById(
                     "please_wait"
                 ).text = "Waiting for all players to join the game."
             else:
-                document.getElementById("please_wait").remove()
+                mylog.error("WSocketContainer.update_player_names: Section 4")
+                try:
+                    document.getElementById("please_wait").remove()
+                except AttributeError:
+                    # Occurs when it's already been removed.
+                    pass
+        mylog.error("WSocketContainer.update_player_names: Exiting...")
 
     def set_game_state_from_server(self, data: Dict):
         """
@@ -1928,7 +1961,8 @@ class WSocketContainer:
             "WSocketContainer.start_game_and_clear_round_globals: game_start: GameState.player_list=%r",
             GameState.player_list,
         )
-        clear_globals_for_round_change()
+        GameState.prepare_for_round_change()
+        display_game_options()
 
     def send_websocket_message(self, message: dict):
         """
@@ -2009,8 +2043,17 @@ def order_player_index_list_for_trick() -> List[int]:
     mylog.error("In order_player_index_list_for_trick.")
 
     player_list_len = len(GameState.player_list)
+
+    mylog.error("order_player_index_list_for_trick: Section 1")
     # Locate the index of the winner in the player list
-    starting_index = GameState.player_list.index(GameState.round_bid_trick_winner)
+    try:
+        starting_index = GameState.player_list.index(GameState.round_bid_trick_winner)
+    except ValueError as e:
+        return []
+    except Exception as e:
+        mylog.error("order_player_index_list_for_trick: Section 2. Exception: (%r)", e)
+        return []
+    mylog.error("order_player_index_list_for_trick: Section 3")
     # Generate a list of indices for the players, starting with the
     # GameState.round_bid_trick_winner.
     return [(x + starting_index) % player_list_len for x in range(player_list_len)]
@@ -2072,27 +2115,13 @@ def locate_cards_below_hand() -> List[str]:
     return return_list
 
 
-def clear_globals_for_round_change():
-    """
-    Clear some global variables in preparation for a new round.
-    """
-    mylog.error("In clear_globals_for_round_change.")
-
-    GameState.round_id = RoundID()
-    GameState.players_hand.clear()
-    GameState.players_meld_deck.clear()
-    GameState.meld_deck = ["card-base" for _ in range(GameState.hand_size)]
-    GameState.discard_deck = ["card-base" for _ in range(len(GameState.player_list))]
-    display_game_options()
-
-
 def clear_globals_for_trick_change(__: Any):
     """
-    Clear some global variables in preparation for a new round.
+    Prepare game state in preparation for a new trick.
     """
     mylog.error("In clear_globals_for_trick_change.")
 
-    GameState.discard_deck = ["card-base" for _ in range(len(GameState.player_list))]
+    GameState.prepare_for_trick_change()
     display_game_options()
 
 
@@ -2111,6 +2140,9 @@ def populate_canvas(deck, target_canvas: SVG.CanvasObject, deck_type="player"):
 
     if GAME_MODES[GameState.game_mode] in ["game"]:
         mylog.warning("Exiting populate_canvas. Still in 'game' mode.")
+        return
+    if GameState.game_mode < 0:
+        mylog.warning("Invalid game mode. (%d)", GameState.game_mode)
         return
 
     mylog.warning(
