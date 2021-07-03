@@ -583,7 +583,7 @@ class BidDialog:
         mylog.error("In display_bid_dialog.")
         t_player_id: PlayerID = PlayerID(data["player_id"])
         self.last_bid = int(data["bid"])
-        player_name = GameState.my_name()
+        player_name = GameState.other_players_name(t_player_id)
 
         remove_dialogs()
 
