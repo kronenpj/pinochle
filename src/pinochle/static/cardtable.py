@@ -287,7 +287,7 @@ class PlayingCard(SVG.UseObject):
         # Cards are placed in a specific order when in trick mode. Otherwise,
         # the first available empty (card-base) slot is used.
         if GAME_MODES[GameState.game_mode] in ["trick"]:
-            p_list: List[PlayerID] = order_player_id_list_for_trick()
+            p_list: List[PlayerID] = GameState.order_player_id_list_for_trick()
             placement: int = p_list.index(GameState.player_id)
         elif GAME_MODES[GameState.game_mode] in ["meld"]:
             placement = receiving_deck.index("card-base")
@@ -495,17 +495,27 @@ class GameState:
         cls.discard_deck = ["card-base" for _ in range(cls.players)]
 
     @classmethod
+    def sort_player_hand(cls):
+        """
+        Sort the player's hand and the temporary hand.
+        """
+        mylog.error("In GameState.sort_player_hand.")
+
+        # pylint: disable=unnecessary-lambda
+        cls.players_hand.sort(key=lambda x: DECK_SORTED.index(x))
+        cls.players_meld_deck.sort(key=lambda x: DECK_SORTED.index(x))
+
+    @classmethod
     def prepare_for_round_change(cls):
         """
         Clear some variables in preparation for a new round.
         """
-        mylog.error("In clear_globals_for_round_change.")
+        mylog.error("In GameState.prepare_for_round_change.")
 
         cls.round_id = RoundID()
         cls.players_hand.clear()
         cls.players_meld_deck.clear()
         cls.meld_deck = ["card-base" for _ in range(cls.hand_size)]
-        # cls.discard_deck = ["card-base" for _ in range(len(cls.player_list))]
         cls.prepare_for_trick_change()
 
     @classmethod
@@ -516,7 +526,92 @@ class GameState:
         mylog.error("In GameState.prepare_for_trick_change.")
 
         cls.discard_deck = ["card-base" for _ in range(len(cls.player_list))]
-        cls.ordered_player_id_list = order_player_index_list_for_trick()
+        cls.ordered_player_id_list = cls._order_player_index_list_for_trick()
+
+    @classmethod
+    def _order_player_index_list_for_trick(cls) -> List[int]:
+        """
+        Generate a list of indices in GameState.player_list starting with the current
+        GameState.round_bid_trick_winner.
+
+        :return: Re-ordered list of player indices.
+        :rtype: List[str]
+        """
+        mylog.error("In GameState._order_player_index_list_for_trick.")
+
+        player_list_len = len(cls.player_list)
+
+        mylog.error("GameState._order_player_index_list_for_trick: Section 1")
+        # Locate the index of the winner in the player list
+        try:
+            starting_index = cls.player_list.index(cls.round_bid_trick_winner)
+        except ValueError as e:
+            return []
+        except Exception as e:
+            mylog.error(
+                "GameState._order_player_index_list_for_trick: Section 2. Exception: (%r)",
+                e,
+            )
+            return []
+        mylog.error("GameState._order_player_index_list_for_trick: Section 3")
+        # Generate a list of indices for the players, starting with the
+        # GameState.round_bid_trick_winner.
+        return [(x + starting_index) % player_list_len for x in range(player_list_len)]
+
+    @classmethod
+    def order_player_id_list_for_trick(cls) -> List[PlayerID]:
+        """
+        Generate a list of players from GameState.player_list starting with the current
+        GameState.round_bid_trick_winner.
+
+        :return: Re-ordered list of player ids.
+        :rtype: List[PlayerID]
+        """
+        mylog.error("In GameState.order_player_id_list_for_trick.")
+
+        return [
+            cls.player_list[idx] for idx in cls._order_player_index_list_for_trick()
+        ]
+
+    @classmethod
+    def order_player_name_list_for_trick(cls) -> List[str]:
+        """
+        Generate a list of player names from GameState.player_list starting with the
+        current GameState.round_bid_trick_winner.
+
+        :return: Re-ordered list of player names.
+        :rtype: List[str]
+        """
+        mylog.error("In GameState.order_player_name_list_for_trick.")
+
+        return [
+            cls.other_players_name(p_id)
+            for p_id in cls.order_player_id_list_for_trick()
+        ]
+
+    @classmethod
+    def advance_mode(cls, event=None):  # pylint: disable=unused-argument
+        """
+        Routine to advance the UI game mode state. It can be called directly
+        or via callback from an event.
+
+        :param event: The event object passed in during callback, defaults to None
+        :type event: [type], optional
+        """
+        mylog.error("In GameState.advance_mode.")
+        mylog.warning(
+            "GameState.advance_mode: Calling API (current mode=%s)",
+            GAME_MODES[cls.game_mode],
+        )
+
+        if cls.game_id != GameID() and cls.player_id != PlayerID():
+            AjaxRequests.put(
+                f"/game/{cls.game_id.value}?state=true",
+                AjaxCallbacks().advance_mode_callback,
+                False,
+            )
+        else:
+            display_game_options()
 
 
 class CardTable(SVG.CanvasObject):  # pylint: disable=too-few-public-methods
@@ -1266,7 +1361,7 @@ class AjaxCallbacks:
             for card in GameState.kitty_deck:
                 GameState.players_hand.append(card)
                 GameState.players_meld_deck.append(card)
-            advance_mode()
+            GameState.advance_mode()
 
     def on_complete_player_cards(self, req: ajax.Ajax):
         """
@@ -1651,7 +1746,7 @@ class WSocketContainer:
         # Find the first instance of the winning card in the list.
         card_index = GameState.discard_deck.index(t_card)
         # Correlate that to the player_id who threw it.
-        t_player_id = order_player_id_list_for_trick()[card_index]
+        t_player_id = GameState.order_player_id_list_for_trick()[card_index]
         mylog.warning(
             "WSocketContainer.update_trick_winner: t_player_id=%s", t_player_id
         )
@@ -1684,7 +1779,7 @@ class WSocketContainer:
         mylog.warning("WSocketContainer.update_trick_card: t_player_id=%s", t_player_id)
         mylog.warning("WSocketContainer.update_trick_card: t_card=%s", t_card)
         GameState.discard_deck[
-            order_player_id_list_for_trick().index(t_player_id)
+            GameState.order_player_id_list_for_trick().index(t_player_id)
         ] = t_card
 
         # Set the player's hand to unmovable until the trick is over.
@@ -2032,61 +2127,6 @@ def update_status_line():
         )
 
 
-def order_player_index_list_for_trick() -> List[int]:
-    """
-    Generate a list of indices in GameState.player_list starting with the current
-    GameState.round_bid_trick_winner.
-
-    :return: Re-ordered list of player indices.
-    :rtype: List[str]
-    """
-    mylog.error("In order_player_index_list_for_trick.")
-
-    player_list_len = len(GameState.player_list)
-
-    mylog.error("order_player_index_list_for_trick: Section 1")
-    # Locate the index of the winner in the player list
-    try:
-        starting_index = GameState.player_list.index(GameState.round_bid_trick_winner)
-    except ValueError as e:
-        return []
-    except Exception as e:
-        mylog.error("order_player_index_list_for_trick: Section 2. Exception: (%r)", e)
-        return []
-    mylog.error("order_player_index_list_for_trick: Section 3")
-    # Generate a list of indices for the players, starting with the
-    # GameState.round_bid_trick_winner.
-    return [(x + starting_index) % player_list_len for x in range(player_list_len)]
-
-
-def order_player_id_list_for_trick() -> List[PlayerID]:
-    """
-    Generate a list of players from GameState.player_list starting with the current
-    GameState.round_bid_trick_winner.
-
-    :return: Re-ordered list of player ids.
-    :rtype: List[PlayerID]
-    """
-    mylog.error("In order_player_id_list_for_trick.")
-
-    return [GameState.player_list[idx] for idx in order_player_index_list_for_trick()]
-
-
-def order_player_name_list_for_trick() -> List[str]:
-    """
-    Generate a list of player names from GameState.player_list starting with the current
-    GameState.round_bid_trick_winner.
-
-    :return: Re-ordered list of player names.
-    :rtype: List[str]
-    """
-    mylog.error("In order_player_name_list_for_trick.")
-
-    return [
-        GameState.other_players_name(p_id) for p_id in order_player_id_list_for_trick()
-    ]
-
-
 def locate_cards_below_hand() -> List[str]:
     """
     Identify cards that have been moved below the player's hand.
@@ -2169,7 +2209,7 @@ def populate_canvas(deck, target_canvas: SVG.CanvasObject, deck_type="player"):
         if "trick" in GAME_MODES[GameState.game_mode] and "player" in deck_type:
             # This makes the player's deck movable based on whether their card place
             # in the discard deck is 'blank' or occupied.
-            player_index_in_discard_deck = order_player_id_list_for_trick().index(
+            player_index_in_discard_deck = GameState.order_player_id_list_for_trick().index(
                 GameState.player_id
             )
             movable = (
@@ -2193,8 +2233,10 @@ def populate_canvas(deck, target_canvas: SVG.CanvasObject, deck_type="player"):
         if "trick" in deck_type:
             # Place player names under the trick deck in the order
             # they will be playing cards during the trick.
-            mylog.warning("%s %s", counter, order_player_name_list_for_trick()[counter])
-            player_name = order_player_name_list_for_trick()[counter]
+            mylog.warning(
+                "%s %s", counter, GameState.order_player_name_list_for_trick()[counter]
+            )
+            player_name = GameState.order_player_name_list_for_trick()[counter]
             text = SVG.TextObject(
                 string=f"{player_name}",
                 anchorpoint=(
@@ -2387,42 +2429,16 @@ def remove_dialogs():
         item.remove()
 
 
-def advance_mode(event=None):  # pylint: disable=unused-argument
-    """
-    Routine to advance the game mode locally. This should be temporary as the game mode
-    should be determined and maintained on the server. It can be called directly or via
-    callback from an event.
-
-    :param event: The event object passed in during callback, defaults to None
-    :type event: [type], optional
-    """
-    mylog.error("In advance_mode.")
-    mylog.warning(
-        "advance_mode: Calling API (current mode=%s)", GAME_MODES[GameState.game_mode]
-    )
-
-    if GameState.game_id != GameID() and GameState.player_id != PlayerID():
-        AjaxRequests.put(
-            f"/game/{GameState.game_id.value}?state=true",
-            AjaxCallbacks().advance_mode_callback,
-            False,
-        )
-    else:
-        display_game_options()
-
-
 def sort_player_cards(event=None):  # pylint: disable=unused-argument
     """
-    Sort the player's cards.
+    Callback for the button requesting to sort the player's cards.
 
     :param event: The event object passed in during callback, defaults to None
     :type event: Event(?), optional
     """
     mylog.error("In sort_player_cards.")
 
-    # pylint: disable=unnecessary-lambda
-    GameState.players_hand.sort(key=lambda x: DECK_SORTED.index(x))
-    GameState.players_meld_deck.sort(key=lambda x: DECK_SORTED.index(x))
+    GameState.sort_player_hand()
     display_game_options()
 
 
