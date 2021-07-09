@@ -1,4 +1,4 @@
-FROM docker.io/library/python:3.8-slim
+FROM docker.io/library/python:3.9-slim
 
 RUN pip install poetry
 RUN apt-get update && apt-get install -y gcc && rm -rf /var/lib/apt/lists/*
