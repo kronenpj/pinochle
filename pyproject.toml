@@ -48,7 +48,7 @@ Werkzeug="^1.0"
 
 [tool.poetry.dev-dependencies]
 autopep8 = "^1.5.6"
-black = "^19.10b0"
+black = { version = "^19.10b0", allow-prereleases = true, python = "^3.6", markers = "platform_python_implementation == 'CPython'" }
 bumpversion = "^0.6.0"
 coverage = {version = "^5.5", extras = ["toml"]}
 eralchemy = "^1.2.10"
