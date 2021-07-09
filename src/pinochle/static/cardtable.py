@@ -2602,17 +2602,12 @@ def display_game_options():
 
         if GameState.team_id == TeamID():
             # Set the GameState.team_id variable based on the player id chosen.
-            for _temp in GameState.team_dict:
+            for _temp, _value in GameState.team_dict.items():
                 mylog.warning(
-                    "dgo: Key: %s Value: %r",
-                    _temp,
-                    GameState.team_dict[_temp]["player_ids"],
+                    "dgo: Key: %s Value: %r", _temp, _value["player_ids"],
                 )
-                if (
-                    GameState.player_id.value
-                    in GameState.team_dict[_temp]["player_ids"]
-                ):
-                    GameState.team_id = TeamID(GameState.team_dict[_temp]["team_id"])
+                if GameState.player_id.value in _value["player_ids"]:
+                    GameState.team_id = TeamID(_value["team_id"])
                     mylog.warning("dgo: Set GameState.team_id=%s", GameState.team_id)
 
         rebuild_display()
