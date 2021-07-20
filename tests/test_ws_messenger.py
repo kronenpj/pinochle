@@ -24,7 +24,7 @@ def test_register_new_player(app, patch_geventws):  # pylint: disable=unused-arg
     """
     game_id, round_id, team_ids, player_ids = test_utils.setup_complete_game(4)
 
-    ws_mess = WSM.get_instance()
+    ws_mess = WSM()
     ws_mess.client_sockets.clear()
     ws_mess.game_update = game.update
     dummy_ws = geventwebsocket.websocket.WebSocket(None, None, None)
@@ -46,7 +46,7 @@ def test_register_four_players(app, patch_geventws):  # pylint: disable=unused-a
     """
     game_id, round_id, team_ids, player_ids = test_utils.setup_complete_game(4)
 
-    ws_mess = WSM.get_instance()
+    ws_mess = WSM()
     ws_mess.client_sockets.clear()
     ws_mess.game_update = game.update
     dummy_ws = geventwebsocket.websocket.WebSocket(None, None, None)
@@ -68,7 +68,7 @@ def test_register_new_players_game_0(
     """
     game_id, round_id, team_ids, player_ids = test_utils.setup_complete_game(4)
 
-    ws_mess = WSM.get_instance()
+    ws_mess = WSM()
     ws_mess.client_sockets.clear()
     ws_mess.game_update = game.update
     ws_mess.distribute_registered_players = MagicMock()
@@ -93,7 +93,7 @@ def test_register_new_players_game_bid(
     """
     game_id, round_id, team_ids, player_ids = test_utils.setup_complete_game(4)
 
-    ws_mess = WSM.get_instance()
+    ws_mess = WSM()
     ws_mess.client_sockets.clear()
     ws_mess.game_update = game.update
     ws_mess.update_refreshed_page_bid = MagicMock()
@@ -124,7 +124,7 @@ def test_register_new_players_game_reveal(
     """
     game_id, round_id, team_ids, player_ids = test_utils.setup_complete_game(4)
 
-    ws_mess = WSM.get_instance()
+    ws_mess = WSM()
     ws_mess.client_sockets.clear()
     ws_mess.game_update = game.update
     ws_mess.update_refreshed_page_bid = MagicMock()
@@ -153,7 +153,7 @@ def test_register_new_players_game_trump(
     """
     game_id, round_id, team_ids, player_ids = test_utils.setup_complete_game(4)
 
-    ws_mess = WSM.get_instance()
+    ws_mess = WSM()
     ws_mess.client_sockets.clear()
     ws_mess.game_update = game.update
     ws_mess.update_refreshed_page_bid = MagicMock()

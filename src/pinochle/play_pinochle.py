@@ -241,7 +241,7 @@ def total_team_scores(round_id: str):
     """
     LOG.debug("finalize_bid: Totalling team scores")
 
-    ws_mess = WSM.get_instance()
+    ws_mess = WSM()
     game_id = str(utils.query_gameround_for_round(round_id).game_id)
 
     # Total each team's meld.
@@ -306,7 +306,7 @@ def send_bid_message(message_type: str, game_id: str, player_id: str, bid: int):
     :type bid: int
     """
     # Prompt the next player to bid.
-    ws_mess = WSM.get_instance()
+    ws_mess = WSM()
     message = {
         "action": message_type,
         "player_id": player_id,
@@ -346,7 +346,7 @@ def set_trump(round_id: str, player_id: str, trump: str):
     if "{}s".format(trump.capitalize()) not in SUITS:
         abort(409, f"Trump suit must be one of {SUITS}.")
 
-    ws_mess = WSM.get_instance()
+    ws_mess = WSM()
     message = {
         "action": "trump_selected",
         "trump": trump,
@@ -430,7 +430,7 @@ def start(round_id: str):
         a_round.round_seq % len(ordered_player_list)
     ]
 
-    ws_mess = WSM.get_instance()
+    ws_mess = WSM()
     message = {
         "action": "bid_prompt",
         "player_id": first_bid_player_id,
@@ -444,7 +444,7 @@ def start(round_id: str):
         "game_id": game_id,
         "state": temp_state,
     }
-    ws_mess = WSM.get_instance()
+    ws_mess = WSM()
     ws_mess.websocket_broadcast(game_id, message)
     return make_response(f"Round {round_id} started.", 200)
 
@@ -515,7 +515,7 @@ def score_hand_meld(round_id: str, player_id: str, cards: str):
         "card_list": card_list,
         "meld_score": score,
     }
-    ws_mess = WSM.get_instance()
+    ws_mess = WSM()
     ws_mess.websocket_broadcast(game_id, message, player_id)
     LOG.debug("score_hand_meld: score=%s", score)
     return make_response(json.dumps({"score": score}), 200)
@@ -595,7 +595,7 @@ def start_next_trick(round_id: str, player_id: str) -> Response:
         "game_id": game_id,
         "player_id": player_id,
     }
-    ws_mess = WSM.get_instance()
+    ws_mess = WSM()
     ws_mess.websocket_broadcast(game_id, message)
 
     return make_response("Start next trick", 200)
@@ -691,7 +691,7 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
         "player_id": player_id,
         "card": card,
     }
-    ws_mess = WSM.get_instance()
+    ws_mess = WSM()
     ws_mess.websocket_broadcast(game_id, message, player_id)
 
     # Determine if the trick is complete (all players submitted cards) and if so, declare
@@ -750,7 +750,7 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
                 "player_id": winning_player_id,
                 "winning_card": winning_card,
             }
-            ws_mess = WSM.get_instance()
+            ws_mess = WSM()
             ws_mess.websocket_broadcast(game_id, message)
         else:
             LOG.debug("play_trick_card: Calling notify_round_complete.")
@@ -864,6 +864,6 @@ def notify_round_complete(
         "team_scores": team_scores,
     }
     LOG.debug("notify_round_complete: Sending WSM to clients. %s", message)
-    ws_mess = WSM.get_instance()
+    ws_mess = WSM()
     ws_mess.websocket_broadcast(game_id, message)
     LOG.debug("Exiting notify_round_complete.")

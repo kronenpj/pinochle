@@ -50,7 +50,7 @@ def stream_socket(ws):  # pragma: no cover
         # Dispatch an action
         if "action" in message_text:
             msg_game_id = str(message_data["game_id"])
-            ws_mess = WSM.get_instance()
+            ws_mess = WSM()
             if "register_client" in message_text:
                 msg_player_id = message_data["player_id"]
                 if msg_game_id == "" or msg_player_id == "":

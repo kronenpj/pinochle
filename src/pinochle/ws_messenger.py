@@ -15,23 +15,14 @@ class WebSocketMessenger:
     Encapsulates websocket message routines and tracks attached clients.
     """
 
-    __instance = None
     client_sockets = {}
 
-    @staticmethod
-    def get_instance():
-        """ Static access method. """
-        if not WebSocketMessenger.__instance:
-            WebSocketMessenger()
-        return WebSocketMessenger.__instance
+    def __new__(cls):
+        if not hasattr(cls, 'instance'):
+            cls.instance = super(WebSocketMessenger, cls).__new__(cls)
+        return cls.instance
 
     def __init__(self):
-        """ Virtually private constructor. """
-        if WebSocketMessenger.__instance:
-            raise Exception("This class is a singleton!")
-
-        WebSocketMessenger.__instance = self
-
         self.mylog = custom_log.get_logger()
         self.mylog.setLevel(GLOBAL_LOG_LEVEL)
         self.mylog.info("Log level: %d", self.mylog.getEffectiveLevel())
