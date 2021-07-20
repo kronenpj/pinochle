@@ -831,9 +831,10 @@ def notify_round_complete(
     assert t_hand_id_list
     LOG.debug("notify_round_complete: t_hand_id_list=%s", t_hand_id_list)
     for index, h_id in enumerate(t_hand_id_list):
-        if hand.read_one(h_id):
+        hand_h_id = hand.read_one(h_id)
+        if hand_h_id:
             trick_score[team_id_list[index]] = score_tricks.score(
-                card_utils.convert_from_svg_names(hand.read_one(h_id)["cards"])
+                card_utils.convert_from_svg_names(hand_h_id["cards"])
             )
             if str(team_id_list[index]) == str(winning_team_id):
                 trick_score[team_id_list[index]] += 1

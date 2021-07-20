@@ -59,7 +59,7 @@ def query_hand_list(hand_id: str) -> List[Hand]:
     return Hand.query.filter(Hand.hand_id == hand_id).order_by(Hand.seq).all()
 
 
-def query_hand_card(hand_id: str, card: str) -> Optional[Hand]:
+def query_hand_card(hand_id: str, card: str) -> Hand:
     """
     Query whether the specified hand contains the specified card.
 
@@ -76,7 +76,7 @@ def query_hand_card(hand_id: str, card: str) -> Optional[Hand]:
     return None
 
 
-def query_player(player_id: str) -> Optional[Player]:
+def query_player(player_id: str) -> Player:
     """
     Retrieve information about the specified player.
 

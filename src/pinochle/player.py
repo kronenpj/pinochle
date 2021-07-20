@@ -39,7 +39,7 @@ def read_one(player_id: str):
     :param player_id:   Id of player to find
     :return:            player matching id
     """
-    if player_id is None or player_id in ["", "hand"]:
+    if not player_id or player_id in {"", "hand"}:
         abort(404, "Player_id not supplied.")
 
     # Build the initial query
