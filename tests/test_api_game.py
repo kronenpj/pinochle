@@ -8,12 +8,11 @@ import uuid
 from unittest.mock import MagicMock
 
 import pytest
+from werkzeug import exceptions
+
 from pinochle import game
 from pinochle.models.core import db
 from pinochle.play_pinochle import GAME_MODES
-
-# pylint: disable=wrong-import-order
-from werkzeug import exceptions
 
 from . import test_utils
 

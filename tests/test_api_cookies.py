@@ -3,18 +3,7 @@ Tests for the various round classes.
 
 License: GPLv3
 """
-import json
 import uuid
-from random import choice
-
-import pytest
-from pinochle import gameround, round_, roundteams, teamplayers
-from pinochle.cards.const import SUITS
-from pinochle.models import utils
-from pinochle.models.core import db
-
-# pylint: disable=wrong-import-order
-from werkzeug import exceptions
 
 from . import test_utils
 
@@ -69,7 +58,6 @@ def test_create_player_id_cookie(app):
         assert player_id in response_str
         print(f"response.headers={response.headers}")
         assert f"player_id={player_id}" in response.headers["Set-Cookie"]
-
 
 
 def test_create_game_id_cookie_bad(app):

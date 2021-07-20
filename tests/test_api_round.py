@@ -8,13 +8,12 @@ import uuid
 from random import choice
 
 import pytest
+from werkzeug import exceptions
+
 from pinochle import gameround, play_pinochle, round_
 from pinochle.cards.const import SUITS
 from pinochle.models import utils
 from pinochle.models.core import db
-
-# pylint: disable=wrong-import-order
-from werkzeug import exceptions
 
 from . import test_utils
 

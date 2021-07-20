@@ -7,14 +7,10 @@ import json
 import uuid
 from random import choice
 
-import pytest
-from pinochle import gameround, player, round_, roundteams, teamplayers
+from pinochle import player, round_
 from pinochle.cards.const import SUITS
 from pinochle.models import utils
 from pinochle.models.core import db
-
-# pylint: disable=wrong-import-order
-from werkzeug import exceptions
 
 from . import test_utils
 

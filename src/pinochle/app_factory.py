@@ -8,9 +8,8 @@ import os
 import connexion
 
 # pragma: pylint: disable=unused-import
-from . import custom_log, models
+from . import custom_log
 from .__init__ import GLOBAL_LOG_LEVEL
-from .models import utils
 from .models.core import db
 
 

@@ -7,11 +7,10 @@ import json
 import uuid
 
 import pytest
+from werkzeug import exceptions
+
 from pinochle import hand, round_, roundkitty
 from pinochle.models.round_ import Round
-
-# pylint: disable=wrong-import-order
-from werkzeug import exceptions
 
 from . import test_utils
 

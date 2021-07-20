@@ -3,7 +3,7 @@ from datetime import datetime
 
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
 
-from .core import db, ma
+from .core import db
 from .GUID import GUID
 
 # Suppress invalid no-member messages from pylint.

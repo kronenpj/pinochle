@@ -8,10 +8,9 @@ import uuid
 from random import choice
 
 import pytest
-from pinochle import team
-
-# pylint: disable=wrong-import-order
 from werkzeug import exceptions
+
+from pinochle import team
 
 from . import test_utils
 

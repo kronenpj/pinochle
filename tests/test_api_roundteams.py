@@ -8,11 +8,10 @@ import uuid
 from random import choice
 
 import pytest
+from werkzeug import exceptions
+
 from pinochle import hand, round_, roundteams
 from pinochle.models.core import db
-
-# pragma: pylint: disable=wrong-import-order
-from werkzeug import exceptions
 
 from . import test_utils
 

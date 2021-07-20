@@ -1,12 +1,10 @@
 """
 Tests for the application module.
 """
-import random
 from copy import deepcopy
 from unittest import TestCase
 
-import pytest
-from pinochle.cards import card, const, stack, utils
+from pinochle.cards import card, stack, utils
 from pinochle.cards.deck import PinochleDeck
 
 
