@@ -15,6 +15,7 @@ from .team import Team
 from .teamplayers import TeamPlayers
 from .trick import Trick
 
+UUID_ZEROS = "00000000-0000-0000-0000-000000000000"
 
 # This is used for database debugging only. No test coverage needed.
 def dump_db():  # pragma: no cover

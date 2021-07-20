@@ -21,13 +21,13 @@ class WebSocketMessenger:
     @staticmethod
     def get_instance():
         """ Static access method. """
-        if WebSocketMessenger.__instance is None:
+        if not WebSocketMessenger.__instance:
             WebSocketMessenger()
         return WebSocketMessenger.__instance
 
     def __init__(self):
         """ Virtually private constructor. """
-        if WebSocketMessenger.__instance is not None:
+        if WebSocketMessenger.__instance:
             raise Exception("This class is a singleton!")
 
         WebSocketMessenger.__instance = self

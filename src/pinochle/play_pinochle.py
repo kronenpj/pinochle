@@ -64,7 +64,7 @@ def deal_pinochle(player_ids: list, kitty_len: int = 0, kitty_id: str = None) ->
         hand.addcards(hand_id=kitty_id, cards=convert_to_svg_names(kitty_deck))
     for index, __ in enumerate(player_ids):
         player_info: Optional[Player] = utils.query_player(player_ids[index])
-        hand_id = str(player_info.hand_id)
+        hand_id = str(player_info.hand_id) if player_info else utils.UUID_ZEROS
         hand.addcards(hand_id=hand_id, cards=convert_to_svg_names(hand_decks[index]))
 
 
@@ -478,7 +478,7 @@ def score_hand_meld(round_id: str, player_id: str, cards: str):
     if len(cards) > 2:
         # Associate the player with that player's hand.
         player_temp: Optional[Player] = utils.query_player(player_id=player_id)
-        player_hand_id = str(player_temp.hand_id)
+        player_hand_id = str(player_temp.hand_id) if player_temp else utils.UUID_ZEROS
         player_hand = utils.query_hand_list(player_hand_id)
         player_hand_list = [x.card for x in player_hand]
         card_list = cards.split(",")
@@ -660,7 +660,7 @@ def play_trick_card(round_id: str, player_id: str, card: str) -> Response:
 
     # Associate the player with that player's hand.
     player_temp: Optional[Player] = utils.query_player(player_id=player_id)
-    player_hand_id: str = str(player_temp.hand_id)
+    player_hand_id: str = str(player_temp.hand_id) if player_temp else utils.UUID_ZEROS
     player_hand: List[Hand] = utils.query_hand_list(player_hand_id)
     player_hand_list: List[str] = [x.card for x in player_hand]
 
@@ -766,7 +766,7 @@ def find_winning_trick_card(trick_card_list: List[Hand], trump: str) -> str:
     Determine the card in the list which wins the trick, based on trump. The card list is
     ordered such that the card that was 'led' is in position 0.
 
-    :param trick_card_list: Ordered list of Hand classes. 
+    :param trick_card_list: Ordered list of Hand classes.
     :type trick_card_list: List[Hand]
     :param trump: The suit designated as trump for this round.
     :type trump: str
