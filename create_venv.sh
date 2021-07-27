@@ -14,4 +14,4 @@ echo "Installing poetry"
 pip3 install poetry
 #pip install --use-feature=2020-resolver -r requirements.txt -r requirements-test.txt
 echo "Installing (development) requirements"
-/usr/bin/poetry install --no-root
+poetry install --no-root
