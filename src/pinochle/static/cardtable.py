@@ -387,6 +387,7 @@ class GameState:
     # Players associated with this game/round
     player_dict: Dict[PlayerID, Dict[str, str]] = {}
     player_list: List[PlayerID] = []
+    ordered_player_id_list: List[int] = []
     # Track the user who is the round's bid winner, and each trick winner.
     round_bid_trick_winner: PlayerID
 
