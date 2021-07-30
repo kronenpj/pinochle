@@ -668,7 +668,7 @@ class BidDialog:
     Class to handle the bid dialog display
     """
 
-    bid_dialog = None
+    bid_dialog: Dialog
     last_bid = -1
 
     def on_click_bid_dialog(self, event=None):
@@ -735,7 +735,7 @@ class TrumpSelectDialog:
     Class to handle the trump dialog display
     """
 
-    trump_dialog = None
+    trump_dialog: Dialog
     d_canvas = None
 
     def on_click_trump_dialog(self, event=None):
@@ -860,7 +860,7 @@ class MeldFinalDialog:
     Class to handle the meld dialog display
     """
 
-    meld_final_dialog = None
+    meld_final_dialog: Dialog
 
     def on_click_meld_dialog(self, event=None):  # pylint: disable=unused-argument
         """
@@ -898,7 +898,7 @@ class TrickWonDialog:
     Class to handle the trick won dialog display
     """
 
-    trick_won_dialog = None
+    trick_won_dialog: Dialog
 
     def on_click_trick_won_dialog(self, event=None):
         """
