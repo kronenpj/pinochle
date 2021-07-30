@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 if [ -z "$VIRTUAL_ENV" ]; then
-  . venv/bin/activate
+  . .venv/bin/activate
 fi
 
 OPTIONS="$@"

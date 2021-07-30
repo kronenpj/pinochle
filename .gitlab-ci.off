@@ -16,7 +16,7 @@ variables:
 cache:
   paths:
     - .cache/pip
-    - venv/
+    - .venv/
 
 stages:
   - test
@@ -24,15 +24,15 @@ stages:
 
 before_script:
   - python -V  # Print out python version for debugging
-  - python -m venv venv
+  - python -m venv .venv
 #  - pip install virtualenv
-#  - virtualenv venv
+#  - virtualenv .venv
 
 # Only run the tests when the important source or tests are changed.
 # Running tox in parallel (-p all) also reduces the amount of output generated.
 test:
   script:
-    - source venv/bin/activate
+    - source .venv/bin/activate
     - pip --disable-pip-version-check install tox
     - tox -p all -e py38 -- -m "not hypothesis"
   artifacts:
@@ -49,7 +49,7 @@ test:
 #pages:
 #  stage: deploy
 #  script:
-#    - source venv/bin/activate
+#    - source .venv/bin/activate
 #    - pip install -r requirements.txt
 #    - python setup.py install
 #    - python gen_exam.py -pT -r RANDOM -j html.j2 -f public/example-technician.html

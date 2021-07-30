@@ -3,7 +3,7 @@
 PYVER=${PYVER:-py38}
 
 #if [ -z "$VIRTUAL_ENV" ]; then
-#  . venv/bin/activate
+#  . .venv/bin/activate
 #fi
 
 if [ "$1" == "" ]; then
