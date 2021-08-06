@@ -17,7 +17,7 @@ app = application
 sockets = Sockets(app)
 
 # Create non-blueprint-defined endpoints.
-@sockets.route("/echo")
+@sockets.route("/echo")  # pragma: no mutate
 def echo_socket(ws):  # pragma: no cover
     while True:
         message = ws.receive()

@@ -32,10 +32,10 @@ def create_app(register_blueprints=True):
         # print("The application.cfg.py file was not found. Using defaults.")
         pass
 
-    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False  # pragma: no mutate
 
     # Handle the special way SQLite3 works.
-    if app.config["SQLALCHEMY_DB_PREFIX"] != "sqlite":
+    if app.config["SQLALCHEMY_DB_PREFIX"] != "sqlite":  # pragma: no mutate
         app.config[
             "SQLALCHEMY_DATABASE_URI"
         ] = "{db_prefix}://{user}:{passwd}@{server}/{db}".format(
@@ -54,7 +54,7 @@ def create_app(register_blueprints=True):
             "Add 'instance/application.cfg.py' to %s to override defaults.", basedir
         )
         app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///{db}".format(
-            db=app.config["DB_NAME"]
+            db=app.config["DB_NAME"]  # pragma: no mutate
         )
     db.init_app(app)
 
