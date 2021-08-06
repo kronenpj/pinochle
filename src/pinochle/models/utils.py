@@ -2,7 +2,7 @@
 Database utilities to consolidate db activity and simplify other parts of the application.
 
 """
-from typing import List, Optional
+from typing import List
 
 from .core import db  # pragma: no cover
 from .game import Game
