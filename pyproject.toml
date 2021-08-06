@@ -79,7 +79,7 @@ yapf = "^0.31.0"
 legacy_tox_ini = """
 [tox]
 # TODO: Add py310 when required packages support it.
-envlist = coverage-clean, py{36,37,38,39,py3}, coverage-combine
+envlist = coverage-clean, py{36,37,38,39}, coverage-combine
 skip_missing_interpreters = True
 isolated_build = True
 
