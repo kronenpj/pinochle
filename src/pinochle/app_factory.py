@@ -7,9 +7,10 @@ import os
 
 import connexion
 
-# pragma: pylint: disable=unused-import
+
 from . import custom_log
 from .__init__ import GLOBAL_LOG_LEVEL
+from .exceptions import AppNotInstantiatedError
 from .models.core import db
 
 
@@ -21,6 +22,8 @@ def create_app(register_blueprints=True):
     basedir = os.path.abspath(os.path.dirname(__file__))
     connex_app = connexion.App(__name__, specification_dir=basedir)
     app = connex_app.app
+    if not app:
+        raise AppNotInstantiatedError
 
     if register_blueprints:
         connex_app.add_api("swagger.yml")
