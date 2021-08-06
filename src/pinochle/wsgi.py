@@ -119,7 +119,7 @@ def setcookie(kind: str, ident: str):
     if ident is None:
         abort(404, f"{kind.capitalize()} not supplied.")
 
-    db_response = None
+    db_response: str = ""
     # print(f"app.setcookie: Setting {kind} cookie with value {ident}")
     if ident == "clear":
         db_response = "clear"
@@ -127,9 +127,9 @@ def setcookie(kind: str, ident: str):
         db_response = utils.query_game(game_id=ident)
     elif kind == "player_id":
         db_response = utils.query_player(player_id=ident)
-    if db_response is None:
+    if not db_response:
         abort(404, f"{kind.capitalize()} not registered.")
-    resp = make_response("The Cookie has been Set")
+    resp = make_response()
     resp.status_code = 200
     if db_response == "clear":
         resp.set_cookie(kind, "", samesite="Strict", expires=0)
