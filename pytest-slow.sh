@@ -19,4 +19,4 @@ if [ -z "$SERVER_IP" ]; then
 else
   export SERVER_IP=$SERVER_IP
 fi
-python -m pytest --runslow --runwip -m slow "$@" $AFTER
+python -m pytest -x --runslow --runwip -m slow "$@" $AFTER
