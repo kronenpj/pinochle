@@ -6,6 +6,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass
+from enum import Enum, auto
 from typing import Any, Dict, List, Optional
 
 import brySVG.dragcanvas as SVG  # pylint: disable=import-error
@@ -34,16 +35,24 @@ CARD_SMALLER_HEIGHT = CARD_HEIGHT * 0.75
 #                0      1        2           3        4       5
 GAME_MODES = ["game", "bid", "bidfinal", "reveal", "meld", "trick"]
 
+
+class DeckTypes(Enum):
+    PLAYER = auto()
+    KITTY = auto()
+    MELD = auto()
+    TRICK = auto()
+
+
 # These are a lot less dynamic than I thought they'd be.
 DECK_CONFIG = {
-    "player": {
+    DeckTypes.PLAYER: {
         1: {"flippable": False, "movable": False, "show_face": True},  # Bid
         2: {"flippable": False, "movable": False, "show_face": True},  # Bidfinal
         3: {"flippable": False, "movable": False, "show_face": True},  # Reveal
         4: {"flippable": False, "movable": True, "show_face": True},  # Meld
         5: {"flippable": False, "movable": True, "show_face": True},  # Trick
     },
-    "kitty": {
+    DeckTypes.KITTY: {
         1: {"flippable": False, "movable": False, "show_face": False},  # Bid (Kitty)
         2: {
             "flippable": False,
@@ -54,7 +63,7 @@ DECK_CONFIG = {
         4: {"flippable": False, "movable": False, "show_face": True},  # Meld (Meld)
         5: {"flippable": False, "movable": False, "show_face": True},  # Trick (Discard)
     },
-    "meld": {
+    DeckTypes.MELD: {
         1: {"flippable": False, "movable": False, "show_face": False},  # Bid (Kitty)
         2: {
             "flippable": False,
@@ -65,7 +74,7 @@ DECK_CONFIG = {
         4: {"flippable": False, "movable": False, "show_face": True},  # Meld (Meld)
         5: {"flippable": False, "movable": False, "show_face": True},  # Trick (Discard)
     },
-    "trick": {
+    DeckTypes.TRICK: {
         1: {"flippable": False, "movable": False, "show_face": False},  # Bid (Kitty)
         2: {
             "flippable": False,
@@ -230,17 +239,17 @@ class PlayingCard(SVG.UseObject):
         # This "should never be called" during GAME_MODEs 0 or 1.
         add_only = False
         if GAME_MODES[GameState.game_mode] in ["reveal"]:  # Bury
-            if "player" in self.id:
+            if DeckTypes.PLAYER.name.lower() in self.id:
                 parent_canvas.translateObject(
                     parent_canvas.objectDict[f"{self.id}"], (0, CARD_HEIGHT / 1.9)
                 )
         elif GAME_MODES[GameState.game_mode] in ["meld"]:  # Meld
-            if True or "player" in self.id:
+            if True or DeckTypes.PLAYER.name.lower() in self.id:
                 sending_deck = GameState.players_meld_deck  # Deep copy
                 receiving_deck = GameState.meld_deck  # Reference
             else:
                 add_only = True
-                card_tag = "player"
+                card_tag = DeckTypes.PLAYER.name.lower()
                 sending_deck = GameState.meld_deck  # Reference
                 receiving_deck = GameState.players_meld_deck  # Deep copy
         elif GAME_MODES[GameState.game_mode] in ["trick"]:  # Trick
@@ -646,7 +655,7 @@ class CardTable(SVG.CanvasObject):  # pylint: disable=too-few-public-methods
             if (
                 # Only play cards from player's hand
                 # Only throw cards that are face-up
-                selected_card.id.startswith("player")
+                selected_card.id.startswith(DeckTypes.PLAYER.name.lower())
                 and selected_card.show_face
             ):
                 if offset == (0, 0):  # We have a click, not a drag
@@ -656,7 +665,7 @@ class CardTable(SVG.CanvasObject):  # pylint: disable=too-few-public-methods
             elif (
                 # Check cards from kitty deck
                 # Only flip cards that are face-down
-                selected_card.id.startswith("kitty")
+                selected_card.id.startswith(DeckTypes.KITTY.name.lower())
                 and not selected_card.show_face
             ):
                 if offset == (0, 0):  # We have a click, not a drag
@@ -1942,7 +1951,7 @@ class WSocketContainer:
         for (objid, node) in g_canvas.objectDict.items():
             if (
                 isinstance(node, SVG.UseObject)
-                and "kitty" in objid
+                and DeckTypes.KITTY.name.lower() in objid
                 and node.attrs["href"] == revealed_card
                 and not node.attrs["show_face"]
             ):
@@ -2141,7 +2150,9 @@ def locate_cards_below_hand() -> List[str]:
     potential_cards = []
     min_y_coord = float(g_canvas.attrs["height"]) + 20
     for card in g_canvas.objectDict.values():
-        if not isinstance(card, SVG.UseObject) or "player" not in card.id:
+        if not (
+            isinstance(card, SVG.UseObject) and DeckTypes.PLAYER.name.lower() in card.id
+        ):
             continue
         min_y_coord = min(min_y_coord, float(card.attrs["y"]))
         potential_cards.append(card)
@@ -2166,7 +2177,9 @@ def clear_globals_for_trick_change(__: Any):
     display_game_options()
 
 
-def populate_canvas(deck, target_canvas: SVG.CanvasObject, deck_type="player"):
+def populate_canvas(
+    deck, target_canvas: SVG.CanvasObject, deck_type: DeckTypes = DeckTypes.PLAYER
+):
     """
     Populate given canvas with the deck of cards but without specific placement.
 
@@ -2174,8 +2187,8 @@ def populate_canvas(deck, target_canvas: SVG.CanvasObject, deck_type="player"):
     :type deck: list
     :param target_canvas: Canvas to populate
     :type target_canvas: SVG.CanvasObject
-    :param deck_type: The "type" of deck populating the UI.
-    :type deck_type: str
+    :param deck_type: The type of deck populating the UI.
+    :type deck_type: DeckTypes
     """
     mylog.error("In populate_canvas.")
 
@@ -2202,12 +2215,15 @@ def populate_canvas(deck, target_canvas: SVG.CanvasObject, deck_type="player"):
         movable = DECK_CONFIG[deck_type][GameState.game_mode]["movable"]
         show_face = DECK_CONFIG[deck_type][GameState.game_mode]["show_face"]
         if "reveal" in GAME_MODES[GameState.game_mode]:
-            if "kitty" in deck_type:
+            if deck_type is DeckTypes.KITTY:
                 flippable = GameState.player_id == GameState.round_bid_trick_winner
                 # show_face = True
-            if "player" in deck_type:
+            if deck_type is DeckTypes.PLAYER:
                 movable = GameState.player_id == GameState.round_bid_trick_winner
-        if "trick" in GAME_MODES[GameState.game_mode] and "player" in deck_type:
+        if (
+            DeckTypes.TRICK.name.lower() in GAME_MODES[GameState.game_mode]
+            and deck_type is DeckTypes.PLAYER
+        ):
             # This makes the player's deck movable based on whether their card place
             # in the discard deck is 'blank' or occupied.
             player_index_in_discard_deck = GameState.order_player_id_list_for_trick().index(
@@ -2225,13 +2241,13 @@ def populate_canvas(deck, target_canvas: SVG.CanvasObject, deck_type="player"):
         # Add the card to the canvas.
         piece = PlayingCard(
             face_value=card_value,
-            objid=f"{deck_type}{counter}",
+            objid=f"{deck_type.name.lower()}{counter}",
             show_face=show_face,
             flippable=flippable,
             # movable=movable,
         )
         target_canvas.addObject(piece, fixed=not movable)
-        if "trick" in deck_type:
+        if deck_type is DeckTypes.TRICK:
             # Place player names under the trick deck in the order
             # they will be playing cards during the trick.
             mylog.warning(
@@ -2247,7 +2263,7 @@ def populate_canvas(deck, target_canvas: SVG.CanvasObject, deck_type="player"):
                 anchorposition=2,
                 fontsize=24,
                 textcolour="white",
-                objid=f"name_{deck_type}{counter}",
+                objid=f"name_{deck_type.name.lower()}{counter}",
             )
             target_canvas <= text
 
@@ -2278,7 +2294,9 @@ def generate_place_static_box(canvas: SVG.CanvasObject):
     )
 
 
-def place_cards(deck, target_canvas, location="top", deck_type="player"):
+def place_cards(
+    deck, target_canvas, location="top", deck_type: DeckTypes = DeckTypes.PLAYER
+):
     """
     Place the supplied deck / list of cards in the correct position on the display.
 
@@ -2288,7 +2306,7 @@ def place_cards(deck, target_canvas, location="top", deck_type="player"):
     where to place the cards vertically.
     :type location: str, optional
     :param deck_type: The type of (sub)-deck this is.
-    :type deck_type: str, optional # TODO: Should probably be enum-like
+    :type deck_type: DeckType, optional
     """
     mylog.error("In place_cards.")
     mylog.warning("place_cards(deck=%s, deck_type=%s).", deck, deck_type)
@@ -2308,13 +2326,13 @@ def place_cards(deck, target_canvas, location="top", deck_type="player"):
     # Iterate over canvas's child nodes and move any node
     # where deck_type matches the node's id
     for (objid, node) in target_canvas.objectDict.items():
-        if isinstance(node, SVG.UseObject) and deck_type in objid:
+        if isinstance(node, SVG.UseObject) and deck_type.name.lower() in objid:
             # NOTE: The centre argument to setPosition takes a tuple, so the double
             # parentheses are necessary.
             node.setPosition(
                 (xpos, ypos),
-                width=None if deck_type == "player" else CARD_SMALLER_WIDTH,
-                height=None if deck_type == "player" else CARD_SMALLER_HEIGHT,
+                width=None if deck_type is DeckTypes.PLAYER else CARD_SMALLER_WIDTH,
+                height=None if deck_type is DeckTypes.PLAYER else CARD_SMALLER_HEIGHT,
             )
 
             mylog.warning(
@@ -2774,8 +2792,8 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
             generate_place_static_box(g_canvas)
         if GAME_MODES[GameState.game_mode] in ["bid", "bidfinal"]:  # Bid
             # Use empty deck to prevent peeking at the kitty.
-            populate_canvas(GameState.kitty_deck, g_canvas, "kitty")
-            populate_canvas(GameState.players_hand, g_canvas, "player")
+            populate_canvas(GameState.kitty_deck, g_canvas, DeckTypes.KITTY)
+            populate_canvas(GameState.players_hand, g_canvas, DeckTypes.PLAYER)
         if GAME_MODES[GameState.game_mode] in ["bidfinal"]:  # Bid submitted
             # The kitty doesn't need to remain 'secret' now that the bidding is done.
             # Ask the server for the cards in the kitty.
@@ -2785,48 +2803,49 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
                     AjaxCallbacks().on_complete_kitty,
                 )
         elif GAME_MODES[GameState.game_mode] in ["reveal"]:  # Reveal
-            populate_canvas(GameState.kitty_deck, g_canvas, "kitty")
-            populate_canvas(GameState.players_hand, g_canvas, "player")
+            populate_canvas(GameState.kitty_deck, g_canvas, DeckTypes.KITTY)
+            populate_canvas(GameState.players_hand, g_canvas, DeckTypes.PLAYER)
         elif GAME_MODES[GameState.game_mode] in ["meld"]:  # Meld
-            populate_canvas(
-                GameState.meld_deck, g_canvas, GAME_MODES[GameState.game_mode]
-            )
-            populate_canvas(GameState.players_meld_deck, g_canvas, "player")
+            populate_canvas(GameState.meld_deck, g_canvas, DeckTypes.MELD)
+            populate_canvas(GameState.players_meld_deck, g_canvas, DeckTypes.PLAYER)
         elif GAME_MODES[GameState.game_mode] in ["trick"]:  # Trick
-            populate_canvas(
-                GameState.discard_deck, g_canvas, GAME_MODES[GameState.game_mode]
-            )
-            populate_canvas(GameState.players_hand, g_canvas, "player")
+            populate_canvas(GameState.discard_deck, g_canvas, DeckTypes.TRICK)
+            populate_canvas(GameState.players_hand, g_canvas, DeckTypes.PLAYER)
 
     # Last-drawn are on top (z-index wise)
     # TODO: Retrieve events from API to show kitty cards when they are flipped over.
     if GAME_MODES[GameState.game_mode] in ["bid", "bidfinal", "reveal"]:  # Bid & Reveal
-        place_cards(GameState.kitty_deck, g_canvas, location="top", deck_type="kitty")
         place_cards(
-            GameState.players_hand, g_canvas, location="bottom", deck_type="player"
+            GameState.kitty_deck, g_canvas, location="top", deck_type=DeckTypes.KITTY
+        )
+        place_cards(
+            GameState.players_hand,
+            g_canvas,
+            location="bottom",
+            deck_type=DeckTypes.PLAYER,
         )
     elif GAME_MODES[GameState.game_mode] in ["meld"]:  # Meld
         # TODO: Expand display to show all four players.
         place_cards(
-            GameState.meld_deck,
-            g_canvas,
-            location="top",
-            deck_type=GAME_MODES[GameState.game_mode],
+            GameState.meld_deck, g_canvas, location="top", deck_type=DeckTypes.MELD,
         )
         place_cards(
-            GameState.players_meld_deck, g_canvas, location="bottom", deck_type="player"
+            GameState.players_meld_deck,
+            g_canvas,
+            location="bottom",
+            deck_type=DeckTypes.PLAYER,
         )
     elif GAME_MODES[GameState.game_mode] in ["trick"]:  # Trick
         # Remove any dialogs from the meld phase.
         remove_dialogs()
         place_cards(
-            GameState.discard_deck,
-            g_canvas,
-            location="top",
-            deck_type=GAME_MODES[GameState.game_mode],
+            GameState.discard_deck, g_canvas, location="top", deck_type=DeckTypes.TRICK,
         )
         place_cards(
-            GameState.players_hand, g_canvas, location="bottom", deck_type="player"
+            GameState.players_hand,
+            g_canvas,
+            location="bottom",
+            deck_type=DeckTypes.PLAYER,
         )
 
     # pylint: disable=attribute-defined-outside-init, invalid-name
