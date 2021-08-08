@@ -31,8 +31,32 @@ CARD_SMALLER_WIDTH = CARD_WIDTH * 0.75
 CARD_SMALLER_HEIGHT = CARD_HEIGHT * 0.75
 
 # NOTE: Also contained in play_pinochle.py
-#                0      1        2           3        4       5
-GAME_MODES = ["game", "bid", "bidfinal", "reveal", "meld", "trick"]
+#                 0      1        2           3        4       5
+# GAME_MODES = ["game", "bid", "bidfinal", "reveal", "meld", "trick"]
+
+
+class GameModes:
+    modes = ["game", "bid", "bidfinal", "reveal", "meld", "trick"]
+    _mode = 0
+
+    def get_mode_str(self) -> str:
+        return self.modes[self._mode]
+
+    def reset(self):
+        self.set(0)
+
+    def set(self, mode: int = 0):
+        self._mode = mode
+
+    def next(self):
+        """
+        Advance to next game mode, skipping over the first element when
+        wrapping around.
+        """
+        self._mode += 1
+        self._mode %= len(self.modes)
+        if self._mode == 0:
+            self._mode += 1
 
 
 class DeckTypes(Enum):
@@ -309,7 +333,7 @@ class PlayingCard(SVG.UseObject):
             self.canvas,
         )
         parent_canvas = self.canvas
-        card_tag = GAME_MODES[GameState.game_mode]
+        card_tag = GameState.mode.get_mode_str()
 
         # Protect the player's deck during meld process.
         # Create a reference to the appropriate deck by mode.
@@ -317,12 +341,12 @@ class PlayingCard(SVG.UseObject):
         sending_deck = CardDeck(DeckTypes.MELD)
         # This "should never be called" during GAME_MODEs 0 or 1.
         add_only = False
-        if GAME_MODES[GameState.game_mode] in ["reveal"]:  # Bury
+        if GameState.mode.get_mode_str() in ["reveal"]:  # Bury
             if DeckTypes.PLAYER.name.lower() in self.id:
                 parent_canvas.translateObject(
                     parent_canvas.objectDict[f"{self.id}"], (0, CARD_HEIGHT / 1.9)
                 )
-        elif GAME_MODES[GameState.game_mode] in ["meld"]:  # Meld
+        elif GameState.mode.get_mode_str() in ["meld"]:  # Meld
             if True or DeckTypes.PLAYER.name.lower() in self.id:
                 sending_deck.set(GameState.players_meld_deck.get())  # Deep copy
                 sending_deck.set_type(DeckTypes.MELD)
@@ -333,7 +357,7 @@ class PlayingCard(SVG.UseObject):
                 sending_deck = GameState.meld_deck  # Reference
                 receiving_deck.set(GameState.players_meld_deck.get())  # Deep copy
                 receiving_deck.set_type(DeckTypes.MELD)
-        elif GAME_MODES[GameState.game_mode] in ["trick"]:  # Trick
+        elif GameState.mode.get_mode_str() in ["trick"]:  # Trick
             sending_deck = GameState.players_hand  # Reference
             receiving_deck = GameState.discard_deck  # Reference
 
@@ -376,10 +400,10 @@ class PlayingCard(SVG.UseObject):
 
         # Cards are placed in a specific order when in trick mode. Otherwise,
         # the first available empty (card-base) slot is used.
-        if GAME_MODES[GameState.game_mode] in ["trick"]:
+        if GameState.mode.get_mode_str() in ["trick"]:
             p_list: List[PlayerID] = GameState.order_player_id_list_for_trick()
             placement: int = p_list.index(GameState.player_id)
-        elif GAME_MODES[GameState.game_mode] in ["meld"]:
+        elif GameState.mode.get_mode_str() in ["meld"]:
             placement = receiving_deck.index("card-base")
         else:
             return
@@ -409,7 +433,7 @@ class PlayingCard(SVG.UseObject):
         discard_object.unbind("click")
         # TODO: Remove this when taking meld back is implemented above.
 
-        if GAME_MODES[GameState.game_mode] in ["trick"]:
+        if GameState.mode.get_mode_str() in ["trick"]:
             mylog.warning("Throwing card: %s", self.face_value)
             # Convey the played card to the server.
             AjaxRequests.put(
@@ -424,7 +448,7 @@ class PlayingCard(SVG.UseObject):
         """
         mylog.error("In PlayingCard.card_click_handler.")
 
-        if GAME_MODES[GameState.game_mode] in ["reveal"] and self.flippable:
+        if GameState.mode.get_mode_str() in ["reveal"] and self.flippable:
             mylog.warning(
                 "PlayingCard.card_click_handler: flippable=%r", self.flippable
             )
@@ -441,7 +465,7 @@ class PlayingCard(SVG.UseObject):
                     "card": self.face_value,
                 }
             )
-        if GAME_MODES[GameState.game_mode] in ["reveal", "meld", "trick"]:
+        if GameState.mode.get_mode_str() in ["reveal", "meld", "trick"]:
             self.play_handler(event_type="click")
 
 
@@ -450,6 +474,8 @@ class GameState:
     Class to maintain state of the game from this player's point of view.
     """
 
+    # Game mode instance
+    mode: GameModes = None
     # ID of the game I'm playing
     game_id: GameID = GameID()
     # Round ID of the game I'm playing
@@ -459,7 +485,6 @@ class GameState:
     # My player ID
     player_id: PlayerID = PlayerID()
 
-    game_mode: int = -1
     hand_size: int = 0
     kitty_size: int = 0
     meld_score: int = 0
@@ -636,7 +661,7 @@ class GameState:
         # Locate the index of the winner in the player list
         try:
             starting_index = cls.player_list.index(cls.round_bid_trick_winner)
-        except ValueError as e:
+        except (ValueError, AttributeError) as e:
             return []
         except Exception as e:
             mylog.error(
@@ -692,7 +717,7 @@ class GameState:
         mylog.error("In GameState.advance_mode.")
         mylog.warning(
             "GameState.advance_mode: Calling API (current mode=%s)",
-            GAME_MODES[cls.game_mode],
+            GameState.mode.get_mode_str(),
         )
 
         if cls.game_id != GameID() and cls.player_id != PlayerID():
@@ -1523,7 +1548,7 @@ class AjaxCallbacks:
         mylog.error("In AjaxCallbacks.advance_mode_callback.")
         mylog.warning(
             "AjaxCallbacks.advance_mode_callback: (current mode=%s)",
-            GAME_MODES[GameState.game_mode],
+            GameState.mode.get_mode_str(),
         )
 
         AjaxRequestTracker.update(-1)
@@ -1532,7 +1557,7 @@ class AjaxCallbacks:
 
         if "Round" in req.text and "started" in req.text:
             mylog.warning("AjaxCallbacks.advance_mode_callback: Starting new round.")
-            GameState.game_mode = 0
+            GameState.mode.reset()
             GameState.prepare_for_round_change()
 
             display_game_options()
@@ -1541,11 +1566,11 @@ class AjaxCallbacks:
         mylog.warning("AjaxCallbacks.advance_mode_callback: req.text=%s", req.text)
         data = json.loads(req.text)
         mylog.warning("AjaxCallbacks.advance_mode_callback: data=%r", data)
-        GameState.game_mode = data["state"]
+        GameState.mode.set(data["state"])
 
         mylog.warning(
             "Leaving AjaxCallbacks.advance_mode_callback (current mode=%s)",
-            GAME_MODES[GameState.game_mode],
+            GameState.mode.get_mode_str(),
         )
 
         remove_dialogs()
@@ -1561,10 +1586,10 @@ class AjaxCallbacks:
         """
         mylog.error("In AjaxCallbacks.game_mode_query_callback.")
 
-        if GameState.game_mode is not None:
+        if GameState.mode:
             mylog.warning(
                 "In AjaxCallbacks.game_mode_query_callback (current mode=%s)",
-                GAME_MODES[GameState.game_mode],
+                GameState.mode.get_mode_str(),
             )
 
         AjaxRequestTracker.update(-1)
@@ -1580,13 +1605,15 @@ class AjaxCallbacks:
         mylog.warning("AjaxCallbacks.game_mode_query_callback: req.text=%s", req.text)
         data = json.loads(req.text)
         mylog.warning("AjaxCallbacks.game_mode_query_callback: data=%r", data)
-        GameState.game_mode = data["state"]
+        GameState.mode.set(data["state"])
 
         mylog.warning(
             "Leaving AjaxCallbacks.game_mode_query_callback (current mode=%s)",
-            GAME_MODES[GameState.game_mode],
+            GameState.mode.get_mode_str(),
         )
-        if GameState.game_mode == 0:
+
+        # Set up the game before building the UI
+        if GameState.mode.get_mode_str() in ["game"]:
             GameState.prepare_for_round_change()
 
         display_game_options()
@@ -2131,7 +2158,7 @@ class WSocketContainer:
         """
         mylog.error("In WSocketContainer.set_game_state_from_server.")
 
-        GameState.game_mode = data["state"]
+        GameState.mode.set(data["state"])
         display_game_options()
 
     def start_game_and_clear_round_globals(self, data: Dict):
@@ -2143,7 +2170,7 @@ class WSocketContainer:
         """
         mylog.error("In WSocketContainer.start_game_and_clear_round_globals.")
 
-        GameState.game_mode = data["state"]
+        GameState.mode.set(data["state"])
         mylog.warning(
             "WSocketContainer.start_game_and_clear_round_globals: game_start: GameState.player_list=%r",
             GameState.player_list,
@@ -2270,11 +2297,11 @@ def populate_canvas(deck: CardDeck, target_canvas: SVG.CanvasObject):
     """
     mylog.error("In populate_canvas.")
 
-    if GAME_MODES[GameState.game_mode] in ["game"]:
+    if GameState.mode.get_mode_str() in ["game"]:
         mylog.warning("Exiting populate_canvas. Still in 'game' mode.")
         return
-    if GameState.game_mode < 0:
-        mylog.warning("Invalid game mode. (%d)", GameState.game_mode)
+    if GameState.mode._mode < 0:  # FIXME: This shouldn't be needed.
+        mylog.warning("Invalid game mode. (%d)", GameState.mode._mode)
         return
 
     mylog.warning("populate_canvas(deck=%s target_canvas=%s).", deck, target_canvas)
@@ -2285,17 +2312,17 @@ def populate_canvas(deck: CardDeck, target_canvas: SVG.CanvasObject):
         flippable = False
         movable = True
         show_face = True
-        flippable = DECK_CONFIG[deck_type][GameState.game_mode]["flippable"]
-        movable = DECK_CONFIG[deck_type][GameState.game_mode]["movable"]
-        show_face = DECK_CONFIG[deck_type][GameState.game_mode]["show_face"]
-        if "reveal" in GAME_MODES[GameState.game_mode]:
+        flippable = DECK_CONFIG[deck_type][GameState.mode._mode]["flippable"]
+        movable = DECK_CONFIG[deck_type][GameState.mode._mode]["movable"]
+        show_face = DECK_CONFIG[deck_type][GameState.mode._mode]["show_face"]
+        if GameState.mode.get_mode_str() in ["reveal"]:
             if deck_type is DeckTypes.KITTY:
                 flippable = GameState.player_id == GameState.round_bid_trick_winner
                 # show_face = True
             if deck_type is DeckTypes.PLAYER:
                 movable = GameState.player_id == GameState.round_bid_trick_winner
         if (
-            DeckTypes.TRICK.name.lower() in GAME_MODES[GameState.game_mode]
+            DeckTypes.TRICK.name.lower() in GameState.mode.get_mode_str()
             and deck_type is DeckTypes.PLAYER
         ):
             # This makes the player's deck movable based on whether their card place
@@ -2651,8 +2678,9 @@ def display_game_options():
     if GameState.game_id == GameID():
         mylog.warning("dgo: In GameState.game_id=''")
         create_game_select_buttons(xpos, ypos)
-    elif GameState.game_mode is None:
-        mylog.warning("dgo: In GameState.game_mode is None")
+    elif GameState.mode is None:
+        mylog.warning("dgo: In GameState.mode is None")
+        GameState.mode = GameModes()
         AjaxRequests.get(
             f"/game/{GameState.game_id.value}?state=false",
             AjaxCallbacks().game_mode_query_callback,
@@ -2686,7 +2714,7 @@ def display_game_options():
         # Send the registration message.
         g_websocket.send_registration()
 
-        if GameState.game_mode == 1:
+        if GameState.mode.get_mode_str() in ["bid"]:
             GameState.meld_score = 0
             GameState.round_bid = 0
             GameState.round_bid_trick_winner = PlayerID()
@@ -2719,9 +2747,6 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
     global g_canvas
     mylog.error("In rebuild_display.")
 
-    if GameState.game_mode is None and not GameState.game_dict:
-        GameState.game_mode = 0
-
     if AjaxRequestTracker.outstanding_requests() > 0:
         mylog.warning(
             "rebuild_display: There are %d outstanding requests. Skipping clear.",
@@ -2731,7 +2756,7 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
 
     update_status_line()
 
-    mode = GAME_MODES[GameState.game_mode]
+    mode = GameState.mode.get_mode_str()
     mylog.warning("rebuild_display: Current mode=%s", mode)
 
     mylog.warning(
@@ -2746,14 +2771,14 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
     set_card_positions()
 
     _buttons = {}  # Dict[str, SVG.Button]
-    if "game" not in GAME_MODES[GameState.game_mode]:
+    if GameState.mode.get_mode_str() not in ["game"]:
         # Update/create buttons
 
         # # Button to call advance_mode on demand
         # _buttons["button_advance_mode"] = SVG.Button(
         #     position=(-80 * 3.5, -40),
         #     size=(70, 35),
-        #     text=GAME_MODES[GameState.game_mode].capitalize(),
+        #     text=GameState.mode.get_mode_str().capitalize(),
         #     onclick=advance_mode,
         #     fontsize=18,
         #     objid="button_advance_mode",
@@ -2818,12 +2843,12 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
             objid="button_sort_player",
         )
 
-    if GAME_MODES[GameState.game_mode] in ["reveal"]:
+    if GameState.mode.get_mode_str() in ["reveal"]:
         mylog.warning("rebuild_display: Creating trump selection dialog.")
         tsd = TrumpSelectDialog()
         tsd.display_trump_dialog()
 
-    if GAME_MODES[GameState.game_mode] in ["meld"]:
+    if GameState.mode.get_mode_str() in ["meld"]:
         # Button to call submit_meld on demand
         _buttons["button_send_meld"] = SVG.Button(
             position=(-80 * 0.5, -40),
@@ -2853,22 +2878,21 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
     :type event: [type], optional
     """
     mylog.error("In set_card_positions.")
-    mylog.warning("set_card_positions: (mode=%s)", GAME_MODES[GameState.game_mode])
+    mylog.warning("set_card_positions: (mode=%s)", GameState.mode.get_mode_str())
 
     # Place the desired decks on the display.
     if not g_canvas.objectDict:
         if (
-            GAME_MODES[GameState.game_mode] in ["game"]
-            and GameState.game_id == GameID()
+            GameState.mode.get_mode_str() in ["game"] and GameState.game_id == GameID()
         ):  # Choose game, player
             display_game_options()
-        if GAME_MODES[GameState.game_mode] not in ["game"]:
+        if GameState.mode.get_mode_str() not in ["game"]:
             generate_place_static_box(g_canvas)
-        if GAME_MODES[GameState.game_mode] in ["bid", "bidfinal"]:  # Bid
+        if GameState.mode.get_mode_str() in ["bid", "bidfinal"]:  # Bid
             # Use empty deck to prevent peeking at the kitty.
             populate_canvas(GameState.kitty_deck, g_canvas)
             populate_canvas(GameState.players_hand, g_canvas)
-        if GAME_MODES[GameState.game_mode] in ["bidfinal"]:  # Bid submitted
+        if GameState.mode.get_mode_str() in ["bidfinal"]:  # Bid submitted
             # The kitty doesn't need to remain 'secret' now that the bidding is done.
             # Ask the server for the cards in the kitty.
             if GameState.round_id != RoundID():
@@ -2876,26 +2900,26 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
                     f"/round/{GameState.round_id.value}/kitty",
                     AjaxCallbacks().on_complete_kitty,
                 )
-        elif GAME_MODES[GameState.game_mode] in ["reveal"]:  # Reveal
+        elif GameState.mode.get_mode_str() in ["reveal"]:  # Reveal
             populate_canvas(GameState.kitty_deck, g_canvas)
             populate_canvas(GameState.players_hand, g_canvas)
-        elif GAME_MODES[GameState.game_mode] in ["meld"]:  # Meld
+        elif GameState.mode.get_mode_str() in ["meld"]:  # Meld
             populate_canvas(GameState.meld_deck, g_canvas)
             populate_canvas(GameState.players_meld_deck, g_canvas)
-        elif GAME_MODES[GameState.game_mode] in ["trick"]:  # Trick
+        elif GameState.mode.get_mode_str() in ["trick"]:  # Trick
             populate_canvas(GameState.discard_deck, g_canvas)
             populate_canvas(GameState.players_hand, g_canvas)
 
     # Last-drawn are on top (z-index wise)
     # TODO: Retrieve events from API to show kitty cards when they are flipped over.
-    if GAME_MODES[GameState.game_mode] in ["bid", "bidfinal", "reveal"]:  # Bid & Reveal
+    if GameState.mode.get_mode_str() in ["bid", "bidfinal", "reveal"]:  # Bid & Reveal
         place_cards(GameState.kitty_deck, g_canvas, location="top")
         place_cards(GameState.players_hand, g_canvas, location="bottom")
-    elif GAME_MODES[GameState.game_mode] in ["meld"]:  # Meld
+    elif GameState.mode.get_mode_str() in ["meld"]:  # Meld
         # TODO: Expand display to show all four players.
         place_cards(GameState.meld_deck, g_canvas, location="top")
         place_cards(GameState.players_meld_deck, g_canvas, location="bottom")
-    elif GAME_MODES[GameState.game_mode] in ["trick"]:  # Trick
+    elif GameState.mode.get_mode_str() in ["trick"]:  # Trick
         # Remove any dialogs from the meld phase.
         remove_dialogs()
         place_cards(GameState.discard_deck, g_canvas, location="top")
