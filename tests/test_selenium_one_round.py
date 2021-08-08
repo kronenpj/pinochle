@@ -181,7 +181,8 @@ class TestSingleRound:
             pass
 
         # Stop web server
-        TestSingleRound.server_thread.finalise()
+        if TestSingleRound.server_thread:
+            TestSingleRound.server_thread.finalise()
 
     def wait_for_window(self, timeout=2000):
         time.sleep(round(timeout / 1000))
@@ -253,7 +254,7 @@ class TestSingleRound:
 
             self.driver.append(driver)
 
-    def test_050_start_browsers(self):
+    def test_100_load_start_application(self):
         """
         Navigate to the BASE_URL
         """
@@ -271,7 +272,7 @@ class TestSingleRound:
             t_driver.maximize_window()
             # t_driver.fullscreen_window()
 
-    def test_100_browser_wait(self):
+    def test_110_wait_for_app_init(self):
         """
         Wait for the basic page to be rendered.
         """
@@ -302,7 +303,7 @@ class TestSingleRound:
                 print(f"Retrying browsers. {counter} left.")
                 limit -= 1
 
-    def test_110_browser_wait(self):
+    def test_120_wait_for_game_list(self):
         """
         See if the 'no games found' button appears.
         """
@@ -320,7 +321,7 @@ class TestSingleRound:
 
         assert not "There should be a game created."
 
-    def test_140_browser_wait(self):
+    def test_140_wait_for_player_list(self):
         """
         Wait for the list of players to appear.
         """
@@ -508,11 +509,11 @@ class TestSingleRound:
                         element, 0, 150
                     ).perform()
                     card_ids.remove(t_id)
-                except MoveTargetOutOfBoundsException as e:
-                    print(f"Caught MTOOBE exception...{e}")
+                except MoveTargetOutOfBoundsException as err:
+                    print(f"Caught MTOOBE exception...{err}")
                     card_ids.remove(t_id)
-                except WebDriverException as e1:
-                    print(f"Ignoring WDE exception: {e1}")
+                except WebDriverException as err1:
+                    print(f"Ignoring WDE exception: {err1}")
                     # pass
 
                 trump_elements = trump_dialog.find_elements(
@@ -524,9 +525,8 @@ class TestSingleRound:
                     try:
                         element.click()
                         attempts -= 1
-                    except WebDriverException as e:
-                        print(f"Ignoring webdriver exception: {e}")
-                        pass
+                    except WebDriverException as err:
+                        print(f"Ignoring webdriver exception: {err}")
         except NoSuchElementException:
             # This is expected when the dialog box disappears.
             pass
@@ -546,6 +546,38 @@ class TestSingleRound:
                     (By.XPATH, "//*[@id='button_send_meld']",)
                 )
             )
+
+    def test_225_count_meld_slots(self):
+        """
+        Catch a problem I might have created while refactoring the interface
+        but wasn't tested for.
+        """
+        # Wait for the screen to be built.
+        for driver in self.driver:
+            WebDriverWait(driver, 5).until(
+                expected_conditions.presence_of_element_located(
+                    (By.XPATH, "//*[@id='canvas']/*[starts-with(@id, 'meld')]")
+                )
+            )
+
+        # Locate and verify the number of meld card slots is at least the number of
+        # player card slots.
+        for driver in self.driver:
+            for slot in range(48):
+                try:
+                    _tmp_player = driver.find_element(
+                        By.XPATH, f"//*[@id='canvas']/*[@id='player{slot}']"
+                    )
+                    self.num_player_cards = slot
+                except NoSuchElementException:
+                    # This is what is intended to occur since we have no way
+                    # of independently determining the number of cards the
+                    # player should have.
+                    break
+                _tmp_meld = driver.find_element(
+                    By.XPATH, f"//*[@id='canvas']/*[@id='meld{slot}']"
+                )
+                assert _tmp_meld and _tmp_player
 
     def test_230_submit_no_meld(self):
         """
@@ -569,12 +601,33 @@ class TestSingleRound:
             t_dialog = driver.find_element(By.XPATH, "//button[text()='Yes']")
             t_dialog.click()
 
+    def test_235_count_trick_slots(self):
+        """
+        Catch a problem I created while refactoring the interface but wasn't caught.
+        """
+        # Wait for the screen to be built.
+        for driver in self.driver:
+            WebDriverWait(driver, 5).until(
+                expected_conditions.presence_of_element_located(
+                    (By.XPATH, "//*[@id='canvas']/*[starts-with(@id, 'trick')]")
+                )
+            )
+
+        # Locate and verify the number of trick card slots matches the number of players.
+        for driver in self.driver:
+            for slot in range(len(TestSingleRound.players)):
+                assert driver.find_element(
+                    By.XPATH, f"//*[@id='canvas']/*[@id='trick{slot}']"
+                )
+
     def test_240_play_tricks(self):
         """
         Play tricks until players are out of cards.
         """
-        keep_going = True
-        while keep_going:
+        # Track the number of cards the UI displays in the player's hand during
+        # the previous trick.
+        prev_t_cards = {driver: 0 for driver in self.driver}
+        while True:
             time.sleep(0.1)
             # Create associations between drivers and the list of cards.
             for driver in self.driver:
@@ -582,9 +635,12 @@ class TestSingleRound:
                 t_cards = driver.find_elements(
                     By.XPATH, "//*[@id='canvas']/*[starts-with(@id, 'player')]"
                 )
-                # If the list is empty, flag to stop looping.
+                # If the list is empty, stop looping.
                 if not t_cards:
-                    keep_going = False
+                    return
+                # Fail if the number of cards this time through is the same as the last.
+                if len(t_cards) == prev_t_cards[driver]:
+                    assert "Player's deck didn't decrease after playing card." == ""
                     return
                 # print("Choosing from ")
                 # print(", ".join(x.get_attribute("id") for x in t_cards))
@@ -597,6 +653,7 @@ class TestSingleRound:
                 webdriver.ActionChains(driver).drag_and_drop_by_offset(
                     t_card, 0, -200
                 ).perform()
+                prev_t_cards[driver] = len(t_cards)
 
             time.sleep(0.2)
             for driver in self.driver:
@@ -607,6 +664,7 @@ class TestSingleRound:
                     )
                     t_dialog.click()
                 except NoSuchElementException:
+                    # Is thrown when this player didn't win the trick.
                     pass
 
     def test_250_locate_next_round_button(self):
