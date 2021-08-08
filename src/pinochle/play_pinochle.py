@@ -41,6 +41,30 @@ LOG = setup_logging()
 #                0      1        2           3        4       5
 GAME_MODES = ["game", "bid", "bidfinal", "reveal", "meld", "trick"]
 
+class GameModes:
+    modes = ["game", "bid", "bidfinal", "reveal", "meld", "trick"]
+    _mode = 0
+
+    def get_mode_str(self) -> str:
+        return self.modes[self._mode]
+
+    def reset(self):
+        self.set(0)
+
+    def set(self, mode: int = 0):
+        self._mode = mode
+
+    def next(self):
+        """
+        Advance to next game mode, skipping over the first element when
+        wrapping around.
+        """
+        self._mode += 1
+        self._mode %= len(self.modes)
+        if self._mode == 0:
+            self._mode += 1
+
+
 
 def deal_pinochle(player_ids: list, kitty_len: int = 0, kitty_id: str = None) -> None:
     """

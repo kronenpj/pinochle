@@ -12,7 +12,7 @@ from werkzeug import exceptions
 
 from pinochle import game
 from pinochle.models.core import db
-from pinochle.play_pinochle import GAME_MODES
+from pinochle.play_pinochle import GAME_MODES, GameModes
 
 from . import test_utils
 

@@ -9,7 +9,7 @@ from pinochle import play_pinochle
 from .models import utils
 from .models.core import db
 from .models.game import GameSchema
-from .play_pinochle import GAME_MODES
+from .play_pinochle import GAME_MODES, GameModes
 from .ws_messenger import WebSocketMessenger as WSM
 
 # Suppress invalid no-member messages from pylint.
