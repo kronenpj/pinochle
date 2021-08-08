@@ -1,7 +1,6 @@
 """
 In-browser script to handle the card-table user interface.
 """
-import copy
 import json
 import logging
 import os
@@ -153,6 +152,86 @@ class PlayerID(BaseID):  # pylint: disable=too-few-public-methods
     """
 
 
+class CardDeck:
+    """ Container for a 'deck' (list) of cards and the type (purpose) of the deck. """
+
+    _type: DeckTypes
+    _cards: List[str]
+
+    def __init__(self, deck_type: DeckTypes):
+        mylog.error("In CardDeck.__init__(%s)", deck_type)
+        self._type = deck_type
+        self._cards = []
+
+    def __repr__(self) -> str:
+        mylog.error("In CardDeck.__repr__())")
+        return f"CardDeck(type={self._type}, cards={self._cards}"
+
+    def __len__(self) -> int:
+        """ Return the length of the cards list """
+        mylog.error("In CardDeck.__len__())")
+        return len(self._cards)
+
+    def __getitem__(self, index: int) -> str:
+        """ Allow getting via instance[index] -> value """
+        return self._cards[index]
+
+    def __setitem__(self, index: int, value: str):
+        """ Allow setting via instance[index] = value """
+        self._cards[index] = value
+
+    def type(self) -> DeckTypes:
+        """ Return the deck type """
+        mylog.error("In CardDeck.type()")
+        return self._type
+
+    def set_type(self, deck_type: DeckTypes):
+        """ Set the deck type """
+        mylog.error("In CardDeck.set_type()")
+        self._type = deck_type
+
+    def is_empty(self) -> bool:
+        """ Query whether the deck has cards or not """
+        mylog.error("In CardDeck.is_empty()")
+        return not self._cards
+
+    def get(self) -> List[str]:
+        """ Return a copy of cards from the instance variable """
+        mylog.error("In CardDeck.get()")
+        return self._cards[:]
+
+    def clear(self):
+        """ Clear the deck contents, but retain the type """
+        mylog.error("In CardDeck.clear()")
+        self._cards = []
+
+    def set(self, cards: List[str]):
+        """ Copy the list contents into the instance variable """
+        mylog.error("In CardDeck.set(%r) as %s", cards, self.type())
+        self._cards = cards[:]
+
+    def remove(self, card: str):
+        """ Remove one instance of the supplied card from the deck """
+        mylog.error("In CardDeck.remove(%s)", card)
+        self._cards.remove(card)
+
+    def append(self, card: str):
+        """ Append instance of supplied card to the deck """
+        mylog.error("In CardDeck.append(%s)", card)
+        self._cards.append(card)
+
+    def sort(self):
+        """ Sort the cards """
+        # pylint: disable=unnecessary-lambda
+        mylog.error("In CardDeck.sort()")
+        self._cards.sort(key=lambda x: DECK_SORTED.index(x))
+
+    def index(self, card: str) -> int:
+        """ Return the index of the supplied card in the cards list """
+        mylog.error("In CardDeck.index(%s)", card)
+        return self._cards.index(card)
+
+
 class PlayingCard(SVG.UseObject):
     """
     PlayingCard class to hold additional attributes than available from UseObject,
@@ -234,8 +313,8 @@ class PlayingCard(SVG.UseObject):
 
         # Protect the player's deck during meld process.
         # Create a reference to the appropriate deck by mode.
-        receiving_deck = []
-        sending_deck = []
+        receiving_deck = CardDeck(DeckTypes.MELD)
+        sending_deck = CardDeck(DeckTypes.MELD)
         # This "should never be called" during GAME_MODEs 0 or 1.
         add_only = False
         if GAME_MODES[GameState.game_mode] in ["reveal"]:  # Bury
@@ -245,13 +324,15 @@ class PlayingCard(SVG.UseObject):
                 )
         elif GAME_MODES[GameState.game_mode] in ["meld"]:  # Meld
             if True or DeckTypes.PLAYER.name.lower() in self.id:
-                sending_deck = GameState.players_meld_deck  # Deep copy
+                sending_deck.set(GameState.players_meld_deck.get())  # Deep copy
+                sending_deck.set_type(DeckTypes.MELD)
                 receiving_deck = GameState.meld_deck  # Reference
             else:
                 add_only = True
                 card_tag = DeckTypes.PLAYER.name.lower()
                 sending_deck = GameState.meld_deck  # Reference
-                receiving_deck = GameState.players_meld_deck  # Deep copy
+                receiving_deck.set(GameState.players_meld_deck.get())  # Deep copy
+                receiving_deck.set_type(DeckTypes.MELD)
         elif GAME_MODES[GameState.game_mode] in ["trick"]:  # Trick
             sending_deck = GameState.players_hand  # Reference
             receiving_deck = GameState.discard_deck  # Reference
@@ -273,8 +354,8 @@ class PlayingCard(SVG.UseObject):
 
     def handle_discard_placement(
         self,
-        sending_deck: List[str],
-        receiving_deck: List[str],
+        sending_deck: CardDeck,
+        receiving_deck: CardDeck,
         card_tag: str,
         parent_canvas: SVG.CanvasObject,
     ):
@@ -400,16 +481,16 @@ class GameState:
     # Track the user who is the round's bid winner, and each trick winner.
     round_bid_trick_winner: PlayerID
 
-    # My hand of cards
-    players_hand: List[str] = []
+    # Player's hand of cards
+    players_hand: CardDeck = CardDeck(DeckTypes.PLAYER)
     # Deck of cards for the kitty.
-    kitty_deck: List[str] = []
+    kitty_deck: CardDeck = CardDeck(DeckTypes.KITTY)
     # Deck of cards submitted to the server as meld.
-    meld_deck: List[str] = []
+    meld_deck: CardDeck = CardDeck(DeckTypes.MELD)
     # Temporary deck for filling meld deck.
-    players_meld_deck: List[str] = []
+    players_meld_deck: CardDeck = CardDeck(DeckTypes.PLAYER)
     # Temporary deck to hold discards during trick phase.
-    discard_deck: List[str] = []
+    discard_deck: CardDeck = CardDeck(DeckTypes.TRICK)
 
     @classmethod
     def _dump_globals(cls) -> None:
@@ -494,15 +575,15 @@ class GameState:
             cls.kitty_size = int(cls.game_dict[cls.game_id]["kitty_size"])
             mylog.warning("on_complete_getcookie: KITTY_SIZE=%s", cls.kitty_size)
             if cls.kitty_size > 0:
-                cls.kitty_deck = ["card-base" for _ in range(cls.kitty_size)]
+                cls.kitty_deck.set(["card-base" for _ in range(cls.kitty_size)])
             else:
                 cls.kitty_deck.clear()
         except KeyError:
             pass
         # TODO: Figure out how better to calculate GameState.hand_size.
         cls.hand_size = int((48 - cls.kitty_size) / cls.players)
-        cls.meld_deck = ["card-base" for _ in range(cls.hand_size)]
-        cls.discard_deck = ["card-base" for _ in range(cls.players)]
+        cls.meld_deck.set(["card-base" for _ in range(cls.hand_size)])
+        cls.discard_deck.set(["card-base" for _ in range(cls.players)])
 
     @classmethod
     def sort_player_hand(cls):
@@ -512,8 +593,8 @@ class GameState:
         mylog.error("In GameState.sort_player_hand.")
 
         # pylint: disable=unnecessary-lambda
-        cls.players_hand.sort(key=lambda x: DECK_SORTED.index(x))
-        cls.players_meld_deck.sort(key=lambda x: DECK_SORTED.index(x))
+        cls.players_hand.sort()
+        cls.players_meld_deck.sort()
 
     @classmethod
     def prepare_for_round_change(cls):
@@ -525,7 +606,7 @@ class GameState:
         cls.round_id = RoundID()
         cls.players_hand.clear()
         cls.players_meld_deck.clear()
-        cls.meld_deck = ["card-base" for _ in range(cls.hand_size)]
+        cls.meld_deck.set(["card-base" for _ in range(cls.hand_size)])
         cls.prepare_for_trick_change()
 
     @classmethod
@@ -535,7 +616,7 @@ class GameState:
         """
         mylog.error("In GameState.prepare_for_trick_change.")
 
-        cls.discard_deck = ["card-base" for _ in range(len(cls.player_list))]
+        cls.discard_deck.set(["card-base" for _ in range(len(cls.player_list))])
         cls.ordered_player_id_list = cls._order_player_index_list_for_trick()
 
     @classmethod
@@ -1028,7 +1109,7 @@ class AjaxRequestTracker:
         defaults to 0 which does not affect the counter.
         :type direction: int, optional
         """
-        mylog.error("In AjaxRequestTracker.update.")
+        mylog.error("In AjaxRequestTracker.update(%d)", direction)
 
         if direction > 0:
             cls._outstanding_requests += 1
@@ -1362,13 +1443,13 @@ class AjaxCallbacks:
 
         # Set the global deck of cards for the kitty.
         GameState.kitty_deck.clear()
-        GameState.kitty_deck = temp["cards"]
+        GameState.kitty_deck.set(temp["cards"])
         mylog.warning(
             "AjaxCallbacks.on_complete_kitty: kitty_deck=%s", GameState.kitty_deck
         )
         if GameState.player_id == GameState.round_bid_trick_winner:
             # Add the kitty cards to the bid winner's deck
-            for card in GameState.kitty_deck:
+            for card in GameState.kitty_deck.get():
                 GameState.players_hand.append(card)
                 GameState.players_meld_deck.append(card)
             GameState.advance_mode()
@@ -1390,12 +1471,13 @@ class AjaxCallbacks:
         # Set the global deck of cards for the player's hand.
         GameState.players_hand.clear()
         GameState.players_meld_deck.clear()
-        GameState.players_hand = [x["card"] for x in temp]
+        GameState.players_hand.set([x["card"] for x in temp])
         mylog.warning(
             "AjaxCallbacks.on_complete_player_cards: players_hand=%s",
             GameState.players_hand,
         )
-        GameState.players_meld_deck = copy.deepcopy(GameState.players_hand)  # Deep copy
+        GameState.players_meld_deck.set(GameState.players_hand.get())  # Deep copy
+        GameState.players_meld_deck.set_type(DeckTypes.PLAYER)
 
         display_game_options()
 
@@ -1940,7 +2022,7 @@ class WSocketContainer:
 
         revealed_card = str(data["card"])
 
-        if revealed_card not in GameState.kitty_deck:
+        if revealed_card not in GameState.kitty_deck.get():
             mylog.warning(
                 "WSocketContainer.reveal_kitty_card: %s is not in %r",
                 revealed_card,
@@ -2177,18 +2259,14 @@ def clear_globals_for_trick_change(__: Any):
     display_game_options()
 
 
-def populate_canvas(
-    deck, target_canvas: SVG.CanvasObject, deck_type: DeckTypes = DeckTypes.PLAYER
-):
+def populate_canvas(deck: CardDeck, target_canvas: SVG.CanvasObject):
     """
     Populate given canvas with the deck of cards but without specific placement.
 
-    :param deck: card names in the format that svg-cards.svg wants.
-    :type deck: list
+    :param deck: Deck of cards to populate.
+    :type deck: CardDeck
     :param target_canvas: Canvas to populate
     :type target_canvas: SVG.CanvasObject
-    :param deck_type: The type of deck populating the UI.
-    :type deck_type: DeckTypes
     """
     mylog.error("In populate_canvas.")
 
@@ -2199,15 +2277,11 @@ def populate_canvas(
         mylog.warning("Invalid game mode. (%d)", GameState.game_mode)
         return
 
-    mylog.warning(
-        "populate_canvas(deck=%s target_canvas=%s deck_type=%s).",
-        deck,
-        target_canvas,
-        deck_type,
-    )
+    mylog.warning("populate_canvas(deck=%s target_canvas=%s).", deck, target_canvas)
 
+    deck_type = deck.type()
     # DOM ID Counter
-    for counter, card_value in enumerate(deck):
+    for counter, card_value in enumerate(deck.get()):
         flippable = False
         movable = True
         show_face = True
@@ -2230,7 +2304,8 @@ def populate_canvas(
                 GameState.player_id
             )
             movable = (
-                GameState.discard_deck[player_index_in_discard_deck] == "card-base"
+                GameState.discard_deck.get()[player_index_in_discard_deck]
+                == "card-base"
             )
             mylog.warning(
                 "populate_canvas: player_idx_in_discard: %d",
@@ -2294,22 +2369,20 @@ def generate_place_static_box(canvas: SVG.CanvasObject):
     )
 
 
-def place_cards(
-    deck, target_canvas, location="top", deck_type: DeckTypes = DeckTypes.PLAYER
-):
+def place_cards(deck: CardDeck, target_canvas, location="top"):
     """
     Place the supplied deck / list of cards in the correct position on the display.
 
-    :param deck: card names in the format that svg-cards.svg wants.
-    :type deck: list
+    :param deck: Card deck to process.
+    :type deck: CardDeck
+    :param target_canvas: The canvas where the cards are to be placed.
+    :type target_canvas: Canvas
     :param location: String of "top", "bottom", defaults to "top", instructing routine
     where to place the cards vertically.
     :type location: str, optional
-    :param deck_type: The type of (sub)-deck this is.
-    :type deck_type: DeckType, optional
     """
     mylog.error("In place_cards.")
-    mylog.warning("place_cards(deck=%s, deck_type=%s).", deck, deck_type)
+    mylog.warning("place_cards(deck=%s).", deck)
 
     # Determine the starting point and step size for the location and deck being placed.
     start_y = 0 if location.lower() == "top" else 1.25 * CARD_HEIGHT
@@ -2323,6 +2396,7 @@ def place_cards(
     ypos = start_y
     mylog.warning("place_cards: Start position: (%4.2f, %4.2f)", xpos, ypos)
 
+    deck_type = deck.type()
     # Iterate over canvas's child nodes and move any node
     # where deck_type matches the node's id
     for (objid, node) in target_canvas.objectDict.items():
@@ -2470,7 +2544,7 @@ def send_meld(event=None):  # pylint: disable=unused-argument
     """
     mylog.error("In send_meld.")
 
-    card_string = ",".join(x for x in GameState.meld_deck if x != "card-base")
+    card_string = ",".join(x for x in GameState.meld_deck.get() if x != "card-base")
 
     mylog.warning(
         "send_meld: /round/%s/score_meld?player_id=%s&cards=%s",
@@ -2601,8 +2675,8 @@ def display_game_options():
     elif GameState.player_id == PlayerID():
         mylog.warning("dgo: In GameState.player_id=''")
         create_player_select_buttons(xpos, ypos)
-    elif GameState.players_hand == []:
-        mylog.warning("dgo: In GameState.players_hand=[]")
+    elif GameState.players_hand.is_empty():
+        mylog.warning("dgo: In GameState.players_hand is empty")
         AjaxRequests.get(
             f"/player/{GameState.player_id.value}/hand",
             AjaxCallbacks().on_complete_player_cards,
@@ -2792,8 +2866,8 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
             generate_place_static_box(g_canvas)
         if GAME_MODES[GameState.game_mode] in ["bid", "bidfinal"]:  # Bid
             # Use empty deck to prevent peeking at the kitty.
-            populate_canvas(GameState.kitty_deck, g_canvas, DeckTypes.KITTY)
-            populate_canvas(GameState.players_hand, g_canvas, DeckTypes.PLAYER)
+            populate_canvas(GameState.kitty_deck, g_canvas)
+            populate_canvas(GameState.players_hand, g_canvas)
         if GAME_MODES[GameState.game_mode] in ["bidfinal"]:  # Bid submitted
             # The kitty doesn't need to remain 'secret' now that the bidding is done.
             # Ask the server for the cards in the kitty.
@@ -2803,50 +2877,29 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
                     AjaxCallbacks().on_complete_kitty,
                 )
         elif GAME_MODES[GameState.game_mode] in ["reveal"]:  # Reveal
-            populate_canvas(GameState.kitty_deck, g_canvas, DeckTypes.KITTY)
-            populate_canvas(GameState.players_hand, g_canvas, DeckTypes.PLAYER)
+            populate_canvas(GameState.kitty_deck, g_canvas)
+            populate_canvas(GameState.players_hand, g_canvas)
         elif GAME_MODES[GameState.game_mode] in ["meld"]:  # Meld
-            populate_canvas(GameState.meld_deck, g_canvas, DeckTypes.MELD)
-            populate_canvas(GameState.players_meld_deck, g_canvas, DeckTypes.PLAYER)
+            populate_canvas(GameState.meld_deck, g_canvas)
+            populate_canvas(GameState.players_meld_deck, g_canvas)
         elif GAME_MODES[GameState.game_mode] in ["trick"]:  # Trick
-            populate_canvas(GameState.discard_deck, g_canvas, DeckTypes.TRICK)
-            populate_canvas(GameState.players_hand, g_canvas, DeckTypes.PLAYER)
+            populate_canvas(GameState.discard_deck, g_canvas)
+            populate_canvas(GameState.players_hand, g_canvas)
 
     # Last-drawn are on top (z-index wise)
     # TODO: Retrieve events from API to show kitty cards when they are flipped over.
     if GAME_MODES[GameState.game_mode] in ["bid", "bidfinal", "reveal"]:  # Bid & Reveal
-        place_cards(
-            GameState.kitty_deck, g_canvas, location="top", deck_type=DeckTypes.KITTY
-        )
-        place_cards(
-            GameState.players_hand,
-            g_canvas,
-            location="bottom",
-            deck_type=DeckTypes.PLAYER,
-        )
+        place_cards(GameState.kitty_deck, g_canvas, location="top")
+        place_cards(GameState.players_hand, g_canvas, location="bottom")
     elif GAME_MODES[GameState.game_mode] in ["meld"]:  # Meld
         # TODO: Expand display to show all four players.
-        place_cards(
-            GameState.meld_deck, g_canvas, location="top", deck_type=DeckTypes.MELD,
-        )
-        place_cards(
-            GameState.players_meld_deck,
-            g_canvas,
-            location="bottom",
-            deck_type=DeckTypes.PLAYER,
-        )
+        place_cards(GameState.meld_deck, g_canvas, location="top")
+        place_cards(GameState.players_meld_deck, g_canvas, location="bottom")
     elif GAME_MODES[GameState.game_mode] in ["trick"]:  # Trick
         # Remove any dialogs from the meld phase.
         remove_dialogs()
-        place_cards(
-            GameState.discard_deck, g_canvas, location="top", deck_type=DeckTypes.TRICK,
-        )
-        place_cards(
-            GameState.players_hand,
-            g_canvas,
-            location="bottom",
-            deck_type=DeckTypes.PLAYER,
-        )
+        place_cards(GameState.discard_deck, g_canvas, location="top")
+        place_cards(GameState.players_hand, g_canvas, location="bottom")
 
     # pylint: disable=attribute-defined-outside-init, invalid-name
     g_canvas.mouseMode = SVG.MouseMode.DRAG
