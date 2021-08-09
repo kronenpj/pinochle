@@ -18,7 +18,7 @@ class WebSocketMessenger:
     client_sockets = {}
 
     def __new__(cls):
-        if not hasattr(cls, 'instance'):
+        if not hasattr(cls, "instance"):
             cls.instance = super(WebSocketMessenger, cls).__new__(cls)
         return cls.instance
 
@@ -76,14 +76,14 @@ class WebSocketMessenger:
         # just refreshed the page.
         # TODO: Replace this nonsense with a straightforward entire game/round/team/
         # player status message.
-        game_mode = utils.query_game(game_id).state
+        game_mode: int = utils.query_game(game_id).state
         round_id = str(utils.query_gameround_for_game(game_id).round_id)
         self.update_refreshed_page_team_scores(round_id, ws)
-        if "bid" in play_pinochle.GAME_MODES[game_mode]:
+        if play_pinochle.GameModes.modes[game_mode] == "bid":
             self.update_refreshed_page_bid(round_id, player_id, ws)
-        elif "reveal" in play_pinochle.GAME_MODES[game_mode]:
+        elif play_pinochle.GameModes.modes[game_mode] == "reveal":
             self.update_refreshed_page_reveal(round_id, ws)
-        elif "meld" in play_pinochle.GAME_MODES[game_mode]:
+        elif play_pinochle.GameModes.modes[game_mode] == "meld":
             try:
                 self.update_refreshed_page_bid(round_id, player_id, ws)
             except IndexError:
@@ -188,7 +188,7 @@ class WebSocketMessenger:
         self.mylog.info("Players: %d - Game mode: %d", num_players, game_mode)
         if (
             len(joined_players) == num_players
-            and "game" in play_pinochle.GAME_MODES[game_mode]
+            and play_pinochle.GameModes.modes[game_mode] == "game"
         ):
             self.mylog.info("Enough players have joined. Start the game!")
             try:

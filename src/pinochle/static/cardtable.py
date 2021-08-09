@@ -30,11 +30,8 @@ CARD_HEIGHT = 245
 CARD_SMALLER_WIDTH = CARD_WIDTH * 0.75
 CARD_SMALLER_HEIGHT = CARD_HEIGHT * 0.75
 
-# NOTE: Also contained in play_pinochle.py
-#                 0      1        2           3        4       5
-# GAME_MODES = ["game", "bid", "bidfinal", "reveal", "meld", "trick"]
-
-
+# NOTE: Also contained in play_pinochle.py so the browser doesn't need
+# access to play_pinochle.py
 class GameModes:
     modes = ["game", "bid", "bidfinal", "reveal", "meld", "trick"]
     _mode = 0

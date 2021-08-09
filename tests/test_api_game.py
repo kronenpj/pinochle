@@ -12,7 +12,7 @@ from werkzeug import exceptions
 
 from pinochle import game
 from pinochle.models.core import db
-from pinochle.play_pinochle import GAME_MODES, GameModes
+from pinochle.play_pinochle import GameModes
 
 from . import test_utils
 
@@ -132,12 +132,12 @@ def test_game_update_state_wrap(app, patch_geventws):  # pylint: disable=unused-
     game_id, round_id, team_ids, player_ids = test_utils.setup_complete_game(4)
 
     # Set state to the last one available.
-    test_utils.set_game_state(game_id, len(GAME_MODES))
+    test_utils.set_game_state(game_id, len(GameModes.modes))
 
     # Verify the database agrees.
     db_response = game.read_one(game_id)
     initial_state = db_response.get("state")
-    assert len(GAME_MODES) == initial_state
+    assert len(GameModes.modes) == initial_state
 
     with app.test_client() as test_client:
         # Attempt to access the delete game api
@@ -162,12 +162,12 @@ def test_game_update_state_no_change(
     game_id, round_id, team_ids, player_ids = test_utils.setup_complete_game(4)
 
     # Set state to the last one available.
-    test_utils.set_game_state(game_id, len(GAME_MODES))
+    test_utils.set_game_state(game_id, len(GameModes.modes))
 
     # Verify the database agrees.
     db_response = game.read_one(game_id)
     initial_state = db_response.get("state")
-    assert len(GAME_MODES) == initial_state
+    assert len(GameModes.modes) == initial_state
 
     with app.test_client() as test_client:
         # Attempt to access the delete game api

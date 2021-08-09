@@ -17,9 +17,9 @@ from . import (
     roundteams,
     score_meld,
     score_tricks,
+    setup_logging,
     team,
     trick,
-    setup_logging,
 )
 from .cards import utils as card_utils
 from .cards.const import SUITS
@@ -37,10 +37,8 @@ from .ws_messenger import WebSocketMessenger as WSM
 
 LOG = setup_logging()
 
-# Also contained in cardtable.py
-#                0      1        2           3        4       5
-GAME_MODES = ["game", "bid", "bidfinal", "reveal", "meld", "trick"]
-
+# Also contained in cardtable.py because the browser doesn't need
+# access to play_pinochle.py
 class GameModes:
     modes = ["game", "bid", "bidfinal", "reveal", "meld", "trick"]
     _mode = 0
@@ -63,7 +61,6 @@ class GameModes:
         self._mode %= len(self.modes)
         if self._mode == 0:
             self._mode += 1
-
 
 
 def deal_pinochle(player_ids: list, kitty_len: int = 0, kitty_id: str = None) -> None:
