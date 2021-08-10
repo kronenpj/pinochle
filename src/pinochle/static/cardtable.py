@@ -441,7 +441,8 @@ class PlayingCard(SVG.UseObject):
             mylog.warning("Throwing card: %s", self.face_value)
             # Convey the played card to the server.
             AjaxRequests.put(
-                f"/play/{GameState.round_id.value}/play_card?player_id={GameState.player_id.value}&card={self.face_value}"
+                f"/play/{GameState.round_id.value}/play_card?"
+                f"player_id={GameState.player_id.value}&card={self.face_value}"
             )
 
     def card_click_handler(self):
@@ -668,12 +669,13 @@ class GameState:
         # Locate the index of the winner in the player list
         try:
             starting_index = cls.player_list.index(cls.round_bid_trick_winner)
-        except (ValueError, AttributeError) as e:
+        except (ValueError, AttributeError) as err:
             return []
-        except Exception as e:
+        except Exception as err:
             mylog.error(
-                "GameState._order_player_index_list_for_trick: Section 2. Exception: (%r)",
-                e,
+                "GameState._order_player_index_list_for_trick: "
+                "Section 2. Exception: (%r)",
+                err,
             )
             return []
         mylog.error("GameState._order_player_index_list_for_trick: Section 3")
@@ -812,7 +814,8 @@ class BidDialog:
         self.last_bid = bid
         self.bid_dialog.close()
         AjaxRequests.put(
-            f"/play/{GameState.round_id.value}/submit_bid?player_id={GameState.player_id.value}&bid={bid}"
+            f"/play/{GameState.round_id.value}/submit_bid?"
+            f"player_id={GameState.player_id.value}&bid={bid}"
         )
 
     def display_bid_dialog(self, data: Dict):
@@ -880,8 +883,8 @@ class TrumpSelectDialog:
         if len(cards_buried) != GameState.kitty_size:
             InfoDialog(
                 "Try again...",
-                f"You buried {len(cards_buried)}, but {GameState.kitty_size} cards are required."
-                + "Pressing the sort button will reset your choices.",
+                f"You buried {len(cards_buried)}, but {GameState.kitty_size} cards "
+                "are required. Pressing the sort button will reset your choices.",
                 ok=True,
                 remove_after=15,
             )
@@ -889,7 +892,8 @@ class TrumpSelectDialog:
         self.trump_dialog.close()
         # Notify the server of trump.
         AjaxRequests.put(
-            f"/play/{GameState.round_id.value}/set_trump?player_id={GameState.player_id.value}&trump={trump}"
+            f"/play/{GameState.round_id.value}/set_trump?"
+            f"player_id={GameState.player_id.value}&trump={trump}"
         )
         # Transfer cards into the team's collection and out of the player's hand.
         buried_trump = 0
@@ -967,7 +971,10 @@ class TrumpSelectDialog:
 
         player_name = GameState.my_name()
         if GameState.kitty_size:
-            instructions = f"{player_name}, please move {GameState.kitty_size} cards BELOW your hand, then select a suit to be trump."
+            instructions = (
+                f"{player_name}, please move {GameState.kitty_size} cards "
+                "BELOW your hand, then select a suit to be trump."
+            )
         else:
             instructions = f"{player_name}, please select a suit to be trump."
         # pylint: disable=expression-not-assigned
@@ -995,7 +1002,8 @@ class MeldFinalDialog:
 
         # Notify the server of my meld is final.
         AjaxRequests.put(
-            f"/play/{GameState.round_id.value}/finalize_meld?player_id={GameState.player_id.value}"
+            f"/play/{GameState.round_id.value}/finalize_meld?"
+            f"player_id={GameState.player_id.value}"
         )
         self.meld_final_dialog.close()
 
@@ -1036,7 +1044,8 @@ class TrickWonDialog:
 
         # Convey to the server that play is continuing.
         AjaxRequests.put(
-            f"/play/{GameState.round_id.value}/next_trick?player_id={GameState.player_id.value}"
+            f"/play/{GameState.round_id.value}/next_trick?"
+            f"player_id={GameState.player_id.value}"
         )
         self.trick_won_dialog.close()
 
@@ -1103,7 +1112,8 @@ class TrickWonDialog:
         # pylint: disable=expression-not-assigned
         self.trick_won_dialog.panel <= html.DIV(
             f"{GameState.my_name()}, you won the trick! "
-            f"Trick Scores: {my_team}: {my_scores} points / {other_team}: {other_scores} points",
+            f"Trick Scores: {my_team}: {my_scores} points / "
+            f"{other_team}: {other_scores} points",
         )
 
         self.trick_won_dialog.ok_button.bind(
@@ -1308,7 +1318,8 @@ class AjaxCallbacks:
 
     def on_complete_teams(self, req: ajax.Ajax):
         """
-        Callback for AJAX request for the information on the teams associated with the round.
+        Callback for AJAX request for the information on the teams
+        associated with the round.
 
         :param req: Request object from callback.
         :type req: ajax.Ajax
@@ -1602,7 +1613,8 @@ class AjaxCallbacks:
         # destroys a cookie and reloads the page.
         if req.status not in [200, 0]:
             mylog.warning(
-                "AjaxCallbacks.game_mode_query_callback: Not setting game_mode - possibly because GameState.player_id is empty (%s).",
+                "AjaxCallbacks.game_mode_query_callback: Not setting game_mode - "
+                "possibly because GameState.player_id is empty (%s).",
                 GameState.player_id,
             )
             return
@@ -1832,19 +1844,22 @@ class WSocketContainer:
         )
         if GameState.player_id == t_player_id:
             mylog.warning(
-                "WSocketContainer.update_round_final_score: Displaying final trick dialog for this player."
+                "WSocketContainer.update_round_final_score: "
+                "Displaying final trick dialog for this player."
             )
             TrickWonDialog().display_final_trick_dialog(
                 my_team, my_scores, other_team, other_scores
             )
         else:
             mylog.warning(
-                "WSocketContainer.update_round_final_score: Displaying generic final trick dialog for this player."
+                "WSocketContainer.update_round_final_score: "
+                "Displaying generic final trick dialog for this player."
             )
             InfoDialog(
                 "Last Trick Won",
                 f"{GameState.other_players_name(t_player_id)} won the final trick. "
-                + f"Trick Scores: {my_team}: {my_scores} points / {other_team}: {other_scores} points",
+                f"Trick Scores: {my_team}: {my_scores} points / {other_team}: "
+                f"{other_scores} points",
                 top=25,
                 left=25,
             )
@@ -1941,7 +1956,8 @@ class WSocketContainer:
         assert isinstance(data, dict)
         if "player_id" in data:
             mylog.warning(
-                "WSocketContainer.notify_trump_buried: About to retrieve player_id from data"
+                "WSocketContainer.notify_trump_buried: "
+                "About to retrieve player_id from data"
             )
             t_player_id: PlayerID = PlayerID(data["player_id"])
         else:
@@ -2175,7 +2191,8 @@ class WSocketContainer:
 
         GameState.mode.set(data["state"])
         mylog.warning(
-            "WSocketContainer.start_game_and_clear_round_globals: game_start: GameState.player_list=%r",
+            "WSocketContainer.start_game_and_clear_round_globals: "
+            "game_start: GameState.player_list=%r",
             GameState.player_list,
         )
         GameState.prepare_for_round_change()
@@ -2581,7 +2598,8 @@ def send_meld(event=None):  # pylint: disable=unused-argument
 
     # TODO: Probably should be a PUT
     AjaxRequests.get(
-        f"/round/{GameState.round_id.value}/score_meld?player_id={GameState.player_id.value}&cards={card_string}",
+        f"/round/{GameState.round_id.value}/score_meld?"
+        f"player_id={GameState.player_id.value}&cards={card_string}",
         AjaxCallbacks().on_complete_get_meld_score,
     )
 
