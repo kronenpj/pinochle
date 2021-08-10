@@ -30,33 +30,18 @@ CARD_HEIGHT = 245
 CARD_SMALLER_WIDTH = CARD_WIDTH * 0.75
 CARD_SMALLER_HEIGHT = CARD_HEIGHT * 0.75
 
-# NOTE: Also contained in play_pinochle.py so the browser doesn't need
-# access to play_pinochle.py
-class GameModes:
-    modes = ["game", "bid", "bidfinal", "reveal", "meld", "trick"]
-    _mode = 0
-
-    def get_mode_str(self) -> str:
-        return self.modes[self._mode]
-
-    def reset(self):
-        self.set(0)
-
-    def set(self, mode: int = 0):
-        self._mode = mode
-
-    def next(self):
-        """
-        Advance to next game mode, skipping over the first element when
-        wrapping around.
-        """
-        self._mode += 1
-        self._mode %= len(self.modes)
-        if self._mode == 0:
-            self._mode += 1
+# Programmatically create a pre-sorted deck to compare to when sorting decks of cards.
+# Importing a statically-defined list from constants doesn't work for some reason.
+# "9", "jack", "queen", "king", "10", "ace"
+# "ace", "10", "king", "queen", "jack", "9"
+SUITS = ["spade", "heart", "club", "diamond"]
+CARDS = ["ace", "10", "king", "queen", "jack", "9"]
+DECK_SORTED = [f"{_suit}_{_card}" for _suit in SUITS for _card in CARDS]
 
 
 class DeckTypes(Enum):
+    """ Simple enumeration to move away from string representations of deck types. """
+
     PLAYER = auto()
     KITTY = auto()
     MELD = auto()
@@ -107,19 +92,41 @@ DECK_CONFIG = {
     },
 }
 
-
-# Programmatically create a pre-sorted deck to compare to when sorting decks of cards.
-# Importing a statically-defined list from constants doesn't work for some reason.
-# "9", "jack", "queen", "king", "10", "ace"
-# "ace", "10", "king", "queen", "jack", "9"
-SUITS = ["spade", "heart", "club", "diamond"]
-CARDS = ["ace", "10", "king", "queen", "jack", "9"]
-DECK_SORTED = [f"{_suit}_{_card}" for _suit in SUITS for _card in CARDS]
-
-# Various state globals
-# button_advance_mode = None  # pylint: disable=invalid-name
-
 ## BEGIN Class definitions.
+
+# NOTE: Also contained in play_pinochle.py so the browser doesn't need
+# access to play_pinochle.py
+class GameModes:
+    """
+    Centralization of the game mode state definition and maintenance
+    """
+
+    modes = ["game", "bid", "bidfinal", "reveal", "meld", "trick"]
+    mode = 0
+
+    def get_mode_str(self) -> str:
+        """
+        Return the string representation of the current game mode.
+        """
+        return self.modes[self.mode]
+
+    def reset(self):
+        """ Reset the state to 0 or "game" """
+        self.set(0)
+
+    def set(self, mode: int = 0):
+        """ Set the game mode """
+        self.mode = mode
+
+    def next(self):
+        """
+        Advance to next game mode, skipping over the first element when
+        wrapping around.
+        """
+        self.mode += 1
+        self.mode %= len(self.modes)
+        if self.mode == 0:
+            self.mode += 1
 
 
 @dataclass(frozen=True)
@@ -454,7 +461,7 @@ class PlayingCard(SVG.UseObject):
             # self.face_update_dom()
             # TODO: Call API to notify the other players this particular card was
             # flipped over and add it to the player's hand.
-            g_websocket.send_websocket_message(
+            GameState.g_websocket.send_websocket_message(
                 {
                     "action": "reveal_kitty",
                     "game_id": GameState.game_id.value,
@@ -491,6 +498,9 @@ class GameState:
     round_bid: int = 0
     trump: str = ""
 
+    g_canvas: SVG.CanvasObject
+    g_websocket = None  # type: WSocketContainer
+
     # Games available on the server
     game_dict: Dict[GameID, Dict[str, Any]] = {}
     # Teams associated with this game/round
@@ -520,7 +530,7 @@ class GameState:
         Debugging assistant to output the value of selected globals.
         """
         variables = {
-            # "g_canvas": g_canvas,
+            # "cls.g_canvas":     cls.g_canvas,
             # "cls.game_id":      cls.game_id,
             # "cls.game_mode":    cls.game_mode,
             # "cls.round_id":     cls.round_id,
@@ -893,7 +903,7 @@ class TrumpSelectDialog:
             if trump in card:
                 buried_trump += 1
         if buried_trump > 0:
-            g_websocket.send_websocket_message(
+            GameState.g_websocket.send_websocket_message(
                 {
                     "action": "trump_buried",
                     "game_id": GameState.game_id.value,
@@ -910,8 +920,8 @@ class TrumpSelectDialog:
 
         # Clear previous dialog_trump instances.
         try:
-            previous = g_canvas.getSelectedObject("dialog_trump")
-            g_canvas.removeObject(previous)
+            previous = GameState.g_canvas.getSelectedObject("dialog_trump")
+            GameState.g_canvas.removeObject(previous)
         except AttributeError:
             pass
         # Don't display a trump select dialog box if this isn't the player who won the
@@ -1431,8 +1441,6 @@ class AjaxCallbacks:
                 "AjaxCallbacks.on_complete_getcookie: Setting GAME_ID=%s",
                 response_data["ident"],
             )
-            # put({}, f"/game/{GameState.game_id}?state=false", advance_mode_initial_callback, False)
-
             GameState.set_game_parameters()
 
         elif "player_id" in response_data["kind"]:
@@ -2054,7 +2062,7 @@ class WSocketContainer:
             )
             return
 
-        for (objid, node) in g_canvas.objectDict.items():
+        for (objid, node) in GameState.g_canvas.objectDict.items():
             if (
                 isinstance(node, SVG.UseObject)
                 and DeckTypes.KITTY.name.lower() in objid
@@ -2117,8 +2125,6 @@ class WSocketContainer:
             )
 
             mylog.error("WSocketContainer.update_player_names: Section 2")
-            # TODO: Do something more useful like a line of names with color change when
-            # the player's client registers.
             document.getElementById("other_players").clear()
             document.getElementById("other_players").attach(
                 html.SPAN(
@@ -2182,12 +2188,11 @@ class WSocketContainer:
         :param message: Websocket message to be sent to the server.
         :type message: dict
         """
-        global g_websocket
         mylog.error("In WSocketContainer.send_websocket_message.")
 
         if self.websock is None:
             mylog.warning("WSocketContainer.send_websocket_message: Opening WebSocket.")
-            g_websocket = WSocketContainer()
+            GameState.g_websocket = WSocketContainer()
 
         mylog.warning("WSocketContainer.send_websocket_message: Sending message.")
         self.websock.send(json.dumps(message))
@@ -2254,8 +2259,8 @@ def locate_cards_below_hand() -> List[str]:
 
     return_list = []
     potential_cards = []
-    min_y_coord = float(g_canvas.attrs["height"]) + 20
-    for card in g_canvas.objectDict.values():
+    min_y_coord = float(GameState.g_canvas.attrs["height"]) + 20
+    for card in GameState.g_canvas.objectDict.values():
         if not (
             isinstance(card, SVG.UseObject) and DeckTypes.PLAYER.name.lower() in card.id
         ):
@@ -2297,9 +2302,6 @@ def populate_canvas(deck: CardDeck, target_canvas: SVG.CanvasObject):
     if GameState.mode.get_mode_str() in ["game"]:
         mylog.warning("Exiting populate_canvas. Still in 'game' mode.")
         return
-    if GameState.mode._mode < 0:  # FIXME: This shouldn't be needed.
-        mylog.warning("Invalid game mode. (%d)", GameState.mode._mode)
-        return
 
     mylog.warning("populate_canvas(deck=%s target_canvas=%s).", deck, target_canvas)
 
@@ -2309,9 +2311,9 @@ def populate_canvas(deck: CardDeck, target_canvas: SVG.CanvasObject):
         flippable = False
         movable = True
         show_face = True
-        flippable = DECK_CONFIG[deck_type][GameState.mode._mode]["flippable"]
-        movable = DECK_CONFIG[deck_type][GameState.mode._mode]["movable"]
-        show_face = DECK_CONFIG[deck_type][GameState.mode._mode]["show_face"]
+        flippable = DECK_CONFIG[deck_type][GameState.mode.mode]["flippable"]
+        movable = DECK_CONFIG[deck_type][GameState.mode.mode]["movable"]
+        show_face = DECK_CONFIG[deck_type][GameState.mode.mode]["show_face"]
         if GameState.mode.get_mode_str() in ["reveal"]:
             if deck_type is DeckTypes.KITTY:
                 flippable = GameState.player_id == GameState.round_bid_trick_winner
@@ -2468,10 +2470,10 @@ def create_game_select_buttons(xpos, ypos) -> None:
             fontsize=18,
             objid="nogame",
         )
-        g_canvas.attach(no_game_button)
+        GameState.g_canvas.attach(no_game_button)
     else:
-        mylog.warning("cgsb: Clearing canvas (%r)", g_canvas)
-        g_canvas.deleteAll()
+        mylog.warning("cgsb: Clearing canvas (%r)", GameState.g_canvas)
+        GameState.g_canvas.deleteAll()
 
     # If there's only one game, choose that one.
     if len(GameState.game_dict) == 1:
@@ -2493,10 +2495,10 @@ def create_game_select_buttons(xpos, ypos) -> None:
             fontsize=18,
             objid=item.value,
         )
-        g_canvas.attach(game_button)
+        GameState.g_canvas.attach(game_button)
         ypos += 40
 
-    g_canvas.fitContents()
+    GameState.g_canvas.fitContents()
     mylog.warning("Exiting create_game_select_buttons")
 
 
@@ -2511,7 +2513,7 @@ def create_player_select_buttons(xpos, ypos) -> None:
     """
     mylog.error("In create_player_select_buttons.")
 
-    g_canvas.deleteAll()
+    GameState.g_canvas.deleteAll()
 
     for item in GameState.player_dict:
         mylog.warning("player_dict[item]=%s", GameState.player_dict[item])
@@ -2527,10 +2529,10 @@ def create_player_select_buttons(xpos, ypos) -> None:
             mylog.warning(
                 "create_player_select_buttons: player_dict item: item=%s", item
             )
-            g_canvas.attach(player_button)
+            GameState.g_canvas.attach(player_button)
         ypos += 40
 
-    g_canvas.fitContents()
+    GameState.g_canvas.fitContents()
     mylog.warning("Exiting create_player_select_buttons")
 
 
@@ -2665,7 +2667,6 @@ def display_game_options():
     Conditional ladder for early game data selection. This needs to be done better and
     have new game/team/player capability.
     """
-    global g_websocket
     mylog.error("In display_game_options.")
 
     xpos = 10
@@ -2685,13 +2686,13 @@ def display_game_options():
     elif GameState.round_id == RoundID():
         mylog.warning("dgo: In GameState.round_id=''")
         # Open the websocket if needed.
-        if g_websocket is None:
-            g_websocket = WSocketContainer()
+        if GameState.g_websocket is None:
+            GameState.g_websocket = WSocketContainer()
 
         AjaxRequests.get(
             f"/game/{GameState.game_id.value}/round", AjaxCallbacks().on_complete_rounds
         )
-    elif GameState.team_list == []:
+    elif not GameState.team_list:
         mylog.warning("dgo: In GameState.team_list=[]")
         AjaxRequests.get(
             f"/round/{GameState.round_id.value}/teams",
@@ -2709,7 +2710,7 @@ def display_game_options():
     else:
         mylog.warning("dgo: In else clause")
         # Send the registration message.
-        g_websocket.send_registration()
+        GameState.g_websocket.send_registration()
 
         if GameState.mode.get_mode_str() in ["bid"]:
             GameState.meld_score = 0
@@ -2741,7 +2742,6 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
     :type event: Event(?), optional
     """
     # pylint: disable=invalid-name
-    global g_canvas
     mylog.error("In rebuild_display.")
 
     if AjaxRequestTracker.outstanding_requests() > 0:
@@ -2757,12 +2757,13 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
     mylog.warning("rebuild_display: Current mode=%s", mode)
 
     mylog.warning(
-        "rebuild_display: Destroying canvas contents with mode: %s", g_canvas.mode
+        "rebuild_display: Destroying canvas contents with mode: %s",
+        GameState.g_canvas.mode,
     )
-    g_canvas.deleteAll()
+    GameState.g_canvas.deleteAll()
 
     # Set the current game mode in the canvas.
-    g_canvas.mode = mode
+    GameState.g_canvas.mode = mode
 
     # Get the dimensions of the canvas and update the display.
     set_card_positions()
@@ -2858,11 +2859,11 @@ def rebuild_display(event=None):  # pylint: disable=unused-argument
 
     for item, button in _buttons.items():
         mylog.warning("rebuild_display: Adding %s button to canvas.", item)
-        g_canvas.addObject(button)
+        GameState.g_canvas.addObject(button)
 
-    g_canvas.fitContents()
+    GameState.g_canvas.fitContents()
     # pylint: disable=attribute-defined-outside-init, invalid-name
-    g_canvas.mouseMode = SVG.MouseMode.DRAG
+    GameState.g_canvas.mouseMode = SVG.MouseMode.DRAG
     mylog.warning("Leaving rebuild_display")
 
 
@@ -2878,17 +2879,17 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
     mylog.warning("set_card_positions: (mode=%s)", GameState.mode.get_mode_str())
 
     # Place the desired decks on the display.
-    if not g_canvas.objectDict:
+    if not GameState.g_canvas.objectDict:
         if (
             GameState.mode.get_mode_str() in ["game"] and GameState.game_id == GameID()
         ):  # Choose game, player
             display_game_options()
         if GameState.mode.get_mode_str() not in ["game"]:
-            generate_place_static_box(g_canvas)
+            generate_place_static_box(GameState.g_canvas)
         if GameState.mode.get_mode_str() in ["bid", "bidfinal"]:  # Bid
             # Use empty deck to prevent peeking at the kitty.
-            populate_canvas(GameState.kitty_deck, g_canvas)
-            populate_canvas(GameState.players_hand, g_canvas)
+            populate_canvas(GameState.kitty_deck, GameState.g_canvas)
+            populate_canvas(GameState.players_hand, GameState.g_canvas)
         if GameState.mode.get_mode_str() in ["bidfinal"]:  # Bid submitted
             # The kitty doesn't need to remain 'secret' now that the bidding is done.
             # Ask the server for the cards in the kitty.
@@ -2898,32 +2899,31 @@ def set_card_positions(event=None):  # pylint: disable=unused-argument
                     AjaxCallbacks().on_complete_kitty,
                 )
         elif GameState.mode.get_mode_str() in ["reveal"]:  # Reveal
-            populate_canvas(GameState.kitty_deck, g_canvas)
-            populate_canvas(GameState.players_hand, g_canvas)
+            populate_canvas(GameState.kitty_deck, GameState.g_canvas)
+            populate_canvas(GameState.players_hand, GameState.g_canvas)
         elif GameState.mode.get_mode_str() in ["meld"]:  # Meld
-            populate_canvas(GameState.meld_deck, g_canvas)
-            populate_canvas(GameState.players_meld_deck, g_canvas)
+            populate_canvas(GameState.meld_deck, GameState.g_canvas)
+            populate_canvas(GameState.players_meld_deck, GameState.g_canvas)
         elif GameState.mode.get_mode_str() in ["trick"]:  # Trick
-            populate_canvas(GameState.discard_deck, g_canvas)
-            populate_canvas(GameState.players_hand, g_canvas)
+            populate_canvas(GameState.discard_deck, GameState.g_canvas)
+            populate_canvas(GameState.players_hand, GameState.g_canvas)
 
     # Last-drawn are on top (z-index wise)
     # TODO: Retrieve events from API to show kitty cards when they are flipped over.
     if GameState.mode.get_mode_str() in ["bid", "bidfinal", "reveal"]:  # Bid & Reveal
-        place_cards(GameState.kitty_deck, g_canvas, location="top")
-        place_cards(GameState.players_hand, g_canvas, location="bottom")
+        place_cards(GameState.kitty_deck, GameState.g_canvas, location="top")
+        place_cards(GameState.players_hand, GameState.g_canvas, location="bottom")
     elif GameState.mode.get_mode_str() in ["meld"]:  # Meld
         # TODO: Expand display to show all four players.
-        place_cards(GameState.meld_deck, g_canvas, location="top")
-        place_cards(GameState.players_meld_deck, g_canvas, location="bottom")
+        place_cards(GameState.meld_deck, GameState.g_canvas, location="top")
+        place_cards(GameState.players_meld_deck, GameState.g_canvas, location="bottom")
     elif GameState.mode.get_mode_str() in ["trick"]:  # Trick
         # Remove any dialogs from the meld phase.
         remove_dialogs()
-        place_cards(GameState.discard_deck, g_canvas, location="top")
-        place_cards(GameState.players_hand, g_canvas, location="bottom")
+        place_cards(GameState.discard_deck, GameState.g_canvas, location="top")
+        place_cards(GameState.players_hand, GameState.g_canvas, location="bottom")
 
-    # pylint: disable=attribute-defined-outside-init, invalid-name
-    g_canvas.mouseMode = SVG.MouseMode.DRAG
+    GameState.g_canvas.mouseMode = SVG.MouseMode.DRAG
 
 
 def resize_canvas(event=None):  # pylint: disable=unused-argument
@@ -2936,8 +2936,8 @@ def resize_canvas(event=None):  # pylint: disable=unused-argument
     mylog.error("In resize_canvas")
 
     _height: float = 0.95 * window.innerHeight - document["game_header"].height
-    g_canvas.style.height = f"{_height}px"
-    g_canvas.fitContents()
+    GameState.g_canvas.style.height = f"{_height}px"
+    GameState.g_canvas.fitContents()
 
 
 ## END Function definitions.
@@ -2952,11 +2952,11 @@ document["player_name"].height = document["player_name"].offsetHeight
 document["card_definitions"].attach(SVG.Definitions(filename=CARD_URL))
 
 # Websocket holder
-g_websocket: WSocketContainer = WSocketContainer()
+GameState.g_websocket = WSocketContainer()
 
 # Create the base SVG object for the card table.
-g_canvas = CardTable()
-document["card_table"] <= g_canvas
+GameState.g_canvas = CardTable()
+document["card_table"] <= GameState.g_canvas
 resize_canvas()
 
 document.getElementById("please_wait").text = ""
