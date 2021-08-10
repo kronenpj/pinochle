@@ -1648,8 +1648,8 @@ class WSocketContainer:
     """
 
     websock: websocket.WebSocket = None
-    PROTOCOL: str
-    SERVER: str
+    protocol: str
+    server: str
     registered_with_server = False
 
     def __init__(self) -> None:
@@ -1674,11 +1674,11 @@ class WSocketContainer:
 
         start = os.environ["HOME"].find("//") + 2
         end = os.environ["HOME"].find("/", start) + 1
-        self.PROTOCOL = os.environ["HOME"][: start - 3]
+        self.protocol = os.environ["HOME"][: start - 3]
         if end <= start:
-            self.SERVER = os.environ["HOME"][start:]
+            self.server = os.environ["HOME"][start:]
         else:
-            self.SERVER = os.environ["HOME"][start:end]
+            self.server = os.environ["HOME"][start:end]
 
     def ws_open(self):
         """
@@ -1687,8 +1687,8 @@ class WSocketContainer:
         mylog.error("In WSocketContainer.ws_open.")
 
         # open a web socket
-        proto = self.PROTOCOL.replace("http", "ws")
-        self.websock = websocket.WebSocket(f"{proto}://{self.SERVER}/stream")
+        proto = self.protocol.replace("http", "ws")
+        self.websock = websocket.WebSocket(f"{proto}://{self.server}/stream")
         # bind functions to web socket events
         self.websock.bind("open", self.on_ws_open)
         self.websock.bind("message", self.on_ws_event)
