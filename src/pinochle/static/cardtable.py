@@ -2515,13 +2515,13 @@ def create_player_select_buttons(xpos, ypos) -> None:
 
     GameState.g_canvas.deleteAll()
 
-    for item in GameState.player_dict:
-        mylog.warning("player_dict[item]=%s", GameState.player_dict[item])
-        if not document.getElementById(GameState.player_dict[item]["player_id"]):
+    for item, value in GameState.player_dict.items():
+        mylog.warning("player_dict[item]=%s", value)
+        if not document.getElementById(value["player_id"]):
             player_button = SVG.Button(
                 position=(xpos, ypos),
                 size=(450, 35),
-                text=f"Player: {GameState.player_dict[item]['name']}",
+                text=f"Player: {value['name']}",
                 onclick=choose_player,
                 fontsize=18,
                 objid=GameState.player_dict[item]["player_id"],
