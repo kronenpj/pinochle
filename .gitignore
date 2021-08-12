@@ -3,6 +3,7 @@
 CardTable.txt
 classes_Pinochle.svg
 classes_CardTable.svg
+create_cardtable-txt.sh
 curl_inserts.sh
 docker-compose.yml
 dragdrop-refinements-fail.patch
