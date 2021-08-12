@@ -613,8 +613,8 @@ class GameState:
                 cls.kitty_deck.clear()
         except KeyError:
             pass
-        # TODO: Figure out how better to calculate GameState.hand_size.
-        cls.hand_size = int((48 - cls.kitty_size) / cls.players)
+
+        cls.hand_size = int((2 * len(DECK_SORTED) - cls.kitty_size) / cls.players)
         cls.meld_deck.set(["card-base" for _ in range(cls.hand_size)])
         cls.discard_deck.set(["card-base" for _ in range(cls.players)])
 
