@@ -476,14 +476,11 @@ class TestSingleRound:
         )
 
         # Choose a trump suit.
-        if "firefox" not in driver.name:
-            declared_trump = choice(SUITS)  # Chrome & Edge work
-        else:
-            # Deal with Firefox's displaced glyphs
-            # In Firefox, only 'spade' works due to the displacement between where Firefox
-            # displays the glyph and where it shows the glyph being positioned in the
-            # developer utility / programmatically.
-            declared_trump = "Spades"
+        # Deal with Firefox's displaced glyphs
+        # In Firefox, only 'spade' works due to the displacement between where Firefox
+        # displays the glyph and where it shows the glyph being positioned in the
+        # developer utility / programmatically.
+        declared_trump = choice(SUITS) if "firefox" not in driver.name else "Spades"
         declared_trump = declared_trump.lower().rstrip("s")
 
         trump_dialog = driver.find_element(By.CLASS_NAME, "brython-dialog-title")
