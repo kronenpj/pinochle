@@ -70,6 +70,7 @@ def create(team_id: str, player_id: dict):
     :return:          201 on success, 406 on team doesn't exist
     """
     # Player_id comes as a dict, extract the value.
+    # print(f"teamplayers.create: {team_id=}{player_id=}")
     p_id = player_id["player_id"]
 
     existing_team = Team.query.filter(Team.team_id == team_id).one_or_none()

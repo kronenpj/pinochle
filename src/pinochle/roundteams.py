@@ -2,11 +2,12 @@
 This is the roundplayer module and supports all the REST actions roundplayer data
 """
 
-from typing import List
+from typing import Dict, List, Union
 
 import sqlalchemy
 from flask import abort, make_response
 
+from . import setup_logging
 from .models import utils
 from .models.core import db
 from .models.hand import Hand, HandSchema
@@ -21,6 +22,8 @@ from .models.teamplayers import TeamPlayers
 # Suppress invalid no-member messages from pylint.
 # pylint: disable=no-member
 
+LOG = setup_logging()
+
 
 def read_all():
     """
@@ -29,6 +32,7 @@ def read_all():
 
     :return:        json string of list of game rounds
     """
+    LOG.info("In roundteams.read_all")
     # Create the list of round-teams from our data
     round_teams = RoundTeam.query.order_by(RoundTeam.timestamp).all()
 
@@ -46,6 +50,7 @@ def read_one(round_id: str):
     :param round_id:    Id of round to find
     :return:            list of team IDs playing in the specified round
     """
+    LOG.info("In roundteams.read_one")
     # Build the initial query
     a_round = (
         RoundTeam.query.filter(RoundTeam.round_id == round_id)
@@ -56,7 +61,7 @@ def read_one(round_id: str):
     # Did we find a round?
     if a_round is not None:
         # Serialize the data for the response
-        data = {"round_id": round_id}
+        data: Dict[str, Union[str, List[str]]] = {"round_id": round_id}
         temp = [str(team.team_id) for _, team in enumerate(a_round)]
         data["team_ids"] = temp
         return data, 200
@@ -74,6 +79,7 @@ def read(round_id: str, team_id: str):
     :param team_id:    Id of the team to report
     :return:           list of cards collected by that team for the round.
     """
+    LOG.info("In roundteams.read")
     # Build the query
     try:
         team_hand_id = utils.query_roundteam(round_id=round_id, team_id=team_id)
@@ -85,7 +91,10 @@ def read(round_id: str, team_id: str):
         # Did we find any cards?
         if team_cards is not None:
             # Serialize the data for the response
-            data = {"round_id": round_id, "team_id": team_id}
+            data: Dict[str, Union[str, List[Hand]]] = {
+                "round_id": round_id,
+                "team_id": team_id,
+            }
             temp = [team_cards for _, team_cards in enumerate(team_cards)]
             data["team_cards"] = temp
             return data
@@ -110,6 +119,7 @@ def addcard(round_id: str, team_id: str, card: str):
     :param card:       String of the card to add to the collection.
     :return:           None.
     """
+    LOG.info("In roundteams.addcard")
     if round_id is not None and team_id is not None and card is not None:
         # Build the query to extract the hand_id
         rt_data = utils.query_roundteam_with_hand(round_id=round_id, team_id=team_id)
@@ -146,6 +156,7 @@ def deletecard(round_id: str, team_id: str, card: str):
     :param card:       String of the card to add to the collection.
     :return:           None.
     """
+    LOG.info("In roundteams.deletecard")
     if round_id is not None and team_id is not None and card is not None:
         # Build the query to extract the hand_id
         rt_data = RoundTeam.query.filter(
@@ -184,6 +195,9 @@ def create(round_id: str, teams: list):
     :param teams:     teams to associate with round
     :return:          201 on success, 406 on round doesn't exist
     """
+    LOG.critical("In roundteams.create(%s, %r)",round_id, teams)
+    LOG.info("In roundteams.create")
+
     if round_id is None or teams is None:
         abort(409, "Invalid data provided.")
 
@@ -233,6 +247,7 @@ def update(round_id: str, teams: dict):
     :param teams:       Dictionary containing the data to update.
     :return:            Updated record.
     """
+    LOG.info("In roundteams.update")
     return _update_data(round_id, teams)
 
 
@@ -245,6 +260,7 @@ def _update_data(round_id: str, data: dict):
     :param data:        Dictionary containing the data to update.
     :return:            Updated record.
     """
+    LOG.info("In roundteams._update_data")
     # Get the round requested from the db into session
     update_round = RoundTeam.query.filter(RoundTeam.round_id == round_id).one_or_none()
 
@@ -280,6 +296,7 @@ def delete(round_id: str, team_id: str):
     :param team_id:     Id of the team to delete
     :return:            200 on successful delete, 404 if not found
     """
+    LOG.info("In roundteams.delete")
     # Get the round requested
     a_round = RoundTeam.query.filter(
         RoundTeam.round_id == round_id, RoundTeam.team_id == team_id
@@ -306,6 +323,7 @@ def create_ordered_player_list(round_id: str) -> List[str]:
     :return:         List of player ids.
     :rtype:          List[str]
     """
+    LOG.info("In roundteams.create_ordered_player_list")
     round_t: list = utils.query_roundteam_list(round_id)
     teams = [str(x.team_id) for x in round_t]
 

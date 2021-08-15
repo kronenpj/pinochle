@@ -388,20 +388,24 @@ def start(round_id: str):
     :return:           200 on successful delete, 404 if not found,
                        409 if requirements are not satisfied.
     """
+    LOG.info("In play_pinochle.start()")
     LOG.debug("\nround_id=%s", round_id)
+
     # Get the round requested
     a_round: Round = utils.query_round(round_id)
     a_gameround: GameRound = utils.query_gameround_for_round(round_id)
 
     # Did we find a round?
-    if a_round is None or a_round == {}:
+    if not a_round:
+        LOG.debug("Round %s not found.", round_id)
         abort(404, f"Round {round_id} not found.")
 
     # Retrieve the information for the round and teams.
     round_t: list = utils.query_roundteam_list(round_id)
 
     # Did we find one or more round-team entries?
-    if round_t is None or round_t == []:
+    if not round_t:
+        LOG.debug("No teams found for round %s", round_id)
         abort(409, f"No teams found for round {round_id}.")
 
     # Retrieve the information for the associated game.
@@ -409,6 +413,7 @@ def start(round_id: str):
 
     # Did we find a game?
     if a_game is None:
+        LOG.debug("No game found for round %s",round_id)
         abort(409, f"No game found for round {round_id}.")
 
     # Retrieve the hand_id for the kitty.

@@ -717,7 +717,7 @@ paths:
       summary: Create a team identity
       description: Create a team identity
       parameters:
-        - name: team
+        - name: name
           in: body
           required: True
           schema:
@@ -894,7 +894,7 @@ paths:
       summary: Create a player identity
       description: Create a player identity
       parameters:
-        - name: player
+        - name: name
           in: body
           description: Name of player
           required: True

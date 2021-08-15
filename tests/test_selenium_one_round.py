@@ -296,10 +296,7 @@ class TestSingleRound:
                     counter -= 1
                 if not counter:
                     limit = 0
-            except TimeoutException:
-                print(f"Retrying browsers. {counter} left.")
-                limit -= 1
-            except NoSuchElementException:
+            except (TimeoutException, NoSuchElementException):
                 print(f"Retrying browsers. {counter} left.")
                 limit -= 1
 
@@ -309,17 +306,42 @@ class TestSingleRound:
         """
         try:
             for driver in self.driver:
-                WebDriverWait(driver, 2).until(
+                WebDriverWait(driver, 5).until(
                     expected_conditions.presence_of_element_located(
                         (By.XPATH, "//*[@id='nogame']")
                     )
                 )
-        except NoSuchElementException:
-            return
-        except TimeoutException:
-            return
+            assert not "There should be a game created."
+        except (NoSuchElementException, TimeoutException):
+            pass
 
-        assert not "There should be a game created."
+        try:
+            for driver in self.driver:
+                WebDriverWait(driver, 5).until(
+                    expected_conditions.presence_of_element_located(
+                        (By.XPATH, "//*[@id='newgame']")
+                    )
+                )
+        except (NoSuchElementException, TimeoutException):
+            assert not "The create new game button was not present."
+
+    def test_130_select_created_game(self):
+        try:
+            for driver in self.driver:
+                WebDriverWait(driver, 5).until(
+                    expected_conditions.presence_of_element_located(
+                        (By.XPATH, "//*[@id='{}']".format(TestSingleRound.game_id))
+                    )
+                )
+        except (NoSuchElementException, TimeoutException):
+            assert not "The button for the created test game was not present."
+
+        for driver in self.driver:
+            button_element = driver.find_element(
+                By.XPATH, "//*[@id='{}']".format(TestSingleRound.game_id)
+            )
+            assert button_element
+            button_element.click()
 
     def test_140_wait_for_player_list(self):
         """
@@ -349,7 +371,6 @@ class TestSingleRound:
                 ),
             )
             assert element
-            element.click()
 
     def test_160_browser_click_on_name(self):
         """

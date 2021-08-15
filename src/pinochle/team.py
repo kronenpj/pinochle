@@ -57,7 +57,7 @@ def read_one(team_id: str):
     abort(404, f"Team not found for Id: {team_id}")
 
 
-def create(team: Dict):
+def create(name: Dict):
     """
     This function creates a new team in the team structure
     based on the passed in team data
@@ -65,8 +65,8 @@ def create(team: Dict):
     :param team:  team to create in team structure
     :return:        201 on success, 406 on team exists
     """
-    # print(f"{team=}")
-    name = team["name"]
+    # print(f"team.create: {name=}")
+    name = name["name"]
 
     try:
         # Create a team instance using the schema and the passed in team

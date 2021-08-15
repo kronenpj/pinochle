@@ -81,7 +81,7 @@ def read_hand(player_id: str):
     abort(404, f"Player not found for Id: {player_id}")
 
 
-def create(player: dict):
+def create(name: dict):
     """
     This function creates a new player in the player structure
     based on the passed in player data
@@ -89,7 +89,8 @@ def create(player: dict):
     :param player:  player to create in player structure
     :return:        201 on success, 409 on player exists, 400 on other error
     """
-    name = player["name"]
+    # print(f"player.create: {name=}")
+    name = name["name"]
 
     try:
         # Create a player instance using the schema and the passed in player

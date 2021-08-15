@@ -6,7 +6,7 @@ import logging
 import os
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import brySVG.dragcanvas as SVG  # pylint: disable=import-error
 from browser import ajax, document, html, websocket, window
@@ -14,6 +14,7 @@ from browser.widgets.dialog import Dialog, InfoDialog
 
 # Disable some pylint complaints because brython does some interesting things.
 # pylint: disable=pointless-statement
+# pylint: disable=expression-not-assigned
 # Disable some pyright complaints because _mockbrython is incomplete.
 # pyright: reportGeneralTypeIssues=false
 
@@ -1164,7 +1165,8 @@ class AjaxRequests:
     Container for outgoing AJAX requests
     """
 
-    AJAX_URL_ENCODING = "application/x-www-form-urlencoded"
+    # AJAX_URL_ENCODING = "application/x-www-form-urlencoded"
+    AJAX_URL_ENCODING = "application/json"
 
     @classmethod
     def get(cls, url: str, callback=None, async_call=True):
@@ -1217,7 +1219,7 @@ class AjaxRequests:
         req.send({})
 
     @classmethod
-    def post(cls, url: str, callback=None, async_call=True):
+    def post(cls, url: str, data: dict = None, callback=None, async_call=True):
         """
         Wrapper for the AJAX POST call.
 
@@ -1234,12 +1236,12 @@ class AjaxRequests:
         if callback is not None:
             AjaxRequestTracker.update(1)
             req.bind("complete", callback)
-        # mylog.warning("Calling POST /api%s with data: %r", url, data)
-        mylog.warning("Calling POST /api%s", url)
+        if not data:
+            data = {}
+        mylog.warning("Calling POST /api%s with data: %r", url, data)
         req.open("POST", "/api" + url, async_call)
         req.set_header("content-type", cls.AJAX_URL_ENCODING)
-        # req.send(data)
-        req.send({})
+        req.send(json.dumps(data))
 
     @classmethod
     def delete(cls, url: str, callback=None, async_call=True):
@@ -1291,6 +1293,23 @@ class AjaxCallbacks:
             GameState.game_dict[GameID(item["game_id"])] = item
 
         display_game_options()
+
+    def on_create_game(self, req: ajax.Ajax):
+        """
+        Callback for AJAX request for the creation of a game.
+
+        :param req: Request object from callback.
+        :type req: ajax.Ajax
+        """
+        mylog.error("In AjaxCallbacks.on_create_game.")
+
+        temp = self._on_complete_common(req)
+        if temp is None:
+            return
+
+        GameState.new_game_id = temp["game_id"]
+
+        display_populate_team_players()
 
     def on_complete_rounds(self, req: ajax.Ajax):
         """
@@ -1406,7 +1425,7 @@ class AjaxCallbacks:
         mylog.error("In AjaxCallbacks.on_complete_set_gamecookie.")
 
         AjaxRequestTracker.update(-1)
-        if req.status in [200, 0]:
+        if req.status in [200, 201, 0]:
             AjaxRequests.get("/getcookie/game_id", self.on_complete_getcookie)
 
     def on_complete_set_playercookie(self, req: ajax.Ajax):
@@ -1419,7 +1438,7 @@ class AjaxCallbacks:
         mylog.error("In AjaxCallbacks.on_complete_set_playercookie.")
 
         AjaxRequestTracker.update(-1)
-        if req.status in [200, 0]:
+        if req.status in [200, 201, 0]:
             AjaxRequests.get("/getcookie/player_id", self.on_complete_getcookie)
 
     def on_complete_getcookie(self, req: ajax.Ajax):
@@ -1536,7 +1555,7 @@ class AjaxCallbacks:
         if temp is None:
             return
 
-        if req.status in [200, 0]:
+        if req.status in [200, 201, 0]:
             mylog.warning(
                 "AjaxCallbacks.on_complete_get_meld_score: req.text: %s", req.text
             )
@@ -1568,7 +1587,7 @@ class AjaxCallbacks:
         )
 
         AjaxRequestTracker.update(-1)
-        if req.status not in [200, 0]:
+        if req.status not in [200, 201, 0]:
             return
 
         if "Round" in req.text and "started" in req.text:
@@ -1611,7 +1630,7 @@ class AjaxCallbacks:
         AjaxRequestTracker.update(-1)
         # TODO: Handle a semi-corner case where in the middle of a round, a player loses /
         # destroys a cookie and reloads the page.
-        if req.status not in [200, 0]:
+        if req.status not in [200, 201, 0]:
             mylog.warning(
                 "AjaxCallbacks.game_mode_query_callback: Not setting game_mode - "
                 "possibly because GameState.player_id is empty (%s).",
@@ -1635,7 +1654,7 @@ class AjaxCallbacks:
 
         display_game_options()
 
-    def _on_complete_common(self, req: ajax.Ajax) -> Optional[Dict]:
+    def _on_complete_common(self, req: ajax.Ajax) -> Dict:
         """
         Common function for AJAX callbacks.
 
@@ -1647,7 +1666,7 @@ class AjaxCallbacks:
         mylog.error("In AjaxCallbacks._on_complete_common.")
 
         AjaxRequestTracker.update(-1)
-        if req.status in [200, 0]:
+        if req.status in [200, 201, 0]:
             return json.loads(req.text)
 
         mylog.warning("AjaxCallbacks._on_complete_common: req=%s", req)
@@ -2480,7 +2499,7 @@ def create_game_select_buttons(xpos, ypos) -> None:
         no_game_button = SVG.Button(
             position=(xpos, ypos),
             size=(450, 35),
-            text="No games found, create one and press here.",
+            text="No games found, create one and press here",
             onclick=lambda x: AjaxRequests.get(
                 "/game", AjaxCallbacks().on_complete_games
             ),
@@ -2488,18 +2507,19 @@ def create_game_select_buttons(xpos, ypos) -> None:
             objid="nogame",
         )
         GameState.g_canvas.attach(no_game_button)
+        ypos += 40
     else:
         mylog.warning("cgsb: Clearing canvas (%r)", GameState.g_canvas)
         GameState.g_canvas.deleteAll()
 
     # If there's only one game, choose that one.
-    if len(GameState.game_dict) == 1:
-        one_game_id = list(GameState.game_dict.keys())[0]
-        AjaxRequests.get(
-            f"/setcookie/game_id/{one_game_id.value}",
-            AjaxCallbacks().on_complete_set_gamecookie,
-        )
-        return
+    # if len(GameState.game_dict) == 1:
+    #     one_game_id = list(GameState.game_dict.keys())[0]
+    #     AjaxRequests.get(
+    #         f"/setcookie/game_id/{one_game_id.value}",
+    #         AjaxCallbacks().on_complete_set_gamecookie,
+    #     )
+    #     return
 
     mylog.warning("cgsb: Enumerating games for buttons (%d).", len(GameState.game_dict))
     for item, temp_dict in GameState.game_dict.items():
@@ -2514,6 +2534,18 @@ def create_game_select_buttons(xpos, ypos) -> None:
         )
         GameState.g_canvas.attach(game_button)
         ypos += 40
+
+    new_game_button_k4 = SVG.Button(
+        position=(xpos, ypos),
+        size=(450, 35),
+        text="Create new game",
+        onclick=lambda x: AjaxRequests.post(
+            "/game?kitty_size=4", callback=AjaxCallbacks().on_create_game
+        ),
+        fontsize=18,
+        objid="newgame",
+    )
+    GameState.g_canvas.attach(new_game_button_k4)
 
     GameState.g_canvas.fitContents()
     mylog.warning("Exiting create_game_select_buttons")
@@ -2541,7 +2573,7 @@ def create_player_select_buttons(xpos, ypos) -> None:
                 text=f"Player: {value['name']}",
                 onclick=choose_player,
                 fontsize=18,
-                objid=GameState.player_dict[item]["player_id"],
+                objid=value["player_id"],
             )
             mylog.warning(
                 "create_player_select_buttons: player_dict item: item=%s", item
@@ -2678,6 +2710,203 @@ def choose_player(event=None):
     except AttributeError:
         mylog.warning("choose_player: Caught AttributeError.")
         return
+
+
+def display_populate_team_players():
+    """
+    Present a simple form to prompt for team and player names.
+    For the moment, this is two teams of two players each.
+    """
+    mylog.error("In display_populate_team_players.")
+
+    # Clear the canvas of any content
+    GameState.g_canvas.deleteAll()
+
+    # The player names for team 0 will be captured in places 0, and 2 (3%2).
+
+    # We're taking over the 'please wait' paragraph text area and will need to clear it
+    # out once the form is submitted.
+    _content = document.getElementById("please_wait")
+
+    _table = html.TABLE()
+
+    _table <= html.TR(html.TH("Team Name") + html.TH("Team Name"))
+    _table <= html.TR(
+        html.TD(html.INPUT(type="text", id="team0", placeholder="Team name"))
+        + html.TD(html.INPUT(type="text", id="team1", placeholder="Team name"))
+    )
+    _table <= html.TR(html.TH("Player Names") + html.TH("Player Names"))
+    _table <= html.TR(
+        html.TD(html.INPUT(type="text", id="player0", placeholder="Player name"))
+        + html.TD(html.INPUT(type="text", id="player1", placeholder="Player name"))
+    )
+    _table <= html.TR(
+        html.TD(html.INPUT(type="text", id="player2", placeholder="Player name"))
+        + html.TD(html.INPUT(type="text", id="player3", placeholder="Player name"))
+    )
+    _content <= _table
+
+    _sub_button = html.BUTTON("Submit", id="submit")
+    _sub_button.bind("click", CreateGame.populate_team_players)
+    _cancel_button = html.BUTTON("Cancel", id="cancel")
+    # TODO: This isn't the right thing to call on cancel.
+    _cancel_button.bind("click", clear_game)
+
+    # Add buttons to the form.
+    _content <= _sub_button
+    _content <= _cancel_button
+
+
+class CreateGame:
+    _round_id: str = BaseID.zeros_uuid
+    _team_names: Dict[str, str] = {}
+    _team_indexes: List[str] = []
+    _player_names: Dict[str, str] = {}
+    _player_indexes: List[str] = []
+
+    @classmethod
+    def _collect_round_id(cls, req: ajax.Ajax):
+        mylog.error("In CreateGame._collect_round_id")
+        AjaxRequestTracker.update(-1)
+        if req.status not in [200, 201, 0]:
+            return
+        response = json.loads(req.text)
+        cls._round_id = response["round_id"]
+        mylog.warning("CreateGame._collect_round_id: Calling all_populated")
+        cls._all_populated()
+
+    @classmethod
+    def _collect_team_id(cls, req: ajax.Ajax):
+        mylog.error("In CreateGame._collect_team_id")
+        AjaxRequestTracker.update(-1)
+        if req.status not in [200, 201, 0]:
+            return
+        response = json.loads(req.text)
+        cls._team_names[response["name"]] = response["team_id"]
+        mylog.warning("CreateGame._collect_team_id: Calling all_populated")
+        cls._all_populated()
+
+    @classmethod
+    def _collect_player_id(cls, req: ajax.Ajax):
+        mylog.error("In CreateGame._collect_player_id")
+        AjaxRequestTracker.update(-1)
+        if req.status not in [200, 201, 0]:
+            return
+        response = json.loads(req.text)
+        cls._player_names[response["name"]] = response["player_id"]
+        mylog.warning("CreateGame._collect_player_id: Calling all_populated")
+        cls._all_populated()
+
+    @classmethod
+    def _all_populated(cls):
+        mylog.error("In CreateGame._all_populated.")
+
+        _round_ready = str(cls._round_id) != BaseID.zeros_uuid
+        _teams_ready = all(
+            str(x) != BaseID.zeros_uuid for x in cls._team_names.values()
+        )
+        _players_ready = all(
+            str(x) != BaseID.zeros_uuid for x in cls._player_names.values()
+        )
+
+        if _round_ready and _teams_ready and _players_ready:
+            mylog.warning("CreateGame._all_populated: all conditions satisfied")
+            cls.associate_game_round_teams()
+
+    @classmethod
+    def populate_team_players(cls, event=None):
+        mylog.error("In CreateGame.populate_team_players.")
+
+        # Collect data from the form.
+        for idx in range(4):
+            _team_input_id = "team{}".format(idx % 2)
+            _player_input_id = "player{}".format(idx)
+            cls._team_names[document[_team_input_id].value] = BaseID.zeros_uuid
+            cls._team_indexes.append(document[_team_input_id].value)
+            cls._player_names[document[_player_input_id].value] = BaseID.zeros_uuid
+            cls._player_indexes.append(document[_player_input_id].value)
+
+        mylog.warning("CreateGame.populate_team_players: teams: %r", cls._team_names)
+        mylog.warning(
+            "CreateGame.populate_team_players: players: %r", cls._player_names
+        )
+        mylog.warning("CreateGame.populate_team_players: Starting API calls.")
+
+        # Create the first round in this game
+        AjaxRequests.post(
+            f"/game/{GameState.new_game_id}/round", callback=cls._collect_round_id
+        )
+
+        # Create the teams.cls._team_indexes[:2]
+        for name in cls._team_names:
+            AjaxRequests.post("/team", {"name": name}, cls._collect_team_id)
+
+        # Create the players.
+        for name in cls._player_names:
+            AjaxRequests.post("/player", {"name": name}, cls._collect_player_id)
+
+    @classmethod
+    def _requests_outstanding_callback(cls, req: ajax.Ajax):
+        mylog.error("In CreateGame._requests_outstanding_callback.")
+
+        AjaxRequestTracker.update(-1)
+        if AjaxRequestTracker.outstanding_requests() != 0:
+            return
+
+        mylog.warning(
+            "CreateGame._requests_outstanding_callback: all conditions satisfied"
+        )
+        if req:
+            mylog.warning("Req.text: %s", req.text)
+            if "player_id" in req.text:
+                cls.associate_teams_to_round()
+            elif "round_id" in req.text:
+                cls.start_game_round()
+
+    @classmethod
+    def associate_game_round_teams(cls):
+        mylog.error("In CreateGame.associate_game_round_teams.")
+
+        # Grab the cookie for the game we just created
+        AjaxRequests.get(
+            f"/setcookie/game_id/{GameState.new_game_id}",
+            AjaxCallbacks().on_complete_set_gamecookie,
+        )
+
+        # Associate each player with a team.
+        for idx in range(2):
+            AjaxRequests.post(
+                "/team/{}".format(cls._team_names[cls._team_indexes[idx]]),
+                {"player_id": cls._player_names[cls._player_indexes[idx]]},
+                callback=cls._requests_outstanding_callback,
+            )
+            AjaxRequests.post(
+                "/team/{}".format(cls._team_names[cls._team_indexes[idx]]),
+                {"player_id": cls._player_names[cls._player_indexes[idx + 2]]},
+                callback=cls._requests_outstanding_callback,
+            )
+
+    @classmethod
+    def associate_teams_to_round(cls):
+        mylog.error("In CreateGame.associate_teams_to_round.")
+        # Associate the teams to the round using a set of the UUIDs.
+        _team_list = {cls._team_names[x] for x in cls._team_indexes}
+        AjaxRequests.post(
+            "/round/{}".format(cls._round_id),
+            list(_team_list),
+            callback=cls._requests_outstanding_callback,
+        )
+
+    @classmethod
+    def start_game_round(cls):
+        mylog.error("In CreateGame.start_game_round.")
+
+        # Finally start the round
+        AjaxRequests.post("/round/{}/start".format(cls._round_id))
+
+        # Clear the display in preparation for selecting a player.
+        document.getElementById("please_wait").text = ""
+        display_game_options()
 
 
 def display_game_options():
